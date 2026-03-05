@@ -269,6 +269,7 @@ export type Database = {
           subscription_tier: string | null
           suspension_end: string | null
           todays_note: string | null
+          todays_note_updated_at: string | null
           updated_at: string
           user_id: string
           verification_session_id: string | null
@@ -313,6 +314,7 @@ export type Database = {
           subscription_tier?: string | null
           suspension_end?: string | null
           todays_note?: string | null
+          todays_note_updated_at?: string | null
           updated_at?: string
           user_id: string
           verification_session_id?: string | null
@@ -357,6 +359,7 @@ export type Database = {
           subscription_tier?: string | null
           suspension_end?: string | null
           todays_note?: string | null
+          todays_note_updated_at?: string | null
           updated_at?: string
           user_id?: string
           verification_session_id?: string | null

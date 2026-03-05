@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Heart, X, MapPin, Shield, Filter, Search, Star, SlidersHorizontal, RotateCcw, MapPinOff, Music } from "lucide-react";
+import { Heart, X, MapPin, Shield, Filter, Search, Star, SlidersHorizontal, RotateCcw, MapPinOff, Music, MessageSquare, Clock } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -53,6 +53,7 @@ const Discover = () => {
   // Filter state
   const [modeFilter, setModeFilter] = useState("All");
   const [verifiedOnly, setVerifiedOnly] = useState(false);
+  const [hasNoteOnly, setHasNoteOnly] = useState(false);
   const [ageMin, setAgeMin] = useState(18);
   const [ageMax, setAgeMax] = useState(80);
   const [distanceRadius, setDistanceRadius] = useState(0); // 0 = Anywhere
@@ -63,6 +64,7 @@ const Discover = () => {
   const [appliedFilters, setAppliedFilters] = useState({
     mode: "All",
     verifiedOnly: false,
+    hasNoteOnly: false,
     ageMin: 18,
     ageMax: 80,
     distance: 0,
@@ -96,6 +98,7 @@ const Discover = () => {
     setAppliedFilters({
       mode: modeFilter,
       verifiedOnly,
+      hasNoteOnly,
       ageMin,
       ageMax,
       distance: distanceRadius,
@@ -105,9 +108,25 @@ const Discover = () => {
     setShowFilters(false);
   };
 
+  const isNoteActive = (p: any) => {
+    if (!p.todays_note || !p.todays_note_updated_at) return false;
+    return Date.now() - new Date(p.todays_note_updated_at).getTime() < 24 * 60 * 60 * 1000;
+  };
+
+  const getTimeAgo = (dateStr: string) => {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return "Just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    return "";
+  };
+
   const resetFilters = () => {
     setModeFilter("All");
     setVerifiedOnly(false);
+    setHasNoteOnly(false);
     setAgeMin(18);
     setAgeMax(80);
     setDistanceRadius(0);
@@ -116,6 +135,7 @@ const Discover = () => {
     setAppliedFilters({
       mode: "All",
       verifiedOnly: false,
+      hasNoteOnly: false,
       ageMin: 18,
       ageMax: 80,
       distance: 0,
@@ -128,6 +148,7 @@ const Discover = () => {
   const activeFilterCount = [
     appliedFilters.mode !== "All",
     appliedFilters.verifiedOnly,
+    appliedFilters.hasNoteOnly,
     appliedFilters.ageMin !== 18 || appliedFilters.ageMax !== 80,
     appliedFilters.distance > 0,
     appliedFilters.hobbies.length > 0,
@@ -167,6 +188,9 @@ const Discover = () => {
 
     // Verified only
     if (appliedFilters.verifiedOnly && !p.is_verified) return false;
+
+    // Has Today's Note only
+    if (appliedFilters.hasNoteOnly && !isNoteActive(p)) return false;
 
     // Age range
     const age = getAge(p.date_of_birth);
@@ -389,7 +413,7 @@ const Discover = () => {
                     </div>
 
                     {/* Verified toggle */}
-                    <div className="mt-4">
+                    <div className="mt-4 space-y-3">
                       <label className="flex items-center gap-2 cursor-pointer">
                         <div
                           onClick={() => setVerifiedOnly(!verifiedOnly)}
@@ -405,6 +429,24 @@ const Discover = () => {
                         </div>
                         <span className="text-sm text-foreground">Verified only</span>
                         <Shield className="w-3.5 h-3.5 text-primary" />
+                      </label>
+
+                      {/* Has Today's Note toggle */}
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <div
+                          onClick={() => setHasNoteOnly(!hasNoteOnly)}
+                          className={`w-10 h-5 rounded-full transition-colors relative cursor-pointer ${
+                            hasNoteOnly ? "bg-primary" : "bg-border"
+                          }`}
+                        >
+                          <div
+                            className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                              hasNoteOnly ? "translate-x-5" : "translate-x-0.5"
+                            }`}
+                          />
+                        </div>
+                        <span className="text-sm text-foreground">Has Today's Note</span>
+                        <MessageSquare className="w-3.5 h-3.5 text-primary" />
                       </label>
                     </div>
                   </div>
@@ -508,10 +550,15 @@ const Discover = () => {
                             <span className="text-primary font-bold">· {dist} mi</span>
                           )}
                         </div>
-                        {p.todays_note && (
-                          <div className="flex items-center gap-1 text-sm mb-3">
-                            <Star className="w-3 h-3 text-primary" />
-                            <span className="text-foreground/80">{p.todays_note}</span>
+                        {isNoteActive(p) && (
+                          <div className="flex items-start gap-1.5 text-sm mb-3">
+                            <MessageSquare className="w-3 h-3 text-primary mt-0.5 flex-shrink-0" />
+                            <div>
+                              <span className="text-primary/90 italic">{p.todays_note}</span>
+                              {p.todays_note_updated_at && (
+                                <span className="text-xs text-muted-foreground ml-1.5">{getTimeAgo(p.todays_note_updated_at)}</span>
+                              )}
+                            </div>
                           </div>
                         )}
                         {p.hobbies && p.hobbies.length > 0 && (

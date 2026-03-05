@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Heart, MessageCircle, Shield, MapPin, Music, Edit3, Camera, Star, MoreVertical, Flag, Ban } from "lucide-react";
+import { Heart, MessageCircle, Shield, MapPin, Music, Edit3, Camera, Star, MoreVertical, Flag, Ban, MessageSquare, Clock } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,13 +15,19 @@ import {
 import ReportModal from "@/components/ReportModal";
 import BlockConfirmDialog from "@/components/BlockConfirmDialog";
 
+const NOTE_PLACEHOLDERS = [
+  "Just got back from hiking...",
+  "Free tonight, let's grab drinks",
+  "In a great mood, come say hi",
+  "Working from a coffee shop today",
+];
+
 const mockProfile = {
   name: "Sophia M.",
   age: 24,
   location: "Los Angeles, CA",
   verified: true,
   datingMode: "Serious Dating",
-  todaysNote: "Free tonight ✨ Let's grab wine somewhere nice",
   bio: "Art school grad with a thing for older souls. I believe the best conversations happen over candlelight. Lover of gallery openings, spontaneous road trips, and anyone who can make me laugh until I cry.",
   hobbies: ["Travel", "Art", "Wine Tasting", "Photography", "Yoga", "Cooking"],
   music: ["Jazz", "R&B", "Indie", "Soul"],
@@ -51,15 +59,70 @@ const Badge = ({ children, variant = "default" }: { children: React.ReactNode; v
   );
 };
 
+const getTimeAgo = (dateStr: string) => {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return "Expired";
+};
+
+const isNoteActive = (updatedAt: string | null) => {
+  if (!updatedAt) return false;
+  return Date.now() - new Date(updatedAt).getTime() < 24 * 60 * 60 * 1000;
+};
+
 const Profile = () => {
-  const { profile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
+  const { toast } = useToast();
   const [reportOpen, setReportOpen] = useState(false);
   const [blockOpen, setBlockOpen] = useState(false);
+  const [editingNote, setEditingNote] = useState(false);
+  const [noteText, setNoteText] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
 
   const favoriteArtists = (profile?.favorite_artists as string[] | null) || [];
   const favoriteGenres = (profile?.favorite_genres as string[] | null) || [];
   const favoriteSong = (profile?.favorite_song as string | null) || "";
   const hasMusicData = favoriteArtists.length > 0 || favoriteGenres.length > 0 || favoriteSong;
+
+  const activeNote = profile?.todays_note && isNoteActive(profile?.todays_note_updated_at) ? profile.todays_note : null;
+  const noteUpdatedAt = profile?.todays_note_updated_at;
+
+  // 3-day nudge check
+  const showNudge = (() => {
+    if (!profile) return false;
+    if (activeNote) return false;
+    const updatedAt = profile.todays_note_updated_at;
+    if (!updatedAt) return true; // never posted
+    const daysSince = (Date.now() - new Date(updatedAt).getTime()) / (24 * 60 * 60 * 1000);
+    return daysSince > 3;
+  })();
+
+  const handleSaveNote = async () => {
+    if (!user) return;
+    setSavingNote(true);
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        todays_note: noteText.trim() || null,
+        todays_note_updated_at: noteText.trim() ? new Date().toISOString() : null,
+      } as any)
+      .eq("user_id", user.id);
+    setSavingNote(false);
+    if (!error) {
+      toast({ title: noteText.trim() ? "Today's Note updated!" : "Note cleared" });
+      setEditingNote(false);
+      refreshProfile();
+    }
+  };
+
+  const startEditNote = () => {
+    setNoteText(activeNote || "");
+    setEditingNote(true);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -76,6 +139,21 @@ const Profile = () => {
       </nav>
 
       <div className="container mx-auto px-4 py-8 max-w-3xl">
+        {/* 3-day nudge */}
+        {showNudge && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="glass rounded-xl p-4 mb-6 border border-primary/30 flex items-center gap-3"
+          >
+            <MessageSquare className="w-5 h-5 text-primary flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm">Let people know what you're up to today — <span className="text-primary font-bold">add a Today's Note</span> to your profile!</p>
+            </div>
+            <Button variant="hero" size="sm" onClick={startEditNote}>Add Note</Button>
+          </motion.div>
+        )}
+
         {/* Photos */}
         <div className="grid grid-cols-3 gap-2 rounded-2xl overflow-hidden mb-6">
           {mockProfile.photos.map((p, i) => (
@@ -129,12 +207,59 @@ const Profile = () => {
         </div>
 
         {/* Today's Note */}
-        <div className="glass rounded-xl p-4 mb-6 glow-border">
-          <div className="flex items-center gap-2 text-xs text-primary font-bold mb-1">
-            <Star className="w-3.5 h-3.5" /> TODAY'S NOTE
+        {editingNote ? (
+          <div className="glass rounded-xl p-4 mb-6 glow-border">
+            <div className="flex items-center gap-2 text-xs text-primary font-bold mb-2">
+              <MessageSquare className="w-3.5 h-3.5" /> TODAY'S NOTE
+            </div>
+            <div className="relative">
+              <textarea
+                value={noteText}
+                onChange={(e) => { if (e.target.value.length <= 150) setNoteText(e.target.value); }}
+                placeholder={NOTE_PLACEHOLDERS[Math.floor(Math.random() * NOTE_PLACEHOLDERS.length)]}
+                maxLength={150}
+                rows={2}
+                className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary resize-none text-sm"
+                autoFocus
+              />
+              <span className={`absolute bottom-2 right-3 text-xs ${noteText.length > 130 ? "text-destructive" : "text-muted-foreground"}`}>
+                {150 - noteText.length}
+              </span>
+            </div>
+            <div className="flex gap-2 mt-2">
+              <Button variant="hero" size="sm" onClick={handleSaveNote} disabled={savingNote}>
+                {savingNote ? "Saving..." : "Save"}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setEditingNote(false)}>Cancel</Button>
+            </div>
           </div>
-          <p className="text-foreground">{mockProfile.todaysNote}</p>
-        </div>
+        ) : activeNote ? (
+          <div className="glass rounded-xl p-4 mb-6 glow-border">
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-2 text-xs text-primary font-bold">
+                <MessageSquare className="w-3.5 h-3.5" /> TODAY'S NOTE
+              </div>
+              <button onClick={startEditNote} className="text-xs text-primary hover:underline flex items-center gap-1">
+                <Edit3 className="w-3 h-3" /> Update
+              </button>
+            </div>
+            <p className="text-primary/90 italic">{activeNote}</p>
+            {noteUpdatedAt && (
+              <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                <Clock className="w-3 h-3" /> Posted {getTimeAgo(noteUpdatedAt)}
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="glass rounded-xl p-4 mb-6 border border-dashed border-border">
+            <button onClick={startEditNote} className="w-full text-left">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground font-bold mb-1">
+                <MessageSquare className="w-3.5 h-3.5" /> TODAY'S NOTE
+              </div>
+              <p className="text-sm text-muted-foreground italic">Tap to add a note about what you're up to today...</p>
+            </button>
+          </div>
+        )}
 
         {/* Bio */}
         <div className="mb-6">
@@ -230,7 +355,6 @@ const Profile = () => {
         </div>
       </div>
 
-      {/* Report & Block modals - using mock profile user_id as placeholder */}
       <ReportModal
         open={reportOpen}
         onOpenChange={setReportOpen}

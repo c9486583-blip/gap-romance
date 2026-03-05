@@ -1,11 +1,18 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { User, CreditCard, Bell, Shield, LogOut, ChevronRight, CheckCircle, Music, X } from "lucide-react";
+import { User, CreditCard, Bell, Shield, LogOut, ChevronRight, CheckCircle, Music, X, MessageSquare } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { STRIPE_PRODUCTS } from "@/lib/stripe-products";
+
+const NOTE_PLACEHOLDERS = [
+  "Just got back from hiking...",
+  "Free tonight, let's grab drinks",
+  "In a great mood, come say hi",
+  "Working from a coffee shop today",
+];
 
 const GENRE_OPTIONS = [
   "Hip-Hop", "R&B", "Pop", "Rock", "Country", "Jazz", "Classical",
@@ -14,7 +21,7 @@ const GENRE_OPTIONS = [
 
 const Settings = () => {
   const [activeTab, setActiveTab] = useState("account");
-  const { user, profile, subscriptionTier, subscriptionEnd, signOut, refreshSubscription } = useAuth();
+  const { user, profile, subscriptionTier, subscriptionEnd, signOut, refreshSubscription, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -43,6 +50,11 @@ const Settings = () => {
   const [favoriteSong, setFavoriteSong] = useState("");
   const [savingMusic, setSavingMusic] = useState(false);
 
+  // Today's Note state
+  const [todaysNote, setTodaysNote] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
+  const notePlaceholder = NOTE_PLACEHOLDERS[Math.floor(Math.random() * NOTE_PLACEHOLDERS.length)];
+
   useEffect(() => {
     if (profile) {
       const artists = profile.favorite_artists as string[] | null;
@@ -53,8 +65,34 @@ const Settings = () => {
       const genres = profile.favorite_genres as string[] | null;
       if (genres) setFavoriteGenres(genres);
       if (profile.favorite_song) setFavoriteSong(profile.favorite_song as string);
+      // Load today's note only if not expired (24h)
+      if (profile.todays_note && profile.todays_note_updated_at) {
+        const updatedAt = new Date(profile.todays_note_updated_at).getTime();
+        if (Date.now() - updatedAt < 24 * 60 * 60 * 1000) {
+          setTodaysNote(profile.todays_note);
+        }
+      }
     }
   }, [profile]);
+
+  const handleSaveNote = async () => {
+    if (!user) return;
+    setSavingNote(true);
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        todays_note: todaysNote.trim() || null,
+        todays_note_updated_at: todaysNote.trim() ? new Date().toISOString() : null,
+      } as any)
+      .eq("user_id", user.id);
+    setSavingNote(false);
+    if (!error) {
+      toast({ title: todaysNote.trim() ? "Today's Note updated!" : "Today's Note cleared" });
+      refreshProfile();
+    } else {
+      toast({ title: "Failed to save note", variant: "destructive" });
+    }
+  };
 
   const toggleGenre = (genre: string) => {
     setFavoriteGenres((prev) =>
@@ -154,6 +192,31 @@ const Settings = () => {
                       <Button variant="outline" size="sm" onClick={handleVerify}>Verify Identity (Free)</Button>
                     )}
                   </div>
+
+                  {/* Today's Note */}
+                  <div className="border-t border-border/30 pt-4">
+                    <label className="text-sm font-medium flex items-center gap-2 mb-2">
+                      <MessageSquare className="w-4 h-4 text-primary" /> Today's Note
+                    </label>
+                    <p className="text-xs text-muted-foreground mb-2">Share what you're up to today — it appears on your profile and in discovery. Expires after 24 hours.</p>
+                    <div className="relative">
+                      <textarea
+                        value={todaysNote}
+                        onChange={(e) => { if (e.target.value.length <= 150) setTodaysNote(e.target.value); }}
+                        placeholder={notePlaceholder}
+                        maxLength={150}
+                        rows={2}
+                        className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary resize-none"
+                      />
+                      <span className={`absolute bottom-2 right-3 text-xs ${todaysNote.length > 130 ? "text-destructive" : "text-muted-foreground"}`}>
+                        {150 - todaysNote.length}
+                      </span>
+                    </div>
+                    <Button variant="outline" size="sm" className="mt-2" onClick={handleSaveNote} disabled={savingNote}>
+                      {savingNote ? "Saving..." : todaysNote.trim() ? "Update Note" : "Clear Note"}
+                    </Button>
+                  </div>
+
                   <Button variant="hero">Save Changes</Button>
                 </div>
               </div>
