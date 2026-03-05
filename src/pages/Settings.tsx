@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { User, CreditCard, Bell, Shield, LogOut, ChevronRight, CheckCircle, Music, X, MessageSquare, Sparkles, Heart, BellOff, Clock } from "lucide-react";
+import { User, CreditCard, Bell, Shield, LogOut, ChevronRight, CheckCircle, Music, X, MessageSquare, Sparkles, Heart, BellOff, Clock, Camera } from "lucide-react";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -13,6 +13,7 @@ import {
   GENRE_OPTIONS, LIFESTYLE_ICONS, PERSONALITY_ICONS,
 } from "@/lib/profile-constants";
 import { calculateProfileCompleteness } from "@/lib/profile-completeness";
+import PhotoManager from "@/components/PhotoManager";
 
 const NOTE_PLACEHOLDERS = [
   "Just got back from hiking...",
@@ -63,6 +64,10 @@ const Settings = () => {
   const [loveLanguage, setLoveLanguage] = useState<string>("");
   const [savingProfile, setSavingProfile] = useState(false);
 
+  // Photos state
+  const [userPhotos, setUserPhotos] = useState<string[]>([]);
+  const [savingPhotos, setSavingPhotos] = useState(false);
+
   useEffect(() => {
     if (profile) {
       const artists = profile.favorite_artists as string[] | null;
@@ -83,6 +88,7 @@ const Settings = () => {
       if (profile.lifestyle_badges) setLifestyleBadges(profile.lifestyle_badges as string[]);
       if (profile.personality_badges) setPersonalityBadges(profile.personality_badges as string[]);
       if (profile.love_language) setLoveLanguage(profile.love_language as string);
+      if (profile.photos) setUserPhotos(profile.photos as string[]);
     }
   }, [profile]);
 
@@ -169,10 +175,23 @@ const Settings = () => {
     if (!error) refreshProfile();
   };
 
+  const handleSavePhotos = async () => {
+    if (!user) return;
+    setSavingPhotos(true);
+    const { error } = await supabase
+      .from("profiles")
+      .update({ photos: userPhotos, avatar_url: userPhotos[0] || null } as any)
+      .eq("user_id", user.id);
+    setSavingPhotos(false);
+    toast({ title: error ? "Failed to save" : "Photos saved!", variant: error ? "destructive" : "default" });
+    if (!error) refreshProfile();
+  };
+
   const completeness = calculateProfileCompleteness(profile);
 
   const tabs = [
     { id: "account", label: "Account", icon: User },
+    { id: "photos", label: "Photos", icon: Camera },
     { id: "profile", label: "Profile & Badges", icon: Sparkles },
     { id: "music", label: "Music Taste", icon: Music },
     { id: "subscription", label: "Subscription", icon: CreditCard },
@@ -296,6 +315,30 @@ const Settings = () => {
 
                   <Button variant="hero">Save Changes</Button>
                 </div>
+              </div>
+            )}
+
+            {activeTab === "photos" && (
+              <div className="space-y-6">
+                <h2 className="font-heading text-xl font-semibold flex items-center gap-2">
+                  <Camera className="w-5 h-5 text-primary" /> Your Photos
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Manage your profile photos. You need at least 2 and can have up to 6. Drag to reorder — your first photo is your main profile photo.
+                </p>
+                {user && (
+                  <PhotoManager
+                    userId={user.id}
+                    photos={userPhotos}
+                    onPhotosChange={setUserPhotos}
+                    minPhotos={2}
+                    maxPhotos={6}
+                    showGuidelines={false}
+                  />
+                )}
+                <Button variant="hero" onClick={handleSavePhotos} disabled={savingPhotos}>
+                  {savingPhotos ? "Saving..." : "Save Photos"}
+                </Button>
               </div>
             )}
 

@@ -150,19 +150,25 @@ const Profile = () => {
         )}
 
         {/* Photos */}
-        <div className="grid grid-cols-3 gap-2 rounded-2xl overflow-hidden mb-6">
-          {mockProfile.photos.map((p, i) => (
-            <motion.div key={i} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.1 }}
-              className={`relative aspect-[4/5] ${i === 0 ? "col-span-2 row-span-2" : ""}`}>
-              <img src={p} alt="" className="w-full h-full object-cover" />
-              {i === 0 && (
-                <button className="absolute bottom-3 right-3 p-2 glass rounded-full">
-                  <Camera className="w-4 h-4 text-foreground" />
-                </button>
-              )}
-            </motion.div>
-          ))}
-        </div>
+        {(() => {
+          const realPhotos = (profile?.photos as string[] | null) || [];
+          const displayPhotos = realPhotos.length > 0 ? realPhotos : mockProfile.photos;
+          return (
+            <div className="grid grid-cols-3 gap-2 rounded-2xl overflow-hidden mb-6">
+              {displayPhotos.slice(0, 3).map((p, i) => (
+                <motion.div key={i} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.1 }}
+                  className={`relative aspect-[4/5] ${i === 0 ? "col-span-2 row-span-2" : ""}`}>
+                  <img src={p} alt="" className="w-full h-full object-cover" />
+                  {i === 0 && (
+                    <button className="absolute bottom-3 right-3 p-2 glass rounded-full">
+                      <Camera className="w-4 h-4 text-foreground" />
+                    </button>
+                  )}
+                </motion.div>
+              ))}
+            </div>
+          );
+        })()}
 
         {/* Header */}
         <div className="flex items-start justify-between mb-4">
