@@ -49,7 +49,7 @@ serve(async (req) => {
         await sendPush(edgeFunctionUrl, serviceRoleKey, {
           user_id: u.user_id,
           title: "Messages Ready!",
-          body: "Your 10 free messages are ready — go start some conversations today.",
+          body: "Your 20 free messages are ready — go start some conversations today.",
           category: "daily",
         });
       }
