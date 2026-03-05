@@ -81,7 +81,9 @@ export type Database = {
         Row: {
           content: string
           created_at: string
+          flag_reason: string | null
           id: string
+          is_flagged: boolean | null
           is_read: boolean
           match_id: string
           sender_id: string
@@ -89,7 +91,9 @@ export type Database = {
         Insert: {
           content: string
           created_at?: string
+          flag_reason?: string | null
           id?: string
+          is_flagged?: boolean | null
           is_read?: boolean
           match_id: string
           sender_id: string
@@ -97,7 +101,9 @@ export type Database = {
         Update: {
           content?: string
           created_at?: string
+          flag_reason?: string | null
           id?: string
+          is_flagged?: boolean | null
           is_read?: boolean
           match_id?: string
           sender_id?: string
@@ -145,6 +151,8 @@ export type Database = {
           bio: string | null
           city: string | null
           created_at: string
+          credits_month_key: string | null
+          credits_purchased_cents_month: number | null
           date_of_birth: string | null
           dating_mode: string | null
           dealbreakers: string[] | null
@@ -184,6 +192,8 @@ export type Database = {
           bio?: string | null
           city?: string | null
           created_at?: string
+          credits_month_key?: string | null
+          credits_purchased_cents_month?: number | null
           date_of_birth?: string | null
           dating_mode?: string | null
           dealbreakers?: string[] | null
@@ -223,6 +233,8 @@ export type Database = {
           bio?: string | null
           city?: string | null
           created_at?: string
+          credits_month_key?: string | null
+          credits_purchased_cents_month?: number | null
           date_of_birth?: string | null
           dating_mode?: string | null
           dealbreakers?: string[] | null
