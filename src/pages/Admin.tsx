@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Shield, AlertTriangle, CheckCircle, Ban, Clock } from "lucide-react";
+import { Shield, AlertTriangle, CheckCircle, Ban, Clock, Eye } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface Report {
   id: string;
@@ -20,13 +21,28 @@ interface Report {
   reported_name?: string;
 }
 
+interface ModerationLog {
+  id: string;
+  sender_id: string;
+  recipient_id: string | null;
+  content: string | null;
+  classification: string;
+  reason: string | null;
+  content_type: string;
+  created_at: string;
+  sender_name?: string;
+}
+
 const Admin = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [reports, setReports] = useState<Report[]>([]);
+  const [modLogs, setModLogs] = useState<ModerationLog[]>([]);
   const [filter, setFilter] = useState("pending");
+  const [modFilter, setModFilter] = useState("all");
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("reports");
 
   useEffect(() => {
     const checkAdmin = async () => {
@@ -64,6 +80,27 @@ const Admin = () => {
     fetchReports();
   }, [isAdmin, filter]);
 
+  // Fetch moderation logs
+  useEffect(() => {
+    if (!isAdmin) return;
+    const fetchLogs = async () => {
+      let query = supabase.from("moderation_logs").select("*").order("created_at", { ascending: false }).limit(200);
+      if (modFilter !== "all") query = query.eq("classification", modFilter.toUpperCase());
+      const { data } = await query as any;
+      if (!data) { setModLogs([]); return; }
+
+      const userIds = [...new Set(data.map((l: any) => l.sender_id))] as string[];
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, first_name, last_initial")
+        .in("user_id", userIds);
+      const nameMap = new Map((profiles || []).map((p: any) => [p.user_id, `${p.first_name || "User"} ${p.last_initial || ""}`.trim()]));
+
+      setModLogs(data.map((l: any) => ({ ...l, sender_name: nameMap.get(l.sender_id) || "Unknown" })));
+    };
+    fetchLogs();
+  }, [isAdmin, modFilter]);
+
   const updateStatus = async (reportId: string, status: string) => {
     await supabase.from("reports").update({ status } as any).eq("id", reportId);
     setReports((prev) => prev.map((r) => r.id === reportId ? { ...r, status } : r));
@@ -100,62 +137,116 @@ const Admin = () => {
       </nav>
 
       <div className="container mx-auto px-4 py-8 max-w-5xl">
-        <h1 className="text-3xl font-heading font-bold mb-6">Report Dashboard</h1>
+        <h1 className="text-3xl font-heading font-bold mb-6">Admin Dashboard</h1>
 
-        {/* Filter tabs */}
-        <div className="flex gap-2 mb-6 flex-wrap">
-          {["pending", "reviewed", "warned", "suspended", "banned", "all"].map((s) => (
-            <button
-              key={s}
-              onClick={() => setFilter(s)}
-              className={`px-4 py-2 rounded-full text-sm font-medium border transition-all capitalize ${
-                filter === s ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:border-primary/50"
-              }`}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="mb-6">
+            <TabsTrigger value="reports">Reports</TabsTrigger>
+            <TabsTrigger value="moderation">Moderation Logs</TabsTrigger>
+          </TabsList>
 
-        {loading ? (
-          <p className="text-muted-foreground">Loading reports...</p>
-        ) : reports.length === 0 ? (
-          <p className="text-muted-foreground">No reports found.</p>
-        ) : (
-          <div className="space-y-3">
-            {reports.map((r) => (
-              <div key={r.id} className="glass rounded-xl p-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      {statusIcon(r.status)}
-                      <span className="text-sm font-bold capitalize">{r.status}</span>
-                      <span className="text-xs bg-secondary px-2 py-0.5 rounded-full">{r.source}</span>
-                      <span className="text-xs text-muted-foreground">{new Date(r.created_at).toLocaleString()}</span>
+          <TabsContent value="reports">
+            {/* Filter tabs */}
+            <div className="flex gap-2 mb-6 flex-wrap">
+              {["pending", "reviewed", "warned", "suspended", "banned", "all"].map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setFilter(s)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium border transition-all capitalize ${
+                    filter === s ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:border-primary/50"
+                  }`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+
+            {loading ? (
+              <p className="text-muted-foreground">Loading reports...</p>
+            ) : reports.length === 0 ? (
+              <p className="text-muted-foreground">No reports found.</p>
+            ) : (
+              <div className="space-y-3">
+                {reports.map((r) => (
+                  <div key={r.id} className="glass rounded-xl p-5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          {statusIcon(r.status)}
+                          <span className="text-sm font-bold capitalize">{r.status}</span>
+                          <span className="text-xs bg-secondary px-2 py-0.5 rounded-full">{r.source}</span>
+                          <span className="text-xs text-muted-foreground">{new Date(r.created_at).toLocaleString()}</span>
+                        </div>
+                        <p className="text-sm mb-1">
+                          <span className="text-muted-foreground">Reporter:</span> <span className="font-medium">{r.reporter_name}</span>
+                          <span className="mx-2 text-muted-foreground">→</span>
+                          <span className="text-muted-foreground">Reported:</span> <span className="font-medium">{r.reported_name}</span>
+                        </p>
+                        <p className="text-sm"><span className="text-muted-foreground">Reason:</span> <span className="font-bold text-destructive">{r.reason}</span></p>
+                        {r.context && <p className="text-sm text-muted-foreground mt-1">"{r.context}"</p>}
+                      </div>
+                      <div className="flex gap-1.5 flex-shrink-0">
+                        {r.status === "pending" && (
+                          <>
+                            <Button size="sm" variant="outline" onClick={() => updateStatus(r.id, "reviewed")}>Dismiss</Button>
+                            <Button size="sm" variant="outline" className="border-destructive/30 text-destructive" onClick={() => updateStatus(r.id, "warned")}>Warn</Button>
+                            <Button size="sm" variant="outline" className="border-destructive/30 text-destructive" onClick={() => updateStatus(r.id, "suspended")}>Suspend</Button>
+                            <Button size="sm" variant="destructive" onClick={() => updateStatus(r.id, "banned")}>Ban</Button>
+                          </>
+                        )}
+                      </div>
                     </div>
-                    <p className="text-sm mb-1">
-                      <span className="text-muted-foreground">Reporter:</span> <span className="font-medium">{r.reporter_name}</span>
-                      <span className="mx-2 text-muted-foreground">→</span>
-                      <span className="text-muted-foreground">Reported:</span> <span className="font-medium">{r.reported_name}</span>
-                    </p>
-                    <p className="text-sm"><span className="text-muted-foreground">Reason:</span> <span className="font-bold text-destructive">{r.reason}</span></p>
-                    {r.context && <p className="text-sm text-muted-foreground mt-1">"{r.context}"</p>}
                   </div>
-                  <div className="flex gap-1.5 flex-shrink-0">
-                    {r.status === "pending" && (
-                      <>
-                        <Button size="sm" variant="outline" onClick={() => updateStatus(r.id, "reviewed")}>Dismiss</Button>
-                        <Button size="sm" variant="outline" className="text-orange-500 border-orange-500/30" onClick={() => updateStatus(r.id, "warned")}>Warn</Button>
-                        <Button size="sm" variant="outline" className="text-destructive border-destructive/30" onClick={() => updateStatus(r.id, "suspended")}>Suspend</Button>
-                        <Button size="sm" variant="destructive" onClick={() => updateStatus(r.id, "banned")}>Ban</Button>
-                      </>
-                    )}
-                  </div>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
+            )}
+          </TabsContent>
+
+          <TabsContent value="moderation">
+            <div className="flex gap-2 mb-6 flex-wrap">
+              {["all", "safe", "warning", "blocked"].map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setModFilter(s)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium border transition-all capitalize ${
+                    modFilter === s ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:border-primary/50"
+                  }`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+
+            {modLogs.length === 0 ? (
+              <p className="text-muted-foreground">No moderation logs found.</p>
+            ) : (
+              <div className="space-y-2">
+                {modLogs.map((l) => (
+                  <div key={l.id} className="glass rounded-xl p-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                        l.classification === "SAFE" ? "bg-green-500/10 text-green-500" :
+                        l.classification === "WARNING" ? "bg-yellow-500/10 text-yellow-500" :
+                        "bg-destructive/10 text-destructive"
+                      }`}>{l.classification}</span>
+                      <span className="text-xs bg-secondary px-2 py-0.5 rounded-full">{l.content_type}</span>
+                      <span className="text-xs text-muted-foreground">{new Date(l.created_at).toLocaleString()}</span>
+                    </div>
+                    <p className="text-sm">
+                      <span className="text-muted-foreground">Sender:</span> <span className="font-medium">{l.sender_name}</span>
+                    </p>
+                    {l.content && (
+                      <p className="text-sm text-muted-foreground mt-1 truncate max-w-xl">
+                        <Eye className="w-3 h-3 inline mr-1" />{l.content}
+                      </p>
+                    )}
+                    {l.reason && <p className="text-xs text-muted-foreground mt-1">Reason: {l.reason}</p>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
