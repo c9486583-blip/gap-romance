@@ -15,6 +15,7 @@ const Signup = () => {
   const [phone, setPhone] = useState("");
   const [gender, setGender] = useState("");
   const [dob, setDob] = useState("");
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -25,6 +26,10 @@ const Signup = () => {
   }, []);
 
   const handleSignup = async () => {
+    if (!agreedToTerms) {
+      toast({ title: "You must agree to the Terms of Service", variant: "destructive" });
+      return;
+    }
     if (!gender) {
       toast({ title: "Please select your gender", variant: "destructive" });
       return;
@@ -114,7 +119,22 @@ const Signup = () => {
               {gender === "Woman" && <p className="text-xs text-muted-foreground mt-1">Must be 18 or older</p>}
               {gender === "Man" && <p className="text-xs text-muted-foreground mt-1">Must be 25 or older</p>}
             </div>
-            <Button variant="hero" className="w-full" size="lg" onClick={handleSignup} disabled={loading}>
+            <div className="flex items-start gap-3 mt-2">
+              <input
+                type="checkbox"
+                checked={agreedToTerms}
+                onChange={(e) => setAgreedToTerms(e.target.checked)}
+                className="mt-1 accent-primary"
+                id="terms-checkbox"
+              />
+              <label htmlFor="terms-checkbox" className="text-sm text-muted-foreground">
+                I have read and agree to the{" "}
+                <Link to="/terms" className="text-primary hover:underline" target="_blank">Terms of Service & User Agreement</Link>
+                {" "}and{" "}
+                <Link to="/privacy" className="text-primary hover:underline" target="_blank">Privacy Policy</Link>.
+              </label>
+            </div>
+            <Button variant="hero" className="w-full" size="lg" onClick={handleSignup} disabled={loading || !agreedToTerms}>
               {loading ? "Creating Account..." : "Create Account"}
             </Button>
           </div>
