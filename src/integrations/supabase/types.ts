@@ -135,6 +135,7 @@ export type Database = {
           lifestyle_badges: string[] | null
           longitude: number | null
           love_language: string | null
+          message_credits: number
           music_taste: string | null
           personality_badges: string[] | null
           phone: string | null
@@ -171,6 +172,7 @@ export type Database = {
           lifestyle_badges?: string[] | null
           longitude?: number | null
           love_language?: string | null
+          message_credits?: number
           music_taste?: string | null
           personality_badges?: string[] | null
           phone?: string | null
@@ -207,6 +209,7 @@ export type Database = {
           lifestyle_badges?: string[] | null
           longitude?: number | null
           love_language?: string | null
+          message_credits?: number
           music_taste?: string | null
           personality_badges?: string[] | null
           phone?: string | null
