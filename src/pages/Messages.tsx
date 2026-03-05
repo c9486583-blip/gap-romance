@@ -369,6 +369,22 @@ const Messages = () => {
     );
   }
 
+  if (profile && !profile.is_verified) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="text-center max-w-md">
+          <h2 className="text-2xl font-heading font-bold mb-2">Verification Required</h2>
+          <p className="text-muted-foreground mb-6">Complete identity verification to access messages.</p>
+          <Button variant="hero" asChild>
+            <Link to={profile.verification_status === "not_started" ? "/verify-identity" : "/verification-pending"}>
+              {profile.verification_status === "not_started" ? "Start Verification" : "Check Status"}
+            </Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <nav className="sticky top-0 z-50 glass border-b border-border/30">

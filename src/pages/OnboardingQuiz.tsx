@@ -303,8 +303,8 @@ const OnboardingQuiz = () => {
               Next <ChevronRight className="ml-1" />
             </Button>
           ) : (
-            <Button variant="hero" onClick={() => navigate("/profile")}>
-              <Sparkles className="mr-1" /> Generate My Profile
+            <Button variant="hero" onClick={() => navigate("/verify-identity")}>
+              <Sparkles className="mr-1" /> Continue to Verification
             </Button>
           )}
         </div>
