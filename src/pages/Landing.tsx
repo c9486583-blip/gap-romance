@@ -2,7 +2,6 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Heart, Shield, Sparkles, Users, Star, ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
-import heroBg from "@/assets/hero-bg.jpg";
 
 const features = [
   { icon: Heart, title: "Two Dating Modes", desc: "Choose Serious or Casual dating — or both. Your call." },
@@ -37,9 +36,9 @@ const Landing = () => {
 
       {/* Hero */}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-        <div className="absolute inset-0">
-          <img src={heroBg} alt="" className="w-full h-full object-cover opacity-40" />
-          <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-background/50 to-background" />
+        <div className="absolute inset-0 bg-[#111111]">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,hsl(330_100%_44%/0.12)_0%,transparent_70%)]" />
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-[radial-gradient(ellipse_at_bottom,hsl(330_100%_44%/0.08)_0%,transparent_70%)]" />
         </div>
         <div className="relative z-10 container mx-auto px-4 text-center">
           <motion.div
@@ -51,8 +50,8 @@ const Landing = () => {
               Premium Age-Gap Dating
             </p>
             <h1 className="text-5xl md:text-7xl lg:text-8xl font-heading font-bold mb-6 leading-tight">
-              Where Age is Just<br />
-              <span className="text-gradient">a Number</span>
+              Built for Those<br />
+              <span className="text-gradient">Who Know What They Want</span>
             </h1>
             <p className="text-muted-foreground text-lg md:text-xl max-w-2xl mx-auto mb-10">
               The exclusive dating platform for meaningful connections across age gaps.
