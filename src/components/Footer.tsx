@@ -9,6 +9,7 @@ const Footer = () => (
         <Link to="/contact" className="hover:text-primary transition-colors">Contact Us</Link>
         <Link to="/privacy" className="hover:text-primary transition-colors">Privacy Policy</Link>
         <Link to="/terms" className="hover:text-primary transition-colors">Terms of Service</Link>
+        <Link to="/safety" className="hover:text-primary transition-colors">Safety Guidelines</Link>
       </div>
       <p className="text-muted-foreground text-sm">© 2026 GapRomance. All rights reserved.</p>
     </div>
