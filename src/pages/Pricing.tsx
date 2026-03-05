@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Check, Zap, Crown, Sparkles } from "lucide-react";
+import { Check, Zap, Crown, Sparkles, Shield } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,6 +29,19 @@ const addons = [
   { name: "Profile Boost", price: "$7", desc: "Be seen by 10x more people for 30 minutes", priceId: STRIPE_ADDONS.boost.price_id },
   { name: "Super Like", price: "$2", desc: "Stand out and let them know you're serious", priceId: STRIPE_ADDONS.superLike.price_id },
   { name: "Spotlight Badge", price: "$12/week", desc: "Gold ring around your profile in discovery", priceId: STRIPE_ADDONS.spotlight.price_id },
+];
+
+const virtualGifts = [
+  { emoji: "🌹", name: "Red Rose", price: "$1" },
+  { emoji: "❤️", name: "Heart", price: "$1" },
+  { emoji: "🔥", name: "Flame", price: "$1" },
+  { emoji: "🍫", name: "Chocolate Box", price: "$2" },
+  { emoji: "🥂", name: "Champagne", price: "$2" },
+  { emoji: "🎁", name: "Mystery Box", price: "$2" },
+  { emoji: "💍", name: "Diamond Ring", price: "$3" },
+  { emoji: "👑", name: "Gold Crown", price: "$3" },
+  { emoji: "🛥️", name: "Yacht", price: "$5" },
+  { emoji: "✈️", name: "Private Jet", price: "$5" },
 ];
 
 const Pricing = () => {
@@ -136,6 +149,34 @@ const Pricing = () => {
               </motion.div>
             ))}
           </div>
+        </div>
+
+        <div className="max-w-3xl mx-auto mt-16">
+          <h2 className="text-3xl font-heading font-bold text-center mb-3">
+            Virtual <span className="text-gradient">Gifts</span>
+          </h2>
+          <p className="text-muted-foreground text-center mb-8">Send fun animated gifts to your matches inside chat</p>
+          <div className="grid grid-cols-5 sm:grid-cols-10 gap-3">
+            {virtualGifts.map((g) => (
+              <motion.div key={g.name} whileHover={{ scale: 1.15 }} className="flex flex-col items-center gap-1 p-3 glass rounded-xl">
+                <span className="text-3xl">{g.emoji}</span>
+                <span className="text-[10px] text-muted-foreground">{g.name}</span>
+                <span className="text-xs font-bold text-primary">{g.price}</span>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+
+        <div className="max-w-3xl mx-auto mt-16 mb-8">
+          <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}
+            className="glass rounded-2xl p-8 text-center glow-border">
+            <Shield className="w-8 h-8 mx-auto mb-3 text-primary" />
+            <h3 className="font-heading text-xl font-bold mb-2">Verified Badge</h3>
+            <p className="text-muted-foreground text-sm mb-4">Identity verification is <span className="text-primary font-bold">free</span> for all users. Verify with a selfie or government ID to earn your Verified badge.</p>
+            <Button variant="hero" size="lg" asChild>
+              <Link to="/signup">Get Verified Free</Link>
+            </Button>
+          </motion.div>
         </div>
       </div>
     </div>
