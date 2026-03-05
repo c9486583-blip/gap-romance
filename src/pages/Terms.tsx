@@ -45,7 +45,7 @@ const Terms = () => {
                 <h3 className="font-bold text-primary/80 mb-2 mt-4">1.2 Legal Capacity</h3>
                 <p className="text-muted-foreground">By creating an account, you represent and warrant that you have the legal capacity to enter into a binding agreement and that you are not prohibited from using the Services under any applicable law.</p>
                 <h3 className="font-bold text-primary/80 mb-2 mt-4">1.3 Geographic Restrictions</h3>
-                <p className="text-muted-foreground">GapRomance is available to users worldwide where permitted by law. You are responsible for ensuring that your use of the Platform complies with all laws and regulations applicable in your jurisdiction.</p>
+                <p className="text-muted-foreground">GapRomance is currently available exclusively within the United States. By creating an account, you confirm that you are located within the United States. Users outside the United States are not permitted to register or access GapRomance.</p>
               </section>
 
               <section>

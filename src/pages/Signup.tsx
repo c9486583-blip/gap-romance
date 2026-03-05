@@ -5,7 +5,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useGeolocation } from "@/hooks/useGeolocation";
-import { Phone, ArrowLeft, Loader2 } from "lucide-react";
+import { Phone, ArrowLeft, Loader2, MapPinOff } from "lucide-react";
 
 const Signup = () => {
   const [step, setStep] = useState<"form" | "verify">("form");
@@ -43,7 +43,13 @@ const Signup = () => {
     return () => clearInterval(timer);
   }, [resendCooldown]);
 
+  const isOutsideUS = location && location.countryCode && location.countryCode !== "US";
+
   const validateForm = (): boolean => {
+    if (isOutsideUS) {
+      toast({ title: "GapRomance is currently only available in the United States.", variant: "destructive" });
+      return false;
+    }
     if (!agreedToTerms || !agreedToPrivacy || !agreedToSafety) {
       toast({ title: "You must agree to all required policies", variant: "destructive" });
       return false;
@@ -220,6 +226,14 @@ const Signup = () => {
         </div>
 
         <div className="glass rounded-2xl p-8">
+          {/* US-only geo block */}
+          {isOutsideUS && (
+            <div className="mb-6 p-4 rounded-xl bg-destructive/10 border border-destructive/30 text-center">
+              <MapPinOff className="w-8 h-8 text-destructive mx-auto mb-2" />
+              <p className="text-sm text-destructive font-bold">GapRomance is currently only available in the United States.</p>
+              <p className="text-xs text-muted-foreground mt-1">We hope to expand to more countries soon.</p>
+            </div>
+          )}
           <AnimatePresence mode="wait">
             {step === "form" ? (
               <motion.div key="form" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
@@ -282,7 +296,7 @@ const Signup = () => {
                     className="w-full"
                     size="lg"
                     onClick={handleSendVerification}
-                    disabled={otpSending || !agreedToTerms || !agreedToPrivacy || !agreedToSafety}
+                    disabled={otpSending || !agreedToTerms || !agreedToPrivacy || !agreedToSafety || !!isOutsideUS}
                   >
                     {otpSending ? (
                       <><Loader2 className="mr-2 w-4 h-4 animate-spin" /> Sending Code...</>
