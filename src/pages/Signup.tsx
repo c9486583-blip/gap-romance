@@ -16,6 +16,7 @@ const Signup = () => {
   const [gender, setGender] = useState("");
   const [dob, setDob] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -26,8 +27,8 @@ const Signup = () => {
   }, []);
 
   const handleSignup = async () => {
-    if (!agreedToTerms) {
-      toast({ title: "You must agree to the Terms of Service", variant: "destructive" });
+    if (!agreedToTerms || !agreedToPrivacy) {
+      toast({ title: "You must agree to both the Terms of Service and Privacy Policy", variant: "destructive" });
       return;
     }
     if (!gender) {
@@ -129,12 +130,23 @@ const Signup = () => {
               />
               <label htmlFor="terms-checkbox" className="text-sm text-muted-foreground">
                 I have read and agree to the{" "}
-                <Link to="/terms" className="text-primary hover:underline" target="_blank">Terms of Service & User Agreement</Link>
-                {" "}and{" "}
+                <Link to="/terms" className="text-primary hover:underline" target="_blank">Terms of Service</Link>.
+              </label>
+            </div>
+            <div className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                checked={agreedToPrivacy}
+                onChange={(e) => setAgreedToPrivacy(e.target.checked)}
+                className="mt-1 accent-primary"
+                id="privacy-checkbox"
+              />
+              <label htmlFor="privacy-checkbox" className="text-sm text-muted-foreground">
+                I have read and agree to the{" "}
                 <Link to="/privacy" className="text-primary hover:underline" target="_blank">Privacy Policy</Link>.
               </label>
             </div>
-            <Button variant="hero" className="w-full" size="lg" onClick={handleSignup} disabled={loading || !agreedToTerms}>
+            <Button variant="hero" className="w-full" size="lg" onClick={handleSignup} disabled={loading || !agreedToTerms || !agreedToPrivacy}>
               {loading ? "Creating Account..." : "Create Account"}
             </Button>
           </div>
