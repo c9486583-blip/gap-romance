@@ -5,13 +5,13 @@ export const STRIPE_PRODUCTS = {
     product_id: "prod_U5g9XMxRsS0LVp",
     price_id: "price_1T7UnE30RgnjoIxN9Dj2eevl",
     name: "Premium",
-    price: 39,
+    price: 19.99,
   },
   elite: {
     product_id: "prod_U5g9c98SqspkzJ",
     price_id: "price_1T7UnX30RgnjoIxNy85Kf3Io",
     name: "Elite",
-    price: 69,
+    price: 34.99,
   },
 } as const;
 
@@ -20,7 +20,7 @@ export const STRIPE_ADDONS = {
     product_id: "prod_U5gA258zZMT0xO",
     price_id: "price_1T7Unt30RgnjoIxN9g62E01V",
     name: "Profile Boost",
-    price: 7,
+    price: 5,
   },
   superLike: {
     product_id: "prod_U5gBZ9HIDoDZVR",
@@ -32,7 +32,7 @@ export const STRIPE_ADDONS = {
     product_id: "prod_U5gCtQWNRtufj4",
     price_id: "price_1T7Uph30RgnjoIxNtPEBU8Q5",
     name: "Spotlight Badge",
-    price: 12,
+    price: 7,
   },
 } as const;
 

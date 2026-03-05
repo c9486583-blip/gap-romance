@@ -14,21 +14,21 @@ const plans = [
     cta: "Get Started", variant: "outline" as const, popular: false, priceId: null,
   },
   {
-    name: "Premium", price: "$39", period: "/month", icon: Zap,
+    name: "Premium", price: "$19.99", period: "/month", icon: Zap,
     features: ["Everything in Free", "Unlimited messaging", "See who liked you", "Advanced filters", "Read receipts", "No ads"],
     cta: "Go Premium", variant: "hero" as const, popular: true, priceId: STRIPE_PRODUCTS.premium.price_id,
   },
   {
-    name: "Elite", price: "$69", period: "/month", icon: Crown,
+    name: "Elite", price: "$34.99", period: "/month", icon: Crown,
     features: ["Everything in Premium", "Weekly profile boost", "Priority in search", "Spotlight badge", "Elite support", "Exclusive events access"],
     cta: "Go Elite", variant: "gold" as const, popular: false, priceId: STRIPE_PRODUCTS.elite.price_id,
   },
 ];
 
 const addons = [
-  { name: "Profile Boost", price: "$7", desc: "Be seen by 10x more people for 30 minutes", priceId: STRIPE_ADDONS.boost.price_id },
+  { name: "Profile Boost", price: "$5", desc: "Be seen by 10x more people for 30 minutes", priceId: STRIPE_ADDONS.boost.price_id },
   { name: "Super Like", price: "$2", desc: "Stand out and let them know you're serious", priceId: STRIPE_ADDONS.superLike.price_id },
-  { name: "Spotlight Badge", price: "$12/week", desc: "Gold ring around your profile in discovery", priceId: STRIPE_ADDONS.spotlight.price_id },
+  { name: "Spotlight Badge", price: "$7/week", desc: "Gold ring around your profile in discovery", priceId: STRIPE_ADDONS.spotlight.price_id },
 ];
 
 const creditPacks = [
