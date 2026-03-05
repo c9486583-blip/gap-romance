@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      banned_identifiers: {
+        Row: {
+          banned_at: string | null
+          banned_by: string | null
+          id: string
+          identifier_type: string
+          identifier_value: string
+          reason: string | null
+        }
+        Insert: {
+          banned_at?: string | null
+          banned_by?: string | null
+          id?: string
+          identifier_type: string
+          identifier_value: string
+          reason?: string | null
+        }
+        Update: {
+          banned_at?: string | null
+          banned_by?: string | null
+          id?: string
+          identifier_type?: string
+          identifier_value?: string
+          reason?: string | null
+        }
+        Relationships: []
+      }
       blocks: {
         Row: {
           blocked_id: string
@@ -205,6 +232,7 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          ban_reason: string | null
           bio: string | null
           city: string | null
           created_at: string
@@ -239,6 +267,7 @@ export type Database = {
           stripe_customer_id: string | null
           subscription_end: string | null
           subscription_tier: string | null
+          suspension_end: string | null
           todays_note: string | null
           updated_at: string
           user_id: string
@@ -247,6 +276,7 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          ban_reason?: string | null
           bio?: string | null
           city?: string | null
           created_at?: string
@@ -281,6 +311,7 @@ export type Database = {
           stripe_customer_id?: string | null
           subscription_end?: string | null
           subscription_tier?: string | null
+          suspension_end?: string | null
           todays_note?: string | null
           updated_at?: string
           user_id: string
@@ -289,6 +320,7 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          ban_reason?: string | null
           bio?: string | null
           city?: string | null
           created_at?: string
@@ -323,6 +355,7 @@ export type Database = {
           stripe_customer_id?: string | null
           subscription_end?: string | null
           subscription_tier?: string | null
+          suspension_end?: string | null
           todays_note?: string | null
           updated_at?: string
           user_id?: string
@@ -333,6 +366,7 @@ export type Database = {
       }
       reports: {
         Row: {
+          admin_notes: string | null
           context: string | null
           created_at: string
           id: string
@@ -344,6 +378,7 @@ export type Database = {
           status: string
         }
         Insert: {
+          admin_notes?: string | null
           context?: string | null
           created_at?: string
           id?: string
@@ -355,6 +390,7 @@ export type Database = {
           status?: string
         }
         Update: {
+          admin_notes?: string | null
           context?: string | null
           created_at?: string
           id?: string
