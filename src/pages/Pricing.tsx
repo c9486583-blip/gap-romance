@@ -2,85 +2,69 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Check, Zap, Crown, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { STRIPE_PRODUCTS, STRIPE_ADDONS } from "@/lib/stripe-products";
+import { useToast } from "@/hooks/use-toast";
 
 const plans = [
   {
-    name: "Free",
-    price: "$0",
-    period: "forever",
-    icon: Sparkles,
-    features: [
-      "Browse profiles",
-      "Limited likes per day",
-      "Basic filters",
-      "Create your profile",
-    ],
-    cta: "Get Started",
-    variant: "outline" as const,
-    popular: false,
+    name: "Free", price: "$0", period: "forever", icon: Sparkles,
+    features: ["Browse profiles", "Limited likes per day", "Basic filters", "Create your profile"],
+    cta: "Get Started", variant: "outline" as const, popular: false, priceId: null,
   },
   {
-    name: "Premium",
-    price: "$39",
-    period: "/month",
-    icon: Zap,
-    features: [
-      "Everything in Free",
-      "Unlimited messaging",
-      "See who liked you",
-      "Advanced filters",
-      "Read receipts",
-      "No ads",
-    ],
-    cta: "Go Premium",
-    variant: "hero" as const,
-    popular: true,
+    name: "Premium", price: "$39", period: "/month", icon: Zap,
+    features: ["Everything in Free", "Unlimited messaging", "See who liked you", "Advanced filters", "Read receipts", "No ads"],
+    cta: "Go Premium", variant: "hero" as const, popular: true, priceId: STRIPE_PRODUCTS.premium.price_id,
   },
   {
-    name: "Elite",
-    price: "$69",
-    period: "/month",
-    icon: Crown,
-    features: [
-      "Everything in Premium",
-      "Weekly profile boost",
-      "Priority in search",
-      "Spotlight badge",
-      "Elite support",
-      "Exclusive events access",
-    ],
-    cta: "Go Elite",
-    variant: "gold" as const,
-    popular: false,
+    name: "Elite", price: "$69", period: "/month", icon: Crown,
+    features: ["Everything in Premium", "Weekly profile boost", "Priority in search", "Spotlight badge", "Elite support", "Exclusive events access"],
+    cta: "Go Elite", variant: "gold" as const, popular: false, priceId: STRIPE_PRODUCTS.elite.price_id,
   },
 ];
 
 const addons = [
-  { name: "Profile Boost", price: "$7", desc: "Be seen by 10x more people for 30 minutes" },
-  { name: "Super Like", price: "$2", desc: "Stand out and let them know you're serious" },
-  { name: "Spotlight Badge", price: "$12/week", desc: "Gold ring around your profile in discovery" },
-  { name: "Verified Badge", price: "$15", desc: "One-time ID verification badge" },
-  { name: "Virtual Gift Pack", price: "$1–5", desc: "Send roses, champagne, and more to matches" },
+  { name: "Profile Boost", price: "$7", desc: "Be seen by 10x more people for 30 minutes", priceId: STRIPE_ADDONS.boost.price_id },
+  { name: "Super Like", price: "$2", desc: "Stand out and let them know you're serious", priceId: STRIPE_ADDONS.superLike.price_id },
+  { name: "Spotlight Badge", price: "$12/week", desc: "Gold ring around your profile in discovery", priceId: STRIPE_ADDONS.spotlight.price_id },
 ];
 
 const Pricing = () => {
+  const { user, subscriptionTier } = useAuth();
+  const { toast } = useToast();
+
+  const handleCheckout = async (priceId: string, mode: "subscription" | "payment" = "subscription") => {
+    if (!user) {
+      toast({ title: "Please log in first", variant: "destructive" });
+      return;
+    }
+    const { data, error } = await supabase.functions.invoke("create-checkout", {
+      body: { priceId, mode },
+    });
+    if (error || !data?.url) {
+      toast({ title: "Checkout failed", description: error?.message || "Please try again", variant: "destructive" });
+      return;
+    }
+    window.open(data.url, "_blank");
+  };
+
+  const isCurrentPlan = (planName: string) => subscriptionTier === planName.toLowerCase();
+
   return (
     <div className="min-h-screen bg-background">
       <nav className="sticky top-0 z-50 glass border-b border-border/30">
         <div className="container mx-auto flex items-center justify-between h-16 px-4">
           <Link to="/" className="text-2xl font-heading font-bold text-gradient">GapRomance</Link>
           <Button variant="hero" size="sm" asChild>
-            <Link to="/signup">Join Free</Link>
+            <Link to={user ? "/discover" : "/signup"}>{user ? "Discover" : "Join Free"}</Link>
           </Button>
         </div>
       </nav>
 
       <div className="container mx-auto px-4 py-16">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-16"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-16">
           <h1 className="text-4xl md:text-6xl font-heading font-bold mb-4">
             Find Your <span className="text-gradient">Perfect Plan</span>
           </h1>
@@ -91,18 +75,16 @@ const Pricing = () => {
 
         <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto mb-20">
           {plans.map((plan, i) => (
-            <motion.div
-              key={plan.name}
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
-              className={`glass rounded-2xl p-8 relative hover-lift ${plan.popular ? "glow-border" : ""}`}
-            >
-              {plan.popular && (
+            <motion.div key={plan.name} initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
+              className={`glass rounded-2xl p-8 relative hover-lift ${plan.popular ? "glow-border" : ""} ${isCurrentPlan(plan.name) ? "ring-2 ring-primary" : ""}`}>
+              {isCurrentPlan(plan.name) && (
+                <div className="absolute -top-3 right-4">
+                  <span className="bg-accent text-accent-foreground text-xs font-bold px-3 py-1 rounded-full">YOUR PLAN</span>
+                </div>
+              )}
+              {plan.popular && !isCurrentPlan(plan.name) && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <span className="bg-primary text-primary-foreground text-xs font-bold px-4 py-1 rounded-full">
-                    MOST POPULAR
-                  </span>
+                  <span className="bg-primary text-primary-foreground text-xs font-bold px-4 py-1 rounded-full">MOST POPULAR</span>
                 </div>
               )}
               <div className="text-center mb-6">
@@ -120,9 +102,17 @@ const Pricing = () => {
                   </li>
                 ))}
               </ul>
-              <Button variant={plan.variant} className="w-full" size="lg">
-                {plan.cta}
-              </Button>
+              {isCurrentPlan(plan.name) ? (
+                <Button variant="outline" className="w-full" size="lg" disabled>Current Plan</Button>
+              ) : plan.priceId ? (
+                <Button variant={plan.variant} className="w-full" size="lg" onClick={() => handleCheckout(plan.priceId!)}>
+                  {plan.cta}
+                </Button>
+              ) : (
+                <Button variant={plan.variant} className="w-full" size="lg" asChild>
+                  <Link to="/signup">{plan.cta}</Link>
+                </Button>
+              )}
             </motion.div>
           ))}
         </div>
@@ -133,21 +123,15 @@ const Pricing = () => {
           </h2>
           <div className="space-y-3">
             {addons.map((a, i) => (
-              <motion.div
-                key={a.name}
-                initial={{ opacity: 0, x: -20 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.05 }}
-                className="glass rounded-xl p-5 flex items-center justify-between"
-              >
+              <motion.div key={a.name} initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.05 }}
+                className="glass rounded-xl p-5 flex items-center justify-between">
                 <div>
                   <h4 className="font-heading font-semibold">{a.name}</h4>
                   <p className="text-sm text-muted-foreground">{a.desc}</p>
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="font-heading font-bold text-primary">{a.price}</span>
-                  <Button variant="outline" size="sm">Buy</Button>
+                  <Button variant="outline" size="sm" onClick={() => handleCheckout(a.priceId, "payment")}>Buy</Button>
                 </div>
               </motion.div>
             ))}
