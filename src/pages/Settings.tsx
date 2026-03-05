@@ -1,22 +1,23 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { User, CreditCard, Bell, Shield, LogOut, ChevronRight, CheckCircle, Music, X, MessageSquare } from "lucide-react";
+import { User, CreditCard, Bell, Shield, LogOut, ChevronRight, CheckCircle, Music, X, MessageSquare, Sparkles, Heart } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { STRIPE_PRODUCTS } from "@/lib/stripe-products";
+import { Progress } from "@/components/ui/progress";
+import {
+  HOBBY_OPTIONS, LIFESTYLE_OPTIONS, PERSONALITY_OPTIONS, LOVE_LANGUAGES,
+  GENRE_OPTIONS, LIFESTYLE_ICONS, PERSONALITY_ICONS,
+} from "@/lib/profile-constants";
+import { calculateProfileCompleteness } from "@/lib/profile-completeness";
 
 const NOTE_PLACEHOLDERS = [
   "Just got back from hiking...",
   "Free tonight, let's grab drinks",
   "In a great mood, come say hi",
   "Working from a coffee shop today",
-];
-
-const GENRE_OPTIONS = [
-  "Hip-Hop", "R&B", "Pop", "Rock", "Country", "Jazz", "Classical",
-  "Electronic", "Reggae", "Latin", "Gospel", "Alternative", "Indie", "Metal", "Other",
 ];
 
 const Settings = () => {
@@ -40,7 +41,6 @@ const Settings = () => {
   };
 
   const handleVerify = async () => {
-    // Stripe Identity verification - free for users
     toast({ title: "Verification", description: "ID verification coming soon! This feature will use Stripe Identity." });
   };
 
@@ -55,6 +55,13 @@ const Settings = () => {
   const [savingNote, setSavingNote] = useState(false);
   const notePlaceholder = NOTE_PLACEHOLDERS[Math.floor(Math.random() * NOTE_PLACEHOLDERS.length)];
 
+  // Profile badges state
+  const [hobbies, setHobbies] = useState<string[]>([]);
+  const [lifestyleBadges, setLifestyleBadges] = useState<string[]>([]);
+  const [personalityBadges, setPersonalityBadges] = useState<string[]>([]);
+  const [loveLanguage, setLoveLanguage] = useState<string>("");
+  const [savingProfile, setSavingProfile] = useState(false);
+
   useEffect(() => {
     if (profile) {
       const artists = profile.favorite_artists as string[] | null;
@@ -65,13 +72,16 @@ const Settings = () => {
       const genres = profile.favorite_genres as string[] | null;
       if (genres) setFavoriteGenres(genres);
       if (profile.favorite_song) setFavoriteSong(profile.favorite_song as string);
-      // Load today's note only if not expired (24h)
       if (profile.todays_note && profile.todays_note_updated_at) {
         const updatedAt = new Date(profile.todays_note_updated_at).getTime();
         if (Date.now() - updatedAt < 24 * 60 * 60 * 1000) {
           setTodaysNote(profile.todays_note);
         }
       }
+      if (profile.hobbies) setHobbies(profile.hobbies as string[]);
+      if (profile.lifestyle_badges) setLifestyleBadges(profile.lifestyle_badges as string[]);
+      if (profile.personality_badges) setPersonalityBadges(profile.personality_badges as string[]);
+      if (profile.love_language) setLoveLanguage(profile.love_language as string);
     }
   }, [profile]);
 
@@ -117,10 +127,52 @@ const Settings = () => {
       title: error ? "Failed to save" : "Music saved!",
       variant: error ? "destructive" : "default",
     });
+    if (!error) refreshProfile();
   };
+
+  const toggleHobby = (h: string) => {
+    setHobbies((prev) =>
+      prev.includes(h) ? prev.filter((x) => x !== h) : prev.length < 10 ? [...prev, h] : prev
+    );
+  };
+
+  const toggleLifestyle = (l: string) => {
+    setLifestyleBadges((prev) =>
+      prev.includes(l) ? prev.filter((x) => x !== l) : prev.length < 4 ? [...prev, l] : prev
+    );
+  };
+
+  const togglePersonality = (p: string) => {
+    setPersonalityBadges((prev) =>
+      prev.includes(p) ? prev.filter((x) => x !== p) : prev.length < 2 ? [...prev, p] : prev
+    );
+  };
+
+  const handleSaveProfileBadges = async () => {
+    if (!user) return;
+    setSavingProfile(true);
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        hobbies,
+        lifestyle_badges: lifestyleBadges,
+        personality_badges: personalityBadges,
+        love_language: loveLanguage || null,
+      } as any)
+      .eq("user_id", user.id);
+    setSavingProfile(false);
+    toast({
+      title: error ? "Failed to save" : "Profile updated!",
+      variant: error ? "destructive" : "default",
+    });
+    if (!error) refreshProfile();
+  };
+
+  const completeness = calculateProfileCompleteness(profile);
 
   const tabs = [
     { id: "account", label: "Account", icon: User },
+    { id: "profile", label: "Profile & Badges", icon: Sparkles },
     { id: "music", label: "Music Taste", icon: Music },
     { id: "subscription", label: "Subscription", icon: CreditCard },
     { id: "notifications", label: "Notifications", icon: Bell },
@@ -171,6 +223,30 @@ const Settings = () => {
             {activeTab === "account" && (
               <div className="space-y-6">
                 <h2 className="font-heading text-xl font-semibold">Account Details</h2>
+
+                {/* Profile Completeness */}
+                <div className="glass rounded-xl p-4 glow-border">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-bold">Profile Completeness</span>
+                    <span className={`text-sm font-bold ${completeness.percentage >= 70 ? "text-green-400" : "text-primary"}`}>
+                      {completeness.percentage}%
+                    </span>
+                  </div>
+                  <Progress value={completeness.percentage} className="h-2 mb-2" />
+                  {completeness.percentage < 100 && (
+                    <p className="text-xs text-muted-foreground">
+                      {completeness.percentage < 70
+                        ? "⚠️ Your profile needs to be 70% complete to appear in discovery."
+                        : "🔥 Complete your profile to get 3x more matches!"}
+                    </p>
+                  )}
+                  {completeness.missing.length > 0 && completeness.percentage < 100 && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Missing: {completeness.missing.join(", ")}
+                    </p>
+                  )}
+                </div>
+
                 <div className="space-y-4">
                   <div>
                     <label className="text-sm text-muted-foreground block mb-1">Display Name</label>
@@ -221,6 +297,118 @@ const Settings = () => {
                 </div>
               </div>
             )}
+
+            {activeTab === "profile" && (
+              <div className="space-y-6">
+                <h2 className="font-heading text-xl font-semibold flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-primary" /> Profile & Badges
+                </h2>
+
+                {/* Hobbies */}
+                <div>
+                  <label className="text-sm font-medium block mb-1">
+                    Hobbies <span className="text-muted-foreground">({hobbies.length}/10)</span>
+                  </label>
+                  <p className="text-xs text-muted-foreground mb-3">Select up to 10 hobbies that describe you.</p>
+                  <div className="flex flex-wrap gap-2">
+                    {HOBBY_OPTIONS.map((h) => (
+                      <button
+                        key={h}
+                        type="button"
+                        onClick={() => toggleHobby(h)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+                          hobbies.includes(h)
+                            ? "bg-secondary text-foreground border border-foreground/30"
+                            : "bg-secondary/50 text-muted-foreground border border-border hover:border-foreground/30"
+                        }`}
+                      >
+                        {h}
+                        {hobbies.includes(h) && <X className="w-3 h-3 ml-1 inline" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Lifestyle Badges */}
+                <div>
+                  <label className="text-sm font-medium block mb-1">
+                    Lifestyle Badges <span className="text-muted-foreground">({lifestyleBadges.length}/4)</span>
+                  </label>
+                  <p className="text-xs text-muted-foreground mb-3">Select up to 4 lifestyle badges.</p>
+                  <div className="flex flex-wrap gap-2">
+                    {LIFESTYLE_OPTIONS.map((l) => (
+                      <button
+                        key={l}
+                        type="button"
+                        onClick={() => toggleLifestyle(l)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1 ${
+                          lifestyleBadges.includes(l)
+                            ? "bg-primary/15 text-primary border border-primary/30"
+                            : "bg-secondary/50 text-muted-foreground border border-border hover:border-primary/30"
+                        }`}
+                      >
+                        <span>{LIFESTYLE_ICONS[l]}</span> {l}
+                        {lifestyleBadges.includes(l) && <X className="w-3 h-3 ml-1" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Personality Badges */}
+                <div>
+                  <label className="text-sm font-medium block mb-1">
+                    Personality Badges <span className="text-muted-foreground">({personalityBadges.length}/2)</span>
+                  </label>
+                  <p className="text-xs text-muted-foreground mb-3">Select up to 2 personality badges.</p>
+                  <div className="flex flex-wrap gap-2">
+                    {PERSONALITY_OPTIONS.map((p) => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => togglePersonality(p)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1 ${
+                          personalityBadges.includes(p)
+                            ? "bg-primary/15 text-primary border border-primary/30"
+                            : "bg-secondary/50 text-muted-foreground border border-border hover:border-primary/30"
+                        }`}
+                      >
+                        <span>{PERSONALITY_ICONS[p]}</span> {p}
+                        {personalityBadges.includes(p) && <X className="w-3 h-3 ml-1" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Love Language */}
+                <div>
+                  <label className="text-sm font-medium block mb-1 flex items-center gap-1">
+                    <Heart className="w-4 h-4 text-primary" /> Love Language
+                  </label>
+                  <p className="text-xs text-muted-foreground mb-3">What's your love language?</p>
+                  <div className="flex flex-wrap gap-2">
+                    {LOVE_LANGUAGES.map((ll) => (
+                      <button
+                        key={ll}
+                        type="button"
+                        onClick={() => setLoveLanguage(loveLanguage === ll ? "" : ll)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+                          loveLanguage === ll
+                            ? "bg-primary/15 text-primary border border-primary/30"
+                            : "bg-secondary/50 text-muted-foreground border border-border hover:border-primary/30"
+                        }`}
+                      >
+                        {ll}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <Button variant="hero" onClick={handleSaveProfileBadges} disabled={savingProfile}>
+                  {savingProfile ? "Saving..." : "Save Profile"}
+                </Button>
+              </div>
+            )}
+
             {activeTab === "music" && (
               <div className="space-y-6">
                 <h2 className="font-heading text-xl font-semibold flex items-center gap-2">
