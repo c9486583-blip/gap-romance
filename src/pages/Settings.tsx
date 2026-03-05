@@ -235,7 +235,7 @@ const Settings = () => {
                       {subscriptionTier === "free" && <p className="text-sm text-muted-foreground">Free plan — upgrade for more features</p>}
                     </div>
                     <span className="text-2xl font-heading font-bold text-gradient">
-                      {subscriptionTier === "free" ? "$0" : subscriptionTier === "premium" ? "$39/mo" : "$69/mo"}
+                      {subscriptionTier === "free" ? "$0" : subscriptionTier === "premium" ? "$19.99/mo" : "$34.99/mo"}
                     </span>
                   </div>
                   <div className="flex gap-3">

@@ -101,14 +101,14 @@ const Terms = () => {
                 <p className="text-muted-foreground mb-2">GapRomance offers the following subscription plans:</p>
                 <ul className="list-disc pl-6 space-y-1 text-muted-foreground">
                   <li><strong>Free Tier</strong> — Browse profiles and send limited messages.</li>
-                  <li><strong>Premium</strong> — $39.00/month. Unlimited messaging, see who liked you, advanced search.</li>
-                  <li><strong>Elite</strong> — $69.00/month. All Premium features plus weekly boosts and Spotlight Badge.</li>
+                  <li><strong>Premium</strong> — $19.99/month. Unlimited messaging, see who liked you, advanced search.</li>
+                  <li><strong>Elite</strong> — $34.99/month. All Premium features plus weekly boosts and Spotlight Badge.</li>
                 </ul>
                 <p className="text-muted-foreground mt-3 mb-2">À la carte purchases include:</p>
                 <ul className="list-disc pl-6 space-y-1 text-muted-foreground">
-                  <li>Profile Boost — $7.00 per boost</li>
+                  <li>Profile Boost — $5.00 per boost</li>
                   <li>Super Like — $2.00 each</li>
-                  <li>Spotlight Badge — $12.00 per week</li>
+                  <li>Spotlight Badge — $7.00 per week</li>
                   <li>Virtual Gifts — $1.00–$5.00 each</li>
                 </ul>
                 <p className="text-muted-foreground mt-3">All payments are processed through Stripe. Subscriptions renew automatically. All purchases are generally non-refundable. Refund requests can be sent to support@gapromance.com within 7 days.</p>
