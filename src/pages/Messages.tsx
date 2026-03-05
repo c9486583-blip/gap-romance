@@ -21,7 +21,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-const FREE_DAILY_LIMIT = 10;
+const FREE_DAILY_LIMIT = 20;
 
 interface MatchWithProfile {
   matchId: string;

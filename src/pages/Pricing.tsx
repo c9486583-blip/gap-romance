@@ -162,7 +162,7 @@ const Pricing = () => {
           <h2 className="text-3xl font-heading font-bold text-center mb-3">
             Message <span className="text-gradient">Credits</span>
           </h2>
-          <p className="text-muted-foreground text-center mb-8">Free users get 10 messages/day. Need more? Buy extra credits — no subscription required.</p>
+          <p className="text-muted-foreground text-center mb-8">Free users get 20 messages/day. Need more? Buy extra credits — no subscription required.</p>
           <div className="grid md:grid-cols-3 gap-4">
             {creditPacks.map((pack, i) => (
               <motion.div key={pack.name} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}
