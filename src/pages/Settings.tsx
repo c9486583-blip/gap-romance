@@ -1,10 +1,36 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { User, CreditCard, Bell, Shield, LogOut, ChevronRight } from "lucide-react";
-import { Link } from "react-router-dom";
+import { User, CreditCard, Bell, Shield, LogOut, ChevronRight, CheckCircle } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { STRIPE_PRODUCTS } from "@/lib/stripe-products";
 
 const Settings = () => {
   const [activeTab, setActiveTab] = useState("account");
+  const { user, profile, subscriptionTier, subscriptionEnd, signOut, refreshSubscription } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate("/");
+  };
+
+  const handleManageSubscription = async () => {
+    const { data, error } = await supabase.functions.invoke("customer-portal");
+    if (error || !data?.url) {
+      toast({ title: "Could not open portal", variant: "destructive" });
+      return;
+    }
+    window.open(data.url, "_blank");
+  };
+
+  const handleVerify = async () => {
+    // Stripe Identity verification - free for users
+    toast({ title: "Verification", description: "ID verification coming soon! This feature will use Stripe Identity." });
+  };
 
   const tabs = [
     { id: "account", label: "Account", icon: User },
@@ -12,6 +38,17 @@ const Settings = () => {
     { id: "notifications", label: "Notifications", icon: Bell },
     { id: "privacy", label: "Privacy & Safety", icon: Shield },
   ];
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-muted-foreground mb-4">Please log in to access settings</p>
+          <Button variant="hero" asChild><Link to="/login">Log In</Link></Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -27,33 +64,21 @@ const Settings = () => {
 
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <h1 className="text-3xl font-heading font-bold mb-8">Settings</h1>
-
         <div className="flex flex-col md:flex-row gap-6">
-          {/* Sidebar */}
           <div className="md:w-60 flex-shrink-0">
             <div className="space-y-1">
               {tabs.map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => setActiveTab(t.id)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all ${
-                    activeTab === t.id
-                      ? "bg-primary/10 text-primary font-bold"
-                      : "text-muted-foreground hover:bg-secondary"
-                  }`}
-                >
-                  <t.icon className="w-4 h-4" />
-                  {t.label}
-                  <ChevronRight className="w-3 h-3 ml-auto" />
+                <button key={t.id} onClick={() => setActiveTab(t.id)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all ${activeTab === t.id ? "bg-primary/10 text-primary font-bold" : "text-muted-foreground hover:bg-secondary"}`}>
+                  <t.icon className="w-4 h-4" /> {t.label} <ChevronRight className="w-3 h-3 ml-auto" />
                 </button>
               ))}
-              <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-destructive hover:bg-destructive/10 transition-all">
+              <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-destructive hover:bg-destructive/10 transition-all">
                 <LogOut className="w-4 h-4" /> Log Out
               </button>
             </div>
           </div>
 
-          {/* Content */}
           <div className="flex-1 glass rounded-xl p-6">
             {activeTab === "account" && (
               <div className="space-y-6">
@@ -61,15 +86,23 @@ const Settings = () => {
                 <div className="space-y-4">
                   <div>
                     <label className="text-sm text-muted-foreground block mb-1">Display Name</label>
-                    <input defaultValue="James W." className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-primary" />
+                    <input defaultValue={profile?.first_name ? `${profile.first_name} ${profile.last_initial || ""}` : ""} className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-primary" />
                   </div>
                   <div>
                     <label className="text-sm text-muted-foreground block mb-1">Email</label>
-                    <input defaultValue="james@example.com" className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-primary" />
+                    <input defaultValue={user.email || ""} disabled className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground opacity-60" />
                   </div>
                   <div>
-                    <label className="text-sm text-muted-foreground block mb-1">Phone</label>
-                    <input defaultValue="+1 (555) 123-4567" className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-primary" />
+                    <label className="text-sm text-muted-foreground block mb-1">Location</label>
+                    <input defaultValue={profile?.city || "Not set"} disabled className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground opacity-60" />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm text-muted-foreground">Verification Status:</span>
+                    {profile?.is_verified ? (
+                      <span className="inline-flex items-center gap-1 text-sm text-gold font-bold"><CheckCircle className="w-4 h-4" /> Verified</span>
+                    ) : (
+                      <Button variant="outline" size="sm" onClick={handleVerify}>Verify Identity (Free)</Button>
+                    )}
                   </div>
                   <Button variant="hero">Save Changes</Button>
                 </div>
@@ -81,14 +114,29 @@ const Settings = () => {
                 <div className="glass rounded-xl p-6 glow-border">
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <h3 className="font-heading text-lg font-bold">Premium</h3>
-                      <p className="text-sm text-muted-foreground">Renews March 15, 2026</p>
+                      <h3 className="font-heading text-lg font-bold capitalize">{subscriptionTier}</h3>
+                      {subscriptionEnd && (
+                        <p className="text-sm text-muted-foreground">
+                          Renews {new Date(subscriptionEnd).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+                        </p>
+                      )}
+                      {subscriptionTier === "free" && <p className="text-sm text-muted-foreground">Free plan — upgrade for more features</p>}
                     </div>
-                    <span className="text-2xl font-heading font-bold text-gradient">$39/mo</span>
+                    <span className="text-2xl font-heading font-bold text-gradient">
+                      {subscriptionTier === "free" ? "$0" : subscriptionTier === "premium" ? "$39/mo" : "$69/mo"}
+                    </span>
                   </div>
                   <div className="flex gap-3">
-                    <Button variant="hero" asChild><Link to="/pricing">Upgrade to Elite</Link></Button>
-                    <Button variant="outline">Cancel Plan</Button>
+                    {subscriptionTier === "free" && (
+                      <Button variant="hero" asChild><Link to="/pricing">Upgrade</Link></Button>
+                    )}
+                    {subscriptionTier === "premium" && (
+                      <Button variant="hero" asChild><Link to="/pricing">Upgrade to Elite</Link></Button>
+                    )}
+                    {subscriptionTier !== "free" && (
+                      <Button variant="outline" onClick={handleManageSubscription}>Manage Subscription</Button>
+                    )}
+                    <Button variant="ghost" onClick={refreshSubscription}>Refresh Status</Button>
                   </div>
                 </div>
               </div>
