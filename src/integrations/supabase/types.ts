@@ -176,6 +176,8 @@ export type Database = {
           todays_note: string | null
           updated_at: string
           user_id: string
+          verification_session_id: string | null
+          verification_status: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -213,6 +215,8 @@ export type Database = {
           todays_note?: string | null
           updated_at?: string
           user_id: string
+          verification_session_id?: string | null
+          verification_status?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -250,6 +254,8 @@ export type Database = {
           todays_note?: string | null
           updated_at?: string
           user_id?: string
+          verification_session_id?: string | null
+          verification_status?: string | null
         }
         Relationships: []
       }

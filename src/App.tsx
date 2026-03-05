@@ -8,6 +8,8 @@ import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import OnboardingQuiz from "./pages/OnboardingQuiz";
+import IdentityVerification from "./pages/IdentityVerification";
+import VerificationPending from "./pages/VerificationPending";
 import Profile from "./pages/Profile";
 import Discover from "./pages/Discover";
 import Messages from "./pages/Messages";
@@ -34,6 +36,8 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/onboarding" element={<OnboardingQuiz />} />
+            <Route path="/verify-identity" element={<IdentityVerification />} />
+            <Route path="/verification-pending" element={<VerificationPending />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/discover" element={<Discover />} />
             <Route path="/messages" element={<Messages />} />

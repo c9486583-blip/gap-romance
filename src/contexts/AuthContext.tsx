@@ -12,6 +12,7 @@ interface AuthState {
   subscriptionEnd: string | null;
   signOut: () => Promise<void>;
   refreshSubscription: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
   updateLocation: (lat: number, lng: number, city: string) => Promise<void>;
 }
 
@@ -108,6 +109,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       session, user, profile, loading,
       subscriptionTier, subscriptionEnd,
       signOut, refreshSubscription, updateLocation,
+      refreshProfile: async () => { if (user) await fetchProfile(user.id); },
     }}>
       {children}
     </AuthContext.Provider>
