@@ -83,6 +83,7 @@ export type Database = {
           created_at: string
           flag_reason: string | null
           id: string
+          is_blocked: boolean
           is_flagged: boolean | null
           is_read: boolean
           match_id: string
@@ -93,6 +94,7 @@ export type Database = {
           created_at?: string
           flag_reason?: string | null
           id?: string
+          is_blocked?: boolean
           is_flagged?: boolean | null
           is_read?: boolean
           match_id: string
@@ -103,6 +105,7 @@ export type Database = {
           created_at?: string
           flag_reason?: string | null
           id?: string
+          is_blocked?: boolean
           is_flagged?: boolean | null
           is_read?: boolean
           match_id?: string
@@ -114,6 +117,60 @@ export type Database = {
             columns: ["match_id"]
             isOneToOne: false
             referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      moderation_logs: {
+        Row: {
+          classification: string
+          content: string | null
+          content_type: string
+          created_at: string
+          id: string
+          match_id: string | null
+          message_id: string | null
+          reason: string | null
+          recipient_id: string | null
+          sender_id: string
+        }
+        Insert: {
+          classification?: string
+          content?: string | null
+          content_type?: string
+          created_at?: string
+          id?: string
+          match_id?: string | null
+          message_id?: string | null
+          reason?: string | null
+          recipient_id?: string | null
+          sender_id: string
+        }
+        Update: {
+          classification?: string
+          content?: string | null
+          content_type?: string
+          created_at?: string
+          id?: string
+          match_id?: string | null
+          message_id?: string | null
+          reason?: string | null
+          recipient_id?: string | null
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "moderation_logs_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "moderation_logs_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
             referencedColumns: ["id"]
           },
         ]
@@ -164,6 +221,7 @@ export type Database = {
           gender: string | null
           hobbies: string[] | null
           id: string
+          is_suspended: boolean
           is_verified: boolean | null
           last_initial: string | null
           latitude: number | null
@@ -205,6 +263,7 @@ export type Database = {
           gender?: string | null
           hobbies?: string[] | null
           id?: string
+          is_suspended?: boolean
           is_verified?: boolean | null
           last_initial?: string | null
           latitude?: number | null
@@ -246,6 +305,7 @@ export type Database = {
           gender?: string | null
           hobbies?: string[] | null
           id?: string
+          is_suspended?: boolean
           is_verified?: boolean | null
           last_initial?: string | null
           latitude?: number | null

@@ -42,6 +42,7 @@ interface ChatMessage {
   created_at: string;
   is_read: boolean;
   is_flagged?: boolean;
+  is_blocked?: boolean;
   flag_reason?: string | null;
 }
 
@@ -382,7 +383,24 @@ const Messages = () => {
     // Background content moderation
     if (inserted) {
       supabase.functions.invoke("moderate-message", {
-        body: { content: msgContent, message_id: inserted.id },
+        body: {
+          content: msgContent,
+          message_id: inserted.id,
+          sender_id: user.id,
+          recipient_id: activeMatch?.partnerId,
+          match_id: activeMatchId,
+          content_type: "text",
+        },
+      }).then(({ data }) => {
+        if (data?.classification === "BLOCKED") {
+          // Remove the blocked message from local state and notify sender
+          setMessages((prev) => prev.filter((m) => m.id !== inserted.id));
+          toast({
+            title: "Message not delivered",
+            description: "This message was not delivered because it violates GapRomance safety guidelines.",
+            variant: "destructive",
+          });
+        }
       }).catch(console.error);
     }
   };
@@ -602,6 +620,8 @@ const Messages = () => {
               )}
               {messages.map((m) => {
                 const fromMe = m.sender_id === user.id;
+                // Hide blocked messages from recipient; sender sees them removed in real-time
+                if (m.is_blocked && !fromMe) return null;
                 const isGift = m.content.startsWith("🎁 Sent a ");
                 if (isGift) {
                   const giftMatch = m.content.match(/🎁 Sent a (.+?) (.+)/);
