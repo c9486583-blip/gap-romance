@@ -4,7 +4,7 @@ import { Check, Zap, Crown, Sparkles, Shield } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { STRIPE_PRODUCTS, STRIPE_ADDONS } from "@/lib/stripe-products";
+import { STRIPE_PRODUCTS, STRIPE_ADDONS, STRIPE_CREDIT_PACKS } from "@/lib/stripe-products";
 import { useToast } from "@/hooks/use-toast";
 
 const plans = [
@@ -31,6 +31,12 @@ const addons = [
   { name: "Spotlight Badge", price: "$12/week", desc: "Gold ring around your profile in discovery", priceId: STRIPE_ADDONS.spotlight.price_id },
 ];
 
+const creditPacks = [
+  { ...STRIPE_CREDIT_PACKS.credits20, desc: "Perfect for a quick chat burst" },
+  { ...STRIPE_CREDIT_PACKS.credits50, desc: "Keep the conversations flowing all week" },
+  { ...STRIPE_CREDIT_PACKS.credits100, desc: "Best value — message freely for weeks" },
+];
+
 const virtualGifts = [
   { emoji: "🌹", name: "Red Rose", price: "$1" },
   { emoji: "❤️", name: "Heart", price: "$1" },
@@ -48,13 +54,13 @@ const Pricing = () => {
   const { user, subscriptionTier } = useAuth();
   const { toast } = useToast();
 
-  const handleCheckout = async (priceId: string, mode: "subscription" | "payment" = "subscription") => {
+  const handleCheckout = async (priceId: string, mode: "subscription" | "payment" = "subscription", successUrl?: string) => {
     if (!user) {
       toast({ title: "Please log in first", variant: "destructive" });
       return;
     }
     const { data, error } = await supabase.functions.invoke("create-checkout", {
-      body: { priceId, mode },
+      body: { priceId, mode, successUrl },
     });
     if (error || !data?.url) {
       toast({ title: "Checkout failed", description: error?.message || "Please try again", variant: "destructive" });
@@ -146,6 +152,28 @@ const Pricing = () => {
                   <span className="font-heading font-bold text-primary">{a.price}</span>
                   <Button variant="outline" size="sm" onClick={() => handleCheckout(a.priceId, "payment")}>Buy</Button>
                 </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+
+        {/* Message Credits */}
+        <div className="max-w-3xl mx-auto mt-16">
+          <h2 className="text-3xl font-heading font-bold text-center mb-3">
+            Message <span className="text-gradient">Credits</span>
+          </h2>
+          <p className="text-muted-foreground text-center mb-8">Free users get 10 messages/day. Need more? Buy extra credits — no subscription required.</p>
+          <div className="grid md:grid-cols-3 gap-4">
+            {creditPacks.map((pack, i) => (
+              <motion.div key={pack.name} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}
+                className="glass rounded-xl p-6 text-center hover-lift">
+                <div className="text-4xl font-heading font-bold text-primary mb-1">{pack.credits}</div>
+                <p className="text-sm text-muted-foreground mb-1">messages</p>
+                <div className="text-2xl font-heading font-bold mb-2">${pack.price.toFixed(2)}</div>
+                <p className="text-xs text-muted-foreground mb-4">{pack.desc}</p>
+                <Button variant="outline" className="w-full" onClick={() => handleCheckout(pack.price_id, "payment", "/credit-success")}>
+                  Buy Credits
+                </Button>
               </motion.div>
             ))}
           </div>
