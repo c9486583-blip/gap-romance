@@ -50,7 +50,7 @@ const Landing = () => {
             <p className="text-primary font-body font-bold tracking-[0.3em] uppercase text-sm mb-6">
               Premium Age-Gap Dating
             </p>
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-heading font-bold mb-6 leading-tight">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-heading font-bold mb-6 leading-tight">
               Built for Those<br />
               <span className="text-gradient">Who Know What They Want</span>
             </h1>
