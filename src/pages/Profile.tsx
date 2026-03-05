@@ -1,8 +1,17 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Heart, MessageCircle, Shield, MapPin, Music, Edit3, Camera, Star } from "lucide-react";
+import { Heart, MessageCircle, Shield, MapPin, Music, Edit3, Camera, Star, MoreVertical, Flag, Ban } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import ReportModal from "@/components/ReportModal";
+import BlockConfirmDialog from "@/components/BlockConfirmDialog";
 
 const mockProfile = {
   name: "Sophia M.",
@@ -44,6 +53,8 @@ const Badge = ({ children, variant = "default" }: { children: React.ReactNode; v
 
 const Profile = () => {
   const { profile } = useAuth();
+  const [reportOpen, setReportOpen] = useState(false);
+  const [blockOpen, setBlockOpen] = useState(false);
 
   const favoriteArtists = (profile?.favorite_artists as string[] | null) || [];
   const favoriteGenres = (profile?.favorite_genres as string[] | null) || [];
@@ -98,9 +109,22 @@ const Profile = () => {
               <MapPin className="w-3.5 h-3.5" /> {mockProfile.location}
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
             <Badge variant="primary">{mockProfile.datingMode}</Badge>
             <Button variant="ghost" size="icon"><Edit3 className="w-4 h-4" /></Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon"><MoreVertical className="w-4 h-4" /></Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setReportOpen(true)} className="text-destructive">
+                  <Flag className="w-4 h-4 mr-2" /> Report User
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setBlockOpen(true)} className="text-destructive">
+                  <Ban className="w-4 h-4 mr-2" /> Block User
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
@@ -205,6 +229,20 @@ const Profile = () => {
           </Button>
         </div>
       </div>
+
+      {/* Report & Block modals - using mock profile user_id as placeholder */}
+      <ReportModal
+        open={reportOpen}
+        onOpenChange={setReportOpen}
+        reportedUserId="mock-user-id"
+        source="profile"
+      />
+      <BlockConfirmDialog
+        open={blockOpen}
+        onOpenChange={setBlockOpen}
+        blockedUserId="mock-user-id"
+        blockedUserName={mockProfile.name}
+      />
     </div>
   );
 };
