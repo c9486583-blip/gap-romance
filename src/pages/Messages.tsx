@@ -55,7 +55,7 @@ interface ChatMessage {
 }
 
 const Messages = () => {
-  const { user, subscriptionTier } = useAuth();
+  const { user, subscriptionTier, profile } = useAuth();
   const { toast } = useToast();
   const [matches, setMatches] = useState<MatchWithProfile[]>([]);
   const [activeMatchId, setActiveMatchId] = useState<string | null>(null);
@@ -64,6 +64,7 @@ const Messages = () => {
   const [giftOpen, setGiftOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [dailyCount, setDailyCount] = useState(0);
+  const [messageCredits, setMessageCredits] = useState(0);
   const [reportOpen, setReportOpen] = useState(false);
   const [reportReason, setReportReason] = useState("");
   const [reportContext, setReportContext] = useState("");
@@ -71,7 +72,16 @@ const Messages = () => {
 
   const activeMatch = matches.find((m) => m.matchId === activeMatchId);
   const isFreeTier = subscriptionTier === "free";
-  const canSendMessage = !isFreeTier || dailyCount < FREE_DAILY_LIMIT;
+  const hasFreeMessages = dailyCount < FREE_DAILY_LIMIT;
+  const canSendMessage = !isFreeTier || hasFreeMessages || messageCredits > 0;
+  const remainingFree = Math.max(0, FREE_DAILY_LIMIT - dailyCount);
+
+  // Sync credits from profile
+  useEffect(() => {
+    if (profile?.message_credits !== undefined) {
+      setMessageCredits(profile.message_credits as number);
+    }
+  }, [profile]);
 
   // Fetch matches with partner profiles
   const fetchMatches = useCallback(async () => {
@@ -253,10 +263,13 @@ const Messages = () => {
 
   const handleSendMessage = async () => {
     if (!message.trim() || !user || !activeMatchId) return;
-    if (isFreeTier && dailyCount >= FREE_DAILY_LIMIT) {
+
+    const usingCredit = isFreeTier && !hasFreeMessages;
+
+    if (isFreeTier && !hasFreeMessages && messageCredits <= 0) {
       toast({
-        title: "Daily limit reached",
-        description: "Upgrade to Premium or Elite for unlimited messaging.",
+        title: "No messages remaining",
+        description: "Buy message credits or upgrade for unlimited messaging.",
         variant: "destructive",
       });
       return;
@@ -275,6 +288,16 @@ const Messages = () => {
 
     setMessage("");
     setDailyCount((c) => c + 1);
+
+    // Deduct a purchased credit if over daily limit
+    if (usingCredit) {
+      const newCredits = messageCredits - 1;
+      setMessageCredits(newCredits);
+      await supabase
+        .from("profiles")
+        .update({ message_credits: newCredits } as any)
+        .eq("user_id", user.id);
+    }
   };
 
   const handleSendGift = async (gift: VirtualGift) => {
@@ -484,11 +507,20 @@ const Messages = () => {
             {/* Input */}
             <div className="p-4 border-t border-border/30 relative">
               {isFreeTier && (
-                <div className="text-xs text-muted-foreground text-center mb-2">
-                  {dailyCount}/{FREE_DAILY_LIMIT} daily messages used
+                <div className="text-xs text-muted-foreground text-center mb-2 flex items-center justify-center gap-3 flex-wrap">
+                  <span>
+                    {remainingFree > 0
+                      ? `${remainingFree} free message${remainingFree !== 1 ? "s" : ""} left today`
+                      : "Daily free messages used"}
+                  </span>
+                  {messageCredits > 0 && (
+                    <span className="text-primary font-bold">
+                      + {messageCredits} credit{messageCredits !== 1 ? "s" : ""}
+                    </span>
+                  )}
                   {!canSendMessage && (
-                    <span className="text-destructive ml-1">
-                      — <Link to="/pricing" className="underline">Upgrade</Link> for unlimited
+                    <span className="text-destructive">
+                      — <Link to="/pricing" className="underline">Buy credits</Link> or <Link to="/pricing" className="underline">upgrade</Link>
                     </span>
                   )}
                 </div>
@@ -502,7 +534,7 @@ const Messages = () => {
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
-                  placeholder={canSendMessage ? "Type a message..." : "Daily limit reached"}
+                  placeholder={canSendMessage ? "Type a message..." : "No messages remaining — buy credits"}
                   disabled={!canSendMessage}
                   maxLength={2000}
                   className="flex-1 bg-secondary border border-border rounded-full px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary disabled:opacity-50"

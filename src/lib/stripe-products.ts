@@ -36,6 +36,37 @@ export const STRIPE_ADDONS = {
   },
 } as const;
 
+export const STRIPE_CREDIT_PACKS = {
+  credits20: {
+    product_id: "prod_U5hXkLER7CXGJn",
+    price_id: "price_1T7W8830RgnjoIxNOyWjKzfV",
+    name: "20 Message Credits",
+    credits: 20,
+    price: 2.99,
+  },
+  credits50: {
+    product_id: "prod_U5hXLqOlLWo7Tb",
+    price_id: "price_1T7W8X30RgnjoIxN5EgPqrhN",
+    name: "50 Message Credits",
+    credits: 50,
+    price: 5.99,
+  },
+  credits100: {
+    product_id: "prod_U5hY76J4vz5ZcK",
+    price_id: "price_1T7W9030RgnjoIxNK6G5pLS4",
+    name: "100 Message Credits",
+    credits: 100,
+    price: 9.99,
+  },
+} as const;
+
+export function getCreditsFromProductId(productId: string): number | null {
+  for (const pack of Object.values(STRIPE_CREDIT_PACKS)) {
+    if (pack.product_id === productId) return pack.credits;
+  }
+  return null;
+}
+
 export function getTierFromProductId(productId: string | null): "free" | "premium" | "elite" {
   if (productId === STRIPE_PRODUCTS.premium.product_id) return "premium";
   if (productId === STRIPE_PRODUCTS.elite.product_id) return "elite";
