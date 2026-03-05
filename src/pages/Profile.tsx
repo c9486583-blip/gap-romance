@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Heart, MessageCircle, Shield, MapPin, Music, Edit3, Camera, Star } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 const mockProfile = {
   name: "Sophia M.",
@@ -42,6 +43,13 @@ const Badge = ({ children, variant = "default" }: { children: React.ReactNode; v
 };
 
 const Profile = () => {
+  const { profile } = useAuth();
+
+  const favoriteArtists = (profile?.favorite_artists as string[] | null) || [];
+  const favoriteGenres = (profile?.favorite_genres as string[] | null) || [];
+  const favoriteSong = (profile?.favorite_song as string | null) || "";
+  const hasMusicData = favoriteArtists.length > 0 || favoriteGenres.length > 0 || favoriteSong;
+
   return (
     <div className="min-h-screen bg-background">
       {/* Nav */}
@@ -118,15 +126,46 @@ const Profile = () => {
           </div>
         </div>
 
-        {/* Music */}
-        <div className="mb-6">
-          <h3 className="font-heading text-lg font-semibold mb-3 flex items-center gap-2">
-            <Music className="w-4 h-4 text-primary" /> Music Taste
-          </h3>
-          <div className="flex flex-wrap gap-2">
-            {mockProfile.music.map((m) => <Badge key={m} variant="primary">{m}</Badge>)}
+        {/* Music Taste */}
+        {hasMusicData ? (
+          <div className="mb-6">
+            <h3 className="font-heading text-lg font-semibold mb-3 flex items-center gap-2">
+              <Music className="w-4 h-4 text-primary" /> Music Taste
+            </h3>
+            {favoriteArtists.length > 0 && (
+              <div className="mb-3">
+                <p className="text-xs text-muted-foreground mb-2">Favorite Artists</p>
+                <div className="flex flex-wrap gap-2">
+                  {favoriteArtists.map((a) => <Badge key={a} variant="primary">{a}</Badge>)}
+                </div>
+              </div>
+            )}
+            {favoriteGenres.length > 0 && (
+              <div className="mb-3">
+                <p className="text-xs text-muted-foreground mb-2">Genres</p>
+                <div className="flex flex-wrap gap-2">
+                  {favoriteGenres.map((g) => <Badge key={g}>{g}</Badge>)}
+                </div>
+              </div>
+            )}
+            {favoriteSong && (
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Favorite Song</p>
+                <p className="text-foreground text-sm">🎵 {favoriteSong}</p>
+              </div>
+            )}
           </div>
-        </div>
+        ) : (
+          <div className="mb-6 glass rounded-xl p-4">
+            <h3 className="font-heading text-lg font-semibold mb-2 flex items-center gap-2">
+              <Music className="w-4 h-4 text-primary" /> Music Taste
+            </h3>
+            <p className="text-sm text-muted-foreground mb-3">Share your music taste on your profile!</p>
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/settings">Add Music</Link>
+            </Button>
+          </div>
+        )}
 
         {/* Lifestyle & Personality */}
         <div className="grid grid-cols-2 gap-6 mb-6">

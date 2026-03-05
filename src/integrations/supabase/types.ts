@@ -24,6 +24,9 @@ export type Database = {
           dating_mode: string | null
           dealbreakers: string[] | null
           email: string | null
+          favorite_artists: string[] | null
+          favorite_genres: string[] | null
+          favorite_song: string | null
           first_name: string | null
           gender: string | null
           hobbies: string[] | null
@@ -57,6 +60,9 @@ export type Database = {
           dating_mode?: string | null
           dealbreakers?: string[] | null
           email?: string | null
+          favorite_artists?: string[] | null
+          favorite_genres?: string[] | null
+          favorite_song?: string | null
           first_name?: string | null
           gender?: string | null
           hobbies?: string[] | null
@@ -90,6 +96,9 @@ export type Database = {
           dating_mode?: string | null
           dealbreakers?: string[] | null
           email?: string | null
+          favorite_artists?: string[] | null
+          favorite_genres?: string[] | null
+          favorite_song?: string | null
           first_name?: string | null
           gender?: string | null
           hobbies?: string[] | null

@@ -1,11 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { User, CreditCard, Bell, Shield, LogOut, ChevronRight, CheckCircle } from "lucide-react";
+import { User, CreditCard, Bell, Shield, LogOut, ChevronRight, CheckCircle, Music, X } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { STRIPE_PRODUCTS } from "@/lib/stripe-products";
+
+const GENRE_OPTIONS = [
+  "Hip-Hop", "R&B", "Pop", "Rock", "Country", "Jazz", "Classical",
+  "Electronic", "Reggae", "Latin", "Gospel", "Alternative", "Indie", "Metal", "Other",
+];
 
 const Settings = () => {
   const [activeTab, setActiveTab] = useState("account");
@@ -32,8 +37,53 @@ const Settings = () => {
     toast({ title: "Verification", description: "ID verification coming soon! This feature will use Stripe Identity." });
   };
 
+  // Music state
+  const [favoriteArtists, setFavoriteArtists] = useState<string[]>(["", "", ""]);
+  const [favoriteGenres, setFavoriteGenres] = useState<string[]>([]);
+  const [favoriteSong, setFavoriteSong] = useState("");
+  const [savingMusic, setSavingMusic] = useState(false);
+
+  useEffect(() => {
+    if (profile) {
+      const artists = profile.favorite_artists as string[] | null;
+      if (artists && artists.length > 0) {
+        const padded = [...artists, "", "", ""].slice(0, 3);
+        setFavoriteArtists(padded);
+      }
+      const genres = profile.favorite_genres as string[] | null;
+      if (genres) setFavoriteGenres(genres);
+      if (profile.favorite_song) setFavoriteSong(profile.favorite_song as string);
+    }
+  }, [profile]);
+
+  const toggleGenre = (genre: string) => {
+    setFavoriteGenres((prev) =>
+      prev.includes(genre) ? prev.filter((g) => g !== genre) : [...prev, genre]
+    );
+  };
+
+  const handleSaveMusic = async () => {
+    if (!user) return;
+    setSavingMusic(true);
+    const cleanArtists = favoriteArtists.map((a) => a.trim()).filter(Boolean);
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        favorite_artists: cleanArtists,
+        favorite_genres: favoriteGenres,
+        favorite_song: favoriteSong.trim() || null,
+      } as any)
+      .eq("user_id", user.id);
+    setSavingMusic(false);
+    toast({
+      title: error ? "Failed to save" : "Music saved!",
+      variant: error ? "destructive" : "default",
+    });
+  };
+
   const tabs = [
     { id: "account", label: "Account", icon: User },
+    { id: "music", label: "Music Taste", icon: Music },
     { id: "subscription", label: "Subscription", icon: CreditCard },
     { id: "notifications", label: "Notifications", icon: Bell },
     { id: "privacy", label: "Privacy & Safety", icon: Shield },
@@ -106,6 +156,68 @@ const Settings = () => {
                   </div>
                   <Button variant="hero">Save Changes</Button>
                 </div>
+              </div>
+            )}
+            {activeTab === "music" && (
+              <div className="space-y-6">
+                <h2 className="font-heading text-xl font-semibold flex items-center gap-2">
+                  <Music className="w-5 h-5 text-primary" /> Music Taste
+                </h2>
+                <p className="text-sm text-muted-foreground">Share your music taste on your profile for others to see.</p>
+
+                <div className="space-y-3">
+                  <label className="text-sm font-medium block">Favorite Artists (up to 3)</label>
+                  {favoriteArtists.map((artist, i) => (
+                    <input
+                      key={i}
+                      value={artist}
+                      onChange={(e) => {
+                        const updated = [...favoriteArtists];
+                        updated[i] = e.target.value;
+                        setFavoriteArtists(updated);
+                      }}
+                      maxLength={100}
+                      placeholder={`Artist ${i + 1}`}
+                      className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-primary"
+                    />
+                  ))}
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium block mb-3">Favorite Genres</label>
+                  <div className="flex flex-wrap gap-2">
+                    {GENRE_OPTIONS.map((genre) => (
+                      <button
+                        key={genre}
+                        type="button"
+                        onClick={() => toggleGenre(genre)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+                          favoriteGenres.includes(genre)
+                            ? "bg-primary/15 text-primary border border-primary/30"
+                            : "bg-secondary text-muted-foreground border border-border hover:border-primary/30"
+                        }`}
+                      >
+                        {genre}
+                        {favoriteGenres.includes(genre) && <X className="w-3 h-3 ml-1 inline" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium block mb-1">Favorite Song</label>
+                  <input
+                    value={favoriteSong}
+                    onChange={(e) => setFavoriteSong(e.target.value)}
+                    maxLength={150}
+                    placeholder="e.g. Clair de Lune — Debussy"
+                    className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-primary"
+                  />
+                </div>
+
+                <Button variant="hero" onClick={handleSaveMusic} disabled={savingMusic}>
+                  {savingMusic ? "Saving..." : "Save Music"}
+                </Button>
               </div>
             )}
             {activeTab === "subscription" && (
