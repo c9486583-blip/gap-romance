@@ -72,10 +72,19 @@ const Discover = () => {
 
   useEffect(() => {
     const fetchProfiles = async () => {
-      let query = supabase.from("profiles").select("*").eq("is_verified", true);
-      if (user) query = query.neq("user_id", user.id);
+      if (!user) return;
+      let query = supabase.from("profiles").select("*").eq("is_verified", true).neq("user_id", user.id);
       const { data } = await query;
-      setProfiles(data || []);
+
+      // Filter out blocked users (both directions)
+      const { data: blocksOut } = await supabase.from("blocks").select("blocked_id").eq("blocker_id", user.id);
+      const { data: blocksIn } = await supabase.from("blocks").select("blocker_id").eq("blocked_id", user.id);
+      const blockedIds = new Set([
+        ...(blocksOut || []).map((b: any) => b.blocked_id),
+        ...(blocksIn || []).map((b: any) => b.blocker_id),
+      ]);
+
+      setProfiles((data || []).filter((p: any) => !blockedIds.has(p.user_id)));
     };
     fetchProfiles();
   }, [user]);

@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Send, Gift, ArrowLeft, Flag, Ban, AlertTriangle, MoreVertical, Shield, Check, CheckCheck, Eye, Crown } from "lucide-react";
+import { Send, Gift, ArrowLeft, MoreVertical, Shield, Check, Eye, Crown, Flag, Ban } from "lucide-react";
 import { Link } from "react-router-dom";
 import GiftPicker from "@/components/GiftPicker";
 import GiftBubble from "@/components/GiftBubble";
 import TypingIndicator from "@/components/chat/TypingIndicator";
 import ContentWarning from "@/components/chat/ContentWarning";
+import ReportModal from "@/components/ReportModal";
+import BlockConfirmDialog from "@/components/BlockConfirmDialog";
 import { VirtualGift } from "@/lib/virtual-gifts";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,23 +20,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-
-const REPORT_REASONS = [
-  "Harassment",
-  "Fake Profile",
-  "Threats or Violence",
-  "Scam or Fraud",
-  "Inappropriate Content",
-  "Underage User",
-  "Other",
-];
 
 const FREE_DAILY_LIMIT = 10;
 
@@ -72,8 +57,9 @@ const Messages = () => {
   const [dailyCount, setDailyCount] = useState(0);
   const [messageCredits, setMessageCredits] = useState(0);
   const [reportOpen, setReportOpen] = useState(false);
-  const [reportReason, setReportReason] = useState("");
-  const [reportContext, setReportContext] = useState("");
+  const [reportSource, setReportSource] = useState<"chat_header" | "message">("chat_header");
+  const [reportMessageId, setReportMessageId] = useState<string | null>(null);
+  const [blockOpen, setBlockOpen] = useState(false);
   const [isPartnerTyping, setIsPartnerTyping] = useState(false);
   const [isPartnerOnline, setIsPartnerOnline] = useState(false);
   const [creditsSpentThisMonth, setCreditsSpentThisMonth] = useState(0);
@@ -422,29 +408,21 @@ const Messages = () => {
     setGiftOpen(false);
   };
 
-  const handleBlock = async () => {
-    if (!user || !activeMatch) return;
-    await supabase.from("blocks").insert({
-      blocker_id: user.id,
-      blocked_id: activeMatch.partnerId,
-    } as any);
-    toast({ title: "User blocked" });
+  const handleBlocked = () => {
     setActiveMatchId(null);
     fetchMatches();
   };
 
-  const handleReport = async () => {
-    if (!user || !activeMatch || !reportReason) return;
-    await supabase.from("reports").insert({
-      reporter_id: user.id,
-      reported_id: activeMatch.partnerId,
-      reason: reportReason,
-      context: reportContext || null,
-    } as any);
-    toast({ title: "Report submitted", description: "Our safety team will review this." });
-    setReportOpen(false);
-    setReportReason("");
-    setReportContext("");
+  const openMessageReport = (messageId: string) => {
+    setReportMessageId(messageId);
+    setReportSource("message");
+    setReportOpen(true);
+  };
+
+  const openHeaderReport = () => {
+    setReportMessageId(null);
+    setReportSource("chat_header");
+    setReportOpen(true);
   };
 
   const formatTime = (iso: string) => {
@@ -593,11 +571,11 @@ const Messages = () => {
                   <Button variant="ghost" size="icon"><MoreVertical className="w-4 h-4" /></Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setReportOpen(true)} className="text-destructive">
-                    <Flag className="w-4 h-4 mr-2" /> Report
+                  <DropdownMenuItem onClick={openHeaderReport} className="text-destructive">
+                    <Flag className="w-4 h-4 mr-2" /> Report User
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleBlock} className="text-destructive">
-                    <Ban className="w-4 h-4 mr-2" /> Block
+                  <DropdownMenuItem onClick={() => setBlockOpen(true)} className="text-destructive">
+                    <Ban className="w-4 h-4 mr-2" /> Block User
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -632,11 +610,11 @@ const Messages = () => {
                   }
                 }
                 return (
-                  <div key={m.id}>
+                  <div key={m.id} className="group relative">
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className={`flex ${fromMe ? "justify-end" : "justify-start"}`}
+                      className={`flex items-end gap-1 ${fromMe ? "justify-end" : "justify-start"}`}
                     >
                       <div className={`max-w-[70%] p-3 rounded-2xl text-sm ${
                         fromMe
@@ -648,7 +626,6 @@ const Messages = () => {
                           <span className={`text-xs ${fromMe ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
                             {formatTime(m.created_at)}
                           </span>
-                          {/* Read receipt for sent messages */}
                           {fromMe && (
                             m.is_read ? (
                               <Eye className="w-3 h-3 text-primary-foreground/60" />
@@ -658,13 +635,22 @@ const Messages = () => {
                           )}
                         </div>
                       </div>
+                      {/* Per-message report button */}
+                      {!fromMe && (
+                        <button
+                          onClick={() => openMessageReport(m.id)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-full hover:bg-secondary"
+                          title="Report message"
+                        >
+                          <MoreVertical className="w-3.5 h-3.5 text-muted-foreground" />
+                        </button>
+                      )}
                     </motion.div>
-                    {/* Content moderation warning */}
                     {!fromMe && m.is_flagged && (
                       <ContentWarning
                         reason={m.flag_reason}
-                        onReport={() => setReportOpen(true)}
-                        onBlock={handleBlock}
+                        onReport={() => openMessageReport(m.id)}
+                        onBlock={() => setBlockOpen(true)}
                       />
                     )}
                   </div>
@@ -745,45 +731,27 @@ const Messages = () => {
         )}
       </div>
 
-      {/* Report Dialog */}
-      <Dialog open={reportOpen} onOpenChange={setReportOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-destructive" /> Report User
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium block mb-2">Reason</label>
-              <select
-                value={reportReason}
-                onChange={(e) => setReportReason(e.target.value)}
-                className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground"
-              >
-                <option value="">Select a reason...</option>
-                {REPORT_REASONS.map((r) => (
-                  <option key={r} value={r}>{r}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-sm font-medium block mb-2">Additional details (optional)</label>
-              <textarea
-                value={reportContext}
-                onChange={(e) => setReportContext(e.target.value)}
-                maxLength={1000}
-                placeholder="Provide any additional context..."
-                className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground placeholder:text-muted-foreground resize-none h-24"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setReportOpen(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={handleReport} disabled={!reportReason}>Submit Report</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Report Modal */}
+      {activeMatch && (
+        <ReportModal
+          open={reportOpen}
+          onOpenChange={setReportOpen}
+          reportedUserId={activeMatch.partnerId}
+          messageId={reportMessageId}
+          source={reportSource}
+        />
+      )}
+
+      {/* Block Confirm Dialog */}
+      {activeMatch && (
+        <BlockConfirmDialog
+          open={blockOpen}
+          onOpenChange={setBlockOpen}
+          blockedUserId={activeMatch.partnerId}
+          blockedUserName={activeMatch.partnerName}
+          onBlocked={handleBlocked}
+        />
+      )}
     </div>
   );
 };

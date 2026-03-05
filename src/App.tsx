@@ -22,6 +22,7 @@ import Privacy from "./pages/Privacy";
 import Safety from "./pages/Safety";
 import CreditSuccess from "./pages/CreditSuccess";
 import NotFound from "./pages/NotFound";
+import Admin from "./pages/Admin";
 
 const queryClient = new QueryClient();
 
@@ -50,6 +51,7 @@ const App = () => (
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/safety" element={<Safety />} />
             <Route path="/credit-success" element={<CreditSuccess />} />
+            <Route path="/admin" element={<Admin />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
