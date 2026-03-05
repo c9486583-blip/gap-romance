@@ -5,14 +5,35 @@ import { ChevronRight, ChevronLeft, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const hobbyOptions = [
-  "Travel", "Cooking", "Fitness", "Reading", "Gaming", "Photography",
-  "Hiking", "Art", "Music", "Dancing", "Yoga", "Wine Tasting",
-  "Movies", "Surfing", "Fashion", "Sports", "Meditation", "Gardening",
+  "Hiking", "Running", "Cycling", "Swimming", "Yoga", "Pilates", "Gym & Fitness",
+  "Martial Arts", "Rock Climbing", "Skiing & Snowboarding", "Surfing", "Dancing",
+  "Golf", "Tennis", "Basketball", "Football", "Soccer", "Baseball", "Volleyball",
+  "Bowling", "Fishing", "Hunting", "Camping", "Kayaking", "Skydiving",
+  "Horseback Riding", "Cooking", "Baking", "Meal Prepping", "Wine Tasting",
+  "Cocktail Making", "Coffee Culture", "Foodie", "Traveling", "Road Trips",
+  "Backpacking", "Photography", "Videography", "Painting", "Drawing", "Sculpting",
+  "Pottery", "Knitting & Crocheting", "Jewelry Making", "DIY & Home Projects",
+  "Gardening", "Interior Design", "Fashion & Style", "Thrifting", "Reading",
+  "Writing", "Poetry", "Journaling", "Blogging", "Chess", "Board Games",
+  "Video Games", "Trivia", "Puzzles", "Astrology", "Meditation", "Spirituality",
+  "Volunteering", "Activism", "Politics", "History", "Science", "Technology",
+  "Investing & Finance", "Entrepreneurship", "Real Estate", "Cars & Motorsports",
+  "Motorcycles", "Anime", "Comics", "Cosplay", "Theater & Performing Arts",
+  "Singing", "Playing an Instrument", "Music Production", "DJing",
+  "Concerts & Live Music", "Nightlife", "Clubbing", "Festivals", "Movies",
+  "Binge Watching", "Stand-Up Comedy", "Podcasts", "Pets & Animals",
 ];
 
 const lifestyleOptions = [
-  "Homebody", "Adventurer", "Foodie", "Night Owl", "Early Bird",
-  "Minimalist", "Luxury Lover", "Eco-Conscious", "Social Butterfly", "Entrepreneur",
+  "Homebody", "Adventurer", "Foodie", "Night Owl", "Early Bird", "Gym Rat",
+  "Free Spirit", "Hopeless Romantic", "Career Driven", "Entrepreneur",
+  "Creative Soul", "Minimalist", "Maximalist", "Party Lover", "Laid Back",
+  "Intellectual", "Spiritual", "Family Oriented", "Pet Parent", "Plant Parent",
+  "Beach Lover", "City Dweller", "Country Living", "Traveler", "Thrill Seeker",
+  "Old Soul", "Social Butterfly", "Introvert", "Extrovert", "Ambivert",
+  "Health Conscious", "Fashionista", "Music Lover", "Bookworm", "Gamer",
+  "Wine Lover", "Coffee Addict", "Tea Lover", "Sober Lifestyle",
+  "Work Hard Play Hard",
 ];
 
 const personalityOptions = ["Introvert", "Extrovert", "Ambivert"];
