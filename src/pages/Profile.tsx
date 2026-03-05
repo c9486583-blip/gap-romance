@@ -1,19 +1,17 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Heart, MessageCircle, Shield, MapPin, Music, Edit3, Camera, Star, MoreVertical, Flag, Ban, MessageSquare, Clock } from "lucide-react";
+import { Heart, MessageCircle, Shield, MapPin, Music, Edit3, Camera, MoreVertical, Flag, Ban, MessageSquare, Clock } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import ReportModal from "@/components/ReportModal";
 import BlockConfirmDialog from "@/components/BlockConfirmDialog";
+import { LIFESTYLE_ICONS, PERSONALITY_ICONS } from "@/lib/profile-constants";
 
 const NOTE_PLACEHOLDERS = [
   "Just got back from hiking...",
@@ -29,24 +27,19 @@ const mockProfile = {
   verified: true,
   datingMode: "Serious Dating",
   bio: "Art school grad with a thing for older souls. I believe the best conversations happen over candlelight. Lover of gallery openings, spontaneous road trips, and anyone who can make me laugh until I cry.",
-  hobbies: ["Travel", "Art", "Wine Tasting", "Photography", "Yoga", "Cooking"],
-  music: ["Jazz", "R&B", "Indie", "Soul"],
-  lifestyle: ["Foodie", "Adventurer", "Night Owl"],
-  personality: ["Ambivert"],
-  loveLanguage: "Quality Time",
-  prompts: [
-    { q: "A perfect Sunday looks like...", a: "Farmers market in the morning, painting in the afternoon, rooftop dinner at sunset." },
-    { q: "The way to my heart is...", a: "Thoughtfulness. Remember the small things I say — that's it." },
-    { q: "I geek out about...", a: "Renaissance art, natural wine, and 90s rom-coms." },
-  ],
   photos: [
     "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=400&h=500&fit=crop",
     "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=500&fit=crop",
     "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&h=500&fit=crop",
   ],
+  prompts: [
+    { q: "A perfect Sunday looks like...", a: "Farmers market in the morning, painting in the afternoon, rooftop dinner at sunset." },
+    { q: "The way to my heart is...", a: "Thoughtfulness. Remember the small things I say — that's it." },
+    { q: "I geek out about...", a: "Renaissance art, natural wine, and 90s rom-coms." },
+  ],
 };
 
-const Badge = ({ children, variant = "default" }: { children: React.ReactNode; variant?: "default" | "primary" | "gold" }) => {
+const ProfileBadge = ({ children, variant = "default" }: { children: React.ReactNode; variant?: "default" | "primary" | "gold" }) => {
   const styles = {
     default: "bg-secondary text-secondary-foreground",
     primary: "bg-primary/15 text-primary border border-primary/30",
@@ -83,20 +76,24 @@ const Profile = () => {
   const [noteText, setNoteText] = useState("");
   const [savingNote, setSavingNote] = useState(false);
 
+  const hobbies = (profile?.hobbies as string[] | null) || [];
+  const lifestyleBadges = (profile?.lifestyle_badges as string[] | null) || [];
+  const personalityBadges = (profile?.personality_badges as string[] | null) || [];
+  const loveLanguage = (profile?.love_language as string | null) || "";
   const favoriteArtists = (profile?.favorite_artists as string[] | null) || [];
   const favoriteGenres = (profile?.favorite_genres as string[] | null) || [];
   const favoriteSong = (profile?.favorite_song as string | null) || "";
   const hasMusicData = favoriteArtists.length > 0 || favoriteGenres.length > 0 || favoriteSong;
+  const datingMode = (profile?.dating_mode as string | null) || "Both";
 
   const activeNote = profile?.todays_note && isNoteActive(profile?.todays_note_updated_at) ? profile.todays_note : null;
   const noteUpdatedAt = profile?.todays_note_updated_at;
 
-  // 3-day nudge check
   const showNudge = (() => {
     if (!profile) return false;
     if (activeNote) return false;
     const updatedAt = profile.todays_note_updated_at;
-    if (!updatedAt) return true; // never posted
+    if (!updatedAt) return true;
     const daysSince = (Date.now() - new Date(updatedAt).getTime()) / (24 * 60 * 60 * 1000);
     return daysSince > 3;
   })();
@@ -124,9 +121,10 @@ const Profile = () => {
     setEditingNote(true);
   };
 
+  const datingModeLabel = datingMode === "Serious Dating" ? "Serious Dating" : datingMode === "Casual Dating" ? "Casual Dating" : "Open to Both";
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Nav */}
       <nav className="sticky top-0 z-50 glass border-b border-border/30">
         <div className="container mx-auto flex items-center justify-between h-16 px-4">
           <Link to="/" className="text-2xl font-heading font-bold text-gradient">GapRomance</Link>
@@ -141,11 +139,8 @@ const Profile = () => {
       <div className="container mx-auto px-4 py-8 max-w-3xl">
         {/* 3-day nudge */}
         {showNudge && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="glass rounded-xl p-4 mb-6 border border-primary/30 flex items-center gap-3"
-          >
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+            className="glass rounded-xl p-4 mb-6 border border-primary/30 flex items-center gap-3">
             <MessageSquare className="w-5 h-5 text-primary flex-shrink-0" />
             <div className="flex-1">
               <p className="text-sm">Let people know what you're up to today — <span className="text-primary font-bold">add a Today's Note</span> to your profile!</p>
@@ -157,13 +152,8 @@ const Profile = () => {
         {/* Photos */}
         <div className="grid grid-cols-3 gap-2 rounded-2xl overflow-hidden mb-6">
           {mockProfile.photos.map((p, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: i * 0.1 }}
-              className={`relative aspect-[4/5] ${i === 0 ? "col-span-2 row-span-2" : ""}`}
-            >
+            <motion.div key={i} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.1 }}
+              className={`relative aspect-[4/5] ${i === 0 ? "col-span-2 row-span-2" : ""}`}>
               <img src={p} alt="" className="w-full h-full object-cover" />
               {i === 0 && (
                 <button className="absolute bottom-3 right-3 p-2 glass rounded-full">
@@ -180,7 +170,7 @@ const Profile = () => {
             <div className="flex items-center gap-3 mb-1">
               <h1 className="text-3xl font-heading font-bold">{mockProfile.name}, {mockProfile.age}</h1>
               {mockProfile.verified && (
-                <Badge variant="gold"><Shield className="w-3 h-3 mr-1" /> Verified</Badge>
+                <ProfileBadge variant="gold"><Shield className="w-3 h-3 mr-1" /> Verified</ProfileBadge>
               )}
             </div>
             <div className="flex items-center gap-2 text-muted-foreground text-sm">
@@ -188,8 +178,8 @@ const Profile = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant="primary">{mockProfile.datingMode}</Badge>
-            <Button variant="ghost" size="icon"><Edit3 className="w-4 h-4" /></Button>
+            <ProfileBadge variant="primary">{datingModeLabel}</ProfileBadge>
+            <Button variant="ghost" size="icon" asChild><Link to="/settings"><Edit3 className="w-4 h-4" /></Link></Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon"><MoreVertical className="w-4 h-4" /></Button>
@@ -213,15 +203,10 @@ const Profile = () => {
               <MessageSquare className="w-3.5 h-3.5" /> TODAY'S NOTE
             </div>
             <div className="relative">
-              <textarea
-                value={noteText}
-                onChange={(e) => { if (e.target.value.length <= 150) setNoteText(e.target.value); }}
+              <textarea value={noteText} onChange={(e) => { if (e.target.value.length <= 150) setNoteText(e.target.value); }}
                 placeholder={NOTE_PLACEHOLDERS[Math.floor(Math.random() * NOTE_PLACEHOLDERS.length)]}
-                maxLength={150}
-                rows={2}
-                className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary resize-none text-sm"
-                autoFocus
-              />
+                maxLength={150} rows={2} autoFocus
+                className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary resize-none text-sm" />
               <span className={`absolute bottom-2 right-3 text-xs ${noteText.length > 130 ? "text-destructive" : "text-muted-foreground"}`}>
                 {150 - noteText.length}
               </span>
@@ -264,16 +249,60 @@ const Profile = () => {
         {/* Bio */}
         <div className="mb-6">
           <h3 className="font-heading text-lg font-semibold mb-2">About</h3>
-          <p className="text-muted-foreground leading-relaxed">{mockProfile.bio}</p>
+          <p className="text-muted-foreground leading-relaxed">{profile?.bio || mockProfile.bio}</p>
         </div>
 
         {/* Hobbies */}
-        <div className="mb-6">
-          <h3 className="font-heading text-lg font-semibold mb-3">Hobbies</h3>
-          <div className="flex flex-wrap gap-2">
-            {mockProfile.hobbies.map((h) => <Badge key={h}>{h}</Badge>)}
+        {hobbies.length > 0 && (
+          <div className="mb-6">
+            <h3 className="font-heading text-lg font-semibold mb-3">Hobbies</h3>
+            <div className="flex flex-wrap gap-2">
+              {hobbies.map((h) => (
+                <span key={h} className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-secondary text-secondary-foreground">
+                  {h}
+                </span>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Lifestyle & Personality Badges */}
+        {(lifestyleBadges.length > 0 || personalityBadges.length > 0) && (
+          <div className="grid grid-cols-2 gap-6 mb-6">
+            {lifestyleBadges.length > 0 && (
+              <div>
+                <h3 className="font-heading text-lg font-semibold mb-3">Lifestyle</h3>
+                <div className="flex flex-wrap gap-2">
+                  {lifestyleBadges.map((l) => (
+                    <span key={l} className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-primary/15 text-primary border border-primary/30">
+                      <span>{LIFESTYLE_ICONS[l]}</span> {l}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {personalityBadges.length > 0 && (
+              <div>
+                <h3 className="font-heading text-lg font-semibold mb-3">Personality</h3>
+                <div className="flex flex-wrap gap-2">
+                  {personalityBadges.map((p) => (
+                    <span key={p} className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-primary/15 text-primary border border-primary/30">
+                      <span>{PERSONALITY_ICONS[p]}</span> {p}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Love Language */}
+        {loveLanguage && (
+          <div className="mb-6">
+            <h3 className="font-heading text-lg font-semibold mb-2">Love Language</h3>
+            <ProfileBadge variant="primary">❤️ {loveLanguage}</ProfileBadge>
+          </div>
+        )}
 
         {/* Music Taste */}
         {hasMusicData ? (
@@ -285,7 +314,7 @@ const Profile = () => {
               <div className="mb-3">
                 <p className="text-xs text-muted-foreground mb-2">Favorite Artists</p>
                 <div className="flex flex-wrap gap-2">
-                  {favoriteArtists.map((a) => <Badge key={a} variant="primary">{a}</Badge>)}
+                  {favoriteArtists.map((a) => <ProfileBadge key={a} variant="primary">{a}</ProfileBadge>)}
                 </div>
               </div>
             )}
@@ -293,7 +322,11 @@ const Profile = () => {
               <div className="mb-3">
                 <p className="text-xs text-muted-foreground mb-2">Genres</p>
                 <div className="flex flex-wrap gap-2">
-                  {favoriteGenres.map((g) => <Badge key={g}>{g}</Badge>)}
+                  {favoriteGenres.map((g) => (
+                    <span key={g} className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-secondary text-secondary-foreground">
+                      <Music className="w-3 h-3" /> {g}
+                    </span>
+                  ))}
                 </div>
               </div>
             )}
@@ -315,23 +348,6 @@ const Profile = () => {
             </Button>
           </div>
         )}
-
-        {/* Lifestyle & Personality */}
-        <div className="grid grid-cols-2 gap-6 mb-6">
-          <div>
-            <h3 className="font-heading text-lg font-semibold mb-3">Lifestyle</h3>
-            <div className="flex flex-wrap gap-2">
-              {mockProfile.lifestyle.map((l) => <Badge key={l}>{l}</Badge>)}
-            </div>
-          </div>
-          <div>
-            <h3 className="font-heading text-lg font-semibold mb-3">Personality</h3>
-            <div className="flex flex-wrap gap-2">
-              {mockProfile.personality.map((p) => <Badge key={p}>{p}</Badge>)}
-            </div>
-            <p className="text-sm text-muted-foreground mt-2">❤️ {mockProfile.loveLanguage}</p>
-          </div>
-        </div>
 
         {/* Prompts */}
         <div className="space-y-4 mb-8">
@@ -355,18 +371,8 @@ const Profile = () => {
         </div>
       </div>
 
-      <ReportModal
-        open={reportOpen}
-        onOpenChange={setReportOpen}
-        reportedUserId="mock-user-id"
-        source="profile"
-      />
-      <BlockConfirmDialog
-        open={blockOpen}
-        onOpenChange={setBlockOpen}
-        blockedUserId="mock-user-id"
-        blockedUserName={mockProfile.name}
-      />
+      <ReportModal open={reportOpen} onOpenChange={setReportOpen} reportedUserId="mock-user-id" source="profile" />
+      <BlockConfirmDialog open={blockOpen} onOpenChange={setBlockOpen} blockedUserId="mock-user-id" blockedUserName={mockProfile.name} />
     </div>
   );
 };
