@@ -97,7 +97,7 @@ const ProfilePreview = () => {
 
     await refreshProfile();
     setSaving(false);
-    navigate("/verify-identity");
+    navigate("/upload-photos");
   };
 
   if (!user) {

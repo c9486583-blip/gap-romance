@@ -24,6 +24,7 @@ import Safety from "./pages/Safety";
 import CreditSuccess from "./pages/CreditSuccess";
 import NotFound from "./pages/NotFound";
 import Admin from "./pages/Admin";
+import PhotoUpload from "./pages/PhotoUpload";
 
 const queryClient = new QueryClient();
 
@@ -41,6 +42,7 @@ const App = () => (
             <Route path="/signup" element={<Signup />} />
             <Route path="/onboarding" element={<OnboardingQuiz />} />
             <Route path="/profile-preview" element={<ProfilePreview />} />
+            <Route path="/upload-photos" element={<PhotoUpload />} />
             <Route path="/verify-identity" element={<IdentityVerification />} />
             <Route path="/verification-pending" element={<VerificationPending />} />
             <Route path="/profile" element={<Profile />} />
