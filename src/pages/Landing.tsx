@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Heart, Shield, Sparkles, Users, Star, ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
+import Footer from "@/components/Footer";
 
 const features = [
   { icon: Heart, title: "Two Dating Modes", desc: "Choose Serious or Casual dating — or both. Your call." },
@@ -142,19 +143,7 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-border/30 py-10">
-        <div className="container mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4">
-          <span className="font-heading font-bold text-xl text-gradient">GapRomance</span>
-          <div className="flex gap-6 text-sm text-muted-foreground">
-            <Link to="/pricing" className="hover:text-primary transition-colors">Pricing</Link>
-            <span>Privacy</span>
-            <span>Terms</span>
-            <span>Safety</span>
-          </div>
-          <p className="text-muted-foreground text-sm">© 2026 GapRomance. All rights reserved.</p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 };
