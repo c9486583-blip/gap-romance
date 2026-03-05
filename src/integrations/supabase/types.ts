@@ -14,7 +14,108 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          city: string | null
+          created_at: string
+          date_of_birth: string | null
+          dating_mode: string | null
+          dealbreakers: string[] | null
+          email: string | null
+          first_name: string | null
+          gender: string | null
+          hobbies: string[] | null
+          id: string
+          is_verified: boolean | null
+          last_initial: string | null
+          latitude: number | null
+          lifestyle_badges: string[] | null
+          longitude: number | null
+          love_language: string | null
+          music_taste: string | null
+          personality_badges: string[] | null
+          phone: string | null
+          photos: string[] | null
+          preferred_age_max: number | null
+          preferred_age_min: number | null
+          prompt_answers: Json | null
+          stripe_customer_id: string | null
+          subscription_end: string | null
+          subscription_tier: string | null
+          todays_note: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          city?: string | null
+          created_at?: string
+          date_of_birth?: string | null
+          dating_mode?: string | null
+          dealbreakers?: string[] | null
+          email?: string | null
+          first_name?: string | null
+          gender?: string | null
+          hobbies?: string[] | null
+          id?: string
+          is_verified?: boolean | null
+          last_initial?: string | null
+          latitude?: number | null
+          lifestyle_badges?: string[] | null
+          longitude?: number | null
+          love_language?: string | null
+          music_taste?: string | null
+          personality_badges?: string[] | null
+          phone?: string | null
+          photos?: string[] | null
+          preferred_age_max?: number | null
+          preferred_age_min?: number | null
+          prompt_answers?: Json | null
+          stripe_customer_id?: string | null
+          subscription_end?: string | null
+          subscription_tier?: string | null
+          todays_note?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          city?: string | null
+          created_at?: string
+          date_of_birth?: string | null
+          dating_mode?: string | null
+          dealbreakers?: string[] | null
+          email?: string | null
+          first_name?: string | null
+          gender?: string | null
+          hobbies?: string[] | null
+          id?: string
+          is_verified?: boolean | null
+          last_initial?: string | null
+          latitude?: number | null
+          lifestyle_badges?: string[] | null
+          longitude?: number | null
+          love_language?: string | null
+          music_taste?: string | null
+          personality_badges?: string[] | null
+          phone?: string | null
+          photos?: string[] | null
+          preferred_age_max?: number | null
+          preferred_age_min?: number | null
+          prompt_answers?: Json | null
+          stripe_customer_id?: string | null
+          subscription_end?: string | null
+          subscription_tier?: string | null
+          todays_note?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
