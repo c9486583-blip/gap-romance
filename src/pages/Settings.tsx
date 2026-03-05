@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { User, CreditCard, Bell, Shield, LogOut, ChevronRight, CheckCircle, Music, X, MessageSquare, Sparkles, Heart } from "lucide-react";
+import { User, CreditCard, Bell, Shield, LogOut, ChevronRight, CheckCircle, Music, X, MessageSquare, Sparkles, Heart, BellOff, Clock } from "lucide-react";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -505,15 +506,7 @@ const Settings = () => {
               </div>
             )}
             {activeTab === "notifications" && (
-              <div className="space-y-6">
-                <h2 className="font-heading text-xl font-semibold">Notifications</h2>
-                {["New matches", "Messages", "Likes", "Profile views", "Promotions"].map((n) => (
-                  <label key={n} className="flex items-center justify-between py-3 border-b border-border/30 cursor-pointer">
-                    <span className="text-sm">{n}</span>
-                    <input type="checkbox" defaultChecked className="accent-primary w-4 h-4" />
-                  </label>
-                ))}
-              </div>
+              <NotificationSettings user={user} />
             )}
             {activeTab === "privacy" && (
               <div className="space-y-6">
@@ -545,6 +538,156 @@ const Settings = () => {
           </div>
         </div>
       </div>
+    </div>
+  );
+};
+
+// Notification Settings Component
+const NOTIF_CATEGORIES = [
+  { key: "new_matches", label: "New Matches", desc: "When you match with someone" },
+  { key: "new_messages", label: "New Messages", desc: "When you receive a message" },
+  { key: "virtual_gifts", label: "Virtual Gifts", desc: "When someone sends you a gift" },
+  { key: "super_likes", label: "Super Likes", desc: "When someone Super Likes you" },
+  { key: "profile_activity", label: "Profile Activity", desc: "Likes, views, and engagement" },
+  { key: "subscription_reminders", label: "Subscription Reminders", desc: "Renewal and expiry alerts" },
+  { key: "daily_reminders", label: "Daily Reminders", desc: "Message resets and Today's Note" },
+];
+
+const NotificationSettings = ({ user }: { user: any }) => {
+  const { isSupported, isSubscribed, subscribe, unsubscribe } = usePushNotifications();
+  const [prefs, setPrefs] = useState<Record<string, any>>({
+    new_matches: true, new_messages: true, virtual_gifts: true, super_likes: true,
+    profile_activity: true, subscription_reminders: true, daily_reminders: true,
+    dnd_enabled: false, dnd_start: "23:00", dnd_end: "08:00",
+  });
+  const [saving, setSaving] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (!user) return;
+    const load = async () => {
+      const { data } = await supabase
+        .from("notification_preferences")
+        .select("*")
+        .eq("user_id", user.id)
+        .single();
+      if (data) setPrefs(data);
+    };
+    load();
+  }, [user]);
+
+  const updatePref = (key: string, value: any) => {
+    setPrefs((p: Record<string, any>) => ({ ...p, [key]: value }));
+  };
+
+  const savePrefs = async () => {
+    if (!user) return;
+    setSaving(true);
+    const { error } = await supabase
+      .from("notification_preferences")
+      .upsert({
+        user_id: user.id,
+        new_matches: prefs.new_matches,
+        new_messages: prefs.new_messages,
+        virtual_gifts: prefs.virtual_gifts,
+        super_likes: prefs.super_likes,
+        profile_activity: prefs.profile_activity,
+        subscription_reminders: prefs.subscription_reminders,
+        daily_reminders: prefs.daily_reminders,
+        dnd_enabled: prefs.dnd_enabled,
+        dnd_start: prefs.dnd_start,
+        dnd_end: prefs.dnd_end,
+        updated_at: new Date().toISOString(),
+      } as any, { onConflict: "user_id" });
+    setSaving(false);
+    toast({ title: error ? "Failed to save" : "Notification preferences saved!", variant: error ? "destructive" : "default" });
+  };
+
+  return (
+    <div className="space-y-6">
+      <h2 className="font-heading text-xl font-semibold flex items-center gap-2">
+        <Bell className="w-5 h-5 text-primary" /> Notifications
+      </h2>
+
+      {/* Push notification status */}
+      <div className="glass rounded-xl p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium">Push Notifications</p>
+            <p className="text-xs text-muted-foreground">
+              {!isSupported
+                ? "Not supported in this browser"
+                : isSubscribed
+                ? "Enabled — you'll receive notifications"
+                : "Disabled — enable to get notified of matches and messages"}
+            </p>
+          </div>
+          {isSupported && (
+            <Button variant={isSubscribed ? "outline" : "hero"} size="sm" onClick={isSubscribed ? unsubscribe : subscribe}>
+              {isSubscribed ? "Disable" : "Enable"}
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Category toggles */}
+      <div>
+        <p className="text-sm font-medium mb-3">Notification Categories</p>
+        {NOTIF_CATEGORIES.map((cat) => (
+          <label key={cat.key} className="flex items-center justify-between py-3 border-b border-border/30 cursor-pointer">
+            <div>
+              <span className="text-sm block">{cat.label}</span>
+              <span className="text-xs text-muted-foreground">{cat.desc}</span>
+            </div>
+            <div onClick={() => updatePref(cat.key, !prefs[cat.key])}
+              className={`w-10 h-5 rounded-full transition-colors relative cursor-pointer ${prefs[cat.key] ? "bg-primary" : "bg-border"}`}>
+              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${prefs[cat.key] ? "translate-x-5" : "translate-x-0.5"}`} />
+            </div>
+          </label>
+        ))}
+        <div className="flex items-center justify-between py-3 border-b border-border/30">
+          <div>
+            <span className="text-sm block">Safety Alerts</span>
+            <span className="text-xs text-muted-foreground">Report updates and safety notices — always on</span>
+          </div>
+          <div className="w-10 h-5 rounded-full bg-primary relative cursor-not-allowed opacity-60">
+            <div className="absolute top-0.5 w-4 h-4 rounded-full bg-white translate-x-5" />
+          </div>
+        </div>
+      </div>
+
+      {/* Do Not Disturb */}
+      <div className="glass rounded-xl p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <BellOff className="w-4 h-4 text-muted-foreground" />
+            <span className="text-sm font-medium">Do Not Disturb</span>
+          </div>
+          <div onClick={() => updatePref("dnd_enabled", !prefs.dnd_enabled)}
+            className={`w-10 h-5 rounded-full transition-colors relative cursor-pointer ${prefs.dnd_enabled ? "bg-primary" : "bg-border"}`}>
+            <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${prefs.dnd_enabled ? "translate-x-5" : "translate-x-0.5"}`} />
+          </div>
+        </div>
+        {prefs.dnd_enabled && (
+          <div className="flex items-center gap-3">
+            <div className="flex-1">
+              <label className="text-xs text-muted-foreground block mb-1">From</label>
+              <input type="time" value={prefs.dnd_start || "23:00"} onChange={(e) => updatePref("dnd_start", e.target.value)}
+                className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary" />
+            </div>
+            <Clock className="w-4 h-4 text-muted-foreground mt-4" />
+            <div className="flex-1">
+              <label className="text-xs text-muted-foreground block mb-1">To</label>
+              <input type="time" value={prefs.dnd_end || "08:00"} onChange={(e) => updatePref("dnd_end", e.target.value)}
+                className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary" />
+            </div>
+          </div>
+        )}
+      </div>
+
+      <Button variant="hero" onClick={savePrefs} disabled={saving}>
+        {saving ? "Saving..." : "Save Preferences"}
+      </Button>
     </div>
   );
 };

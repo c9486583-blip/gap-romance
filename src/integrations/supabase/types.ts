@@ -202,6 +202,57 @@ export type Database = {
           },
         ]
       }
+      notification_preferences: {
+        Row: {
+          created_at: string | null
+          daily_reminders: boolean | null
+          dnd_enabled: boolean | null
+          dnd_end: string | null
+          dnd_start: string | null
+          id: string
+          new_matches: boolean | null
+          new_messages: boolean | null
+          profile_activity: boolean | null
+          subscription_reminders: boolean | null
+          super_likes: boolean | null
+          updated_at: string | null
+          user_id: string
+          virtual_gifts: boolean | null
+        }
+        Insert: {
+          created_at?: string | null
+          daily_reminders?: boolean | null
+          dnd_enabled?: boolean | null
+          dnd_end?: string | null
+          dnd_start?: string | null
+          id?: string
+          new_matches?: boolean | null
+          new_messages?: boolean | null
+          profile_activity?: boolean | null
+          subscription_reminders?: boolean | null
+          super_likes?: boolean | null
+          updated_at?: string | null
+          user_id: string
+          virtual_gifts?: boolean | null
+        }
+        Update: {
+          created_at?: string | null
+          daily_reminders?: boolean | null
+          dnd_enabled?: boolean | null
+          dnd_end?: string | null
+          dnd_start?: string | null
+          id?: string
+          new_matches?: boolean | null
+          new_messages?: boolean | null
+          profile_activity?: boolean | null
+          subscription_reminders?: boolean | null
+          super_likes?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+          virtual_gifts?: boolean | null
+        }
+        Relationships: []
+      }
       phone_verifications: {
         Row: {
           code: string
@@ -249,8 +300,10 @@ export type Database = {
           gender: string | null
           hobbies: string[] | null
           id: string
+          inactivity_notifications_sent: number | null
           is_suspended: boolean
           is_verified: boolean | null
+          last_active_at: string | null
           last_initial: string | null
           latitude: number | null
           lifestyle_badges: string[] | null
@@ -258,6 +311,7 @@ export type Database = {
           love_language: string | null
           message_credits: number
           music_taste: string | null
+          notification_prompt_dismissed_at: string | null
           personality_badges: string[] | null
           phone: string | null
           photos: string[] | null
@@ -294,8 +348,10 @@ export type Database = {
           gender?: string | null
           hobbies?: string[] | null
           id?: string
+          inactivity_notifications_sent?: number | null
           is_suspended?: boolean
           is_verified?: boolean | null
+          last_active_at?: string | null
           last_initial?: string | null
           latitude?: number | null
           lifestyle_badges?: string[] | null
@@ -303,6 +359,7 @@ export type Database = {
           love_language?: string | null
           message_credits?: number
           music_taste?: string | null
+          notification_prompt_dismissed_at?: string | null
           personality_badges?: string[] | null
           phone?: string | null
           photos?: string[] | null
@@ -339,8 +396,10 @@ export type Database = {
           gender?: string | null
           hobbies?: string[] | null
           id?: string
+          inactivity_notifications_sent?: number | null
           is_suspended?: boolean
           is_verified?: boolean | null
+          last_active_at?: string | null
           last_initial?: string | null
           latitude?: number | null
           lifestyle_badges?: string[] | null
@@ -348,6 +407,7 @@ export type Database = {
           love_language?: string | null
           message_credits?: number
           music_taste?: string | null
+          notification_prompt_dismissed_at?: string | null
           personality_badges?: string[] | null
           phone?: string | null
           photos?: string[] | null
@@ -364,6 +424,33 @@ export type Database = {
           user_id?: string
           verification_session_id?: string | null
           verification_status?: string | null
+        }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string | null
+          endpoint: string
+          id: string
+          p256dh: string
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string | null
+          endpoint: string
+          id?: string
+          p256dh: string
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string | null
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          user_id?: string
         }
         Relationships: []
       }
