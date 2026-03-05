@@ -1,14 +1,17 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Send, Gift, ArrowLeft, Flag, Ban, AlertTriangle, MoreVertical } from "lucide-react";
+import { Send, Gift, ArrowLeft, Flag, Ban, AlertTriangle, MoreVertical, Shield, Check, CheckCheck, Eye, Crown } from "lucide-react";
 import { Link } from "react-router-dom";
 import GiftPicker from "@/components/GiftPicker";
 import GiftBubble from "@/components/GiftBubble";
+import TypingIndicator from "@/components/chat/TypingIndicator";
+import ContentWarning from "@/components/chat/ContentWarning";
 import { VirtualGift } from "@/lib/virtual-gifts";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { STRIPE_PRODUCTS } from "@/lib/stripe-products";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,6 +43,7 @@ interface MatchWithProfile {
   partnerId: string;
   partnerName: string;
   partnerAvatar: string | null;
+  partnerVerified: boolean;
   lastMessage: string;
   lastMessageTime: string;
   unreadCount: number;
@@ -52,6 +56,8 @@ interface ChatMessage {
   content: string;
   created_at: string;
   is_read: boolean;
+  is_flagged?: boolean;
+  flag_reason?: string | null;
 }
 
 const Messages = () => {
@@ -68,7 +74,12 @@ const Messages = () => {
   const [reportOpen, setReportOpen] = useState(false);
   const [reportReason, setReportReason] = useState("");
   const [reportContext, setReportContext] = useState("");
+  const [isPartnerTyping, setIsPartnerTyping] = useState(false);
+  const [isPartnerOnline, setIsPartnerOnline] = useState(false);
+  const [creditsSpentThisMonth, setCreditsSpentThisMonth] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const typingChannelRef = useRef<any>(null);
 
   const activeMatch = matches.find((m) => m.matchId === activeMatchId);
   const isFreeTier = subscriptionTier === "free";
@@ -81,9 +92,17 @@ const Messages = () => {
     if (profile?.message_credits !== undefined) {
       setMessageCredits(profile.message_credits as number);
     }
+    if (profile?.credits_purchased_cents_month !== undefined) {
+      const currentMonth = new Date().toISOString().slice(0, 7);
+      if (profile.credits_month_key === currentMonth) {
+        setCreditsSpentThisMonth((profile.credits_purchased_cents_month as number) / 100);
+      } else {
+        setCreditsSpentThisMonth(0);
+      }
+    }
   }, [profile]);
 
-  // Fetch matches with partner profiles
+  // Fetch matches with partner profiles (including verified status)
   const fetchMatches = useCallback(async () => {
     if (!user) return;
     const { data: matchRows } = await supabase
@@ -97,14 +116,12 @@ const Messages = () => {
       return;
     }
 
-    // Check blocks
     const { data: blocks } = await supabase
       .from("blocks")
       .select("blocked_id")
       .eq("blocker_id", user.id);
     const blockedIds = new Set((blocks || []).map((b: any) => b.blocked_id));
 
-    // Also check if blocked BY someone
     const { data: blockedBy } = await supabase
       .from("blocks")
       .select("blocker_id")
@@ -123,7 +140,7 @@ const Messages = () => {
 
     const { data: profiles } = await supabase
       .from("profiles")
-      .select("user_id, first_name, last_initial, avatar_url")
+      .select("user_id, first_name, last_initial, avatar_url, is_verified")
       .in("user_id", partnerIds);
 
     const profileMap = new Map(
@@ -134,14 +151,15 @@ const Messages = () => {
       .map((m: any) => {
         const partnerId = m.user_a_id === user.id ? m.user_b_id : m.user_a_id;
         if (blockedIds.has(partnerId) || blockedByIds.has(partnerId)) return null;
-        const profile = profileMap.get(partnerId);
+        const prof = profileMap.get(partnerId);
         return {
           matchId: m.id,
           partnerId,
-          partnerName: profile
-            ? `${profile.first_name || "User"} ${profile.last_initial || ""}`.trim()
+          partnerName: prof
+            ? `${prof.first_name || "User"} ${prof.last_initial || ""}`.trim()
             : "User",
-          partnerAvatar: profile?.avatar_url || null,
+          partnerAvatar: prof?.avatar_url || null,
+          partnerVerified: prof?.is_verified || false,
           lastMessage: "",
           lastMessageTime: m.created_at,
           unreadCount: 0,
@@ -149,7 +167,6 @@ const Messages = () => {
       })
       .filter(Boolean) as MatchWithProfile[];
 
-    // Fetch last message for each match
     for (const match of matchList) {
       const { data: lastMsg } = await supabase
         .from("messages")
@@ -163,7 +180,6 @@ const Messages = () => {
         match.lastMessageTime = lastMsg[0].created_at;
       }
 
-      // Count unread
       const { count } = await supabase
         .from("messages")
         .select("id", { count: "exact", head: true })
@@ -173,7 +189,6 @@ const Messages = () => {
       match.unreadCount = count || 0;
     }
 
-    // Sort by last message time
     matchList.sort(
       (a, b) => new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime()
     );
@@ -192,7 +207,6 @@ const Messages = () => {
       .order("created_at", { ascending: true });
     setMessages((data as ChatMessage[]) || []);
 
-    // Mark unread messages as read
     if (user) {
       await supabase
         .from("messages")
@@ -225,7 +239,7 @@ const Messages = () => {
     fetchMessages();
   }, [fetchMessages]);
 
-  // Realtime subscription for new messages
+  // Realtime subscription for new messages + read receipt updates
   useEffect(() => {
     if (!user) return;
     const channel = supabase
@@ -237,7 +251,6 @@ const Messages = () => {
           const newMsg = payload.new as ChatMessage;
           if (newMsg.match_id === activeMatchId) {
             setMessages((prev) => [...prev, newMsg]);
-            // Mark as read if not from me
             if (newMsg.sender_id !== user.id) {
               supabase
                 .from("messages")
@@ -245,8 +258,19 @@ const Messages = () => {
                 .eq("id", newMsg.id);
             }
           }
-          // Refresh match list for last message preview
           fetchMatches();
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "messages" },
+        (payload) => {
+          const updated = payload.new as ChatMessage;
+          if (updated.match_id === activeMatchId) {
+            setMessages((prev) =>
+              prev.map((m) => (m.id === updated.id ? { ...m, ...updated } : m))
+            );
+          }
         }
       )
       .subscribe();
@@ -256,10 +280,80 @@ const Messages = () => {
     };
   }, [user, activeMatchId, fetchMatches]);
 
+  // Typing indicator via broadcast
+  useEffect(() => {
+    if (!activeMatchId || !user || !activeMatch) return;
+
+    const channel = supabase.channel(`typing-${activeMatchId}`);
+
+    channel
+      .on("broadcast", { event: "typing" }, (payload: any) => {
+        if (payload.payload?.user_id !== user.id) {
+          setIsPartnerTyping(true);
+          if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+          typingTimeoutRef.current = setTimeout(() => setIsPartnerTyping(false), 3000);
+        }
+      })
+      .subscribe();
+
+    typingChannelRef.current = channel;
+
+    return () => {
+      supabase.removeChannel(channel);
+      typingChannelRef.current = null;
+      setIsPartnerTyping(false);
+    };
+  }, [activeMatchId, user, activeMatch]);
+
+  // Online presence via broadcast
+  useEffect(() => {
+    if (!activeMatchId || !user || !activeMatch) return;
+
+    const presenceChannel = supabase.channel(`presence-${activeMatch.partnerId}`);
+
+    presenceChannel
+      .on("presence", { event: "sync" }, () => {
+        const state = presenceChannel.presenceState();
+        setIsPartnerOnline(Object.keys(state).length > 0);
+      })
+      .subscribe(async (status) => {
+        if (status === "SUBSCRIBED") {
+          await presenceChannel.track({ user_id: user.id, online_at: new Date().toISOString() });
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(presenceChannel);
+      setIsPartnerOnline(false);
+    };
+  }, [activeMatchId, user, activeMatch]);
+
+  // Also track own presence on the general channel
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase.channel(`presence-${user.id}`);
+    channel.subscribe(async (status) => {
+      if (status === "SUBSCRIBED") {
+        await channel.track({ user_id: user.id, online_at: new Date().toISOString() });
+      }
+    });
+    return () => { supabase.removeChannel(channel); };
+  }, [user]);
+
   // Scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, isPartnerTyping]);
+
+  const broadcastTyping = () => {
+    if (typingChannelRef.current && user) {
+      typingChannelRef.current.send({
+        type: "broadcast",
+        event: "typing",
+        payload: { user_id: user.id },
+      });
+    }
+  };
 
   const handleSendMessage = async () => {
     if (!message.trim() || !user || !activeMatchId) return;
@@ -275,11 +369,12 @@ const Messages = () => {
       return;
     }
 
-    const { error } = await supabase.from("messages").insert({
+    const msgContent = message.trim();
+    const { data: inserted, error } = await supabase.from("messages").insert({
       match_id: activeMatchId,
       sender_id: user.id,
-      content: message.trim(),
-    } as any);
+      content: msgContent,
+    } as any).select().single();
 
     if (error) {
       toast({ title: "Failed to send", variant: "destructive" });
@@ -289,7 +384,6 @@ const Messages = () => {
     setMessage("");
     setDailyCount((c) => c + 1);
 
-    // Deduct a purchased credit if over daily limit
     if (usingCredit) {
       const newCredits = messageCredits - 1;
       setMessageCredits(newCredits);
@@ -298,19 +392,24 @@ const Messages = () => {
         .update({ message_credits: newCredits } as any)
         .eq("user_id", user.id);
     }
+
+    // Background content moderation
+    if (inserted) {
+      supabase.functions.invoke("moderate-message", {
+        body: { content: msgContent, message_id: inserted.id },
+      }).catch(console.error);
+    }
   };
 
   const handleSendGift = async (gift: VirtualGift) => {
     if (!user || !activeMatch) return;
 
-    // Save gift as message
     await supabase.from("messages").insert({
       match_id: activeMatchId,
       sender_id: user.id,
       content: `🎁 Sent a ${gift.name} ${gift.emoji}`,
     } as any);
 
-    // Save to virtual_gifts_sent
     await supabase.from("virtual_gifts_sent").insert({
       sender_id: user.id,
       receiver_id: activeMatch.partnerId,
@@ -420,11 +519,18 @@ const Messages = () => {
                       activeMatchId === c.matchId ? "bg-primary/10" : "hover:bg-secondary"
                     }`}
                   >
-                    <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center overflow-hidden flex-shrink-0">
-                      {c.partnerAvatar ? (
-                        <img src={c.partnerAvatar} alt={c.partnerName} className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="text-lg font-bold text-muted-foreground">{c.partnerName.charAt(0)}</span>
+                    <div className="relative w-12 h-12 flex-shrink-0">
+                      <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center overflow-hidden">
+                        {c.partnerAvatar ? (
+                          <img src={c.partnerAvatar} alt={c.partnerName} className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-lg font-bold text-muted-foreground">{c.partnerName.charAt(0)}</span>
+                        )}
+                      </div>
+                      {c.partnerVerified && (
+                        <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-primary rounded-full flex items-center justify-center">
+                          <Shield className="w-2.5 h-2.5 text-primary-foreground" />
+                        </div>
                       )}
                     </div>
                     <div className="flex-1 text-left min-w-0">
@@ -451,20 +557,36 @@ const Messages = () => {
         {/* Chat Area */}
         {activeMatchId && activeMatch ? (
           <div className="flex-1 flex flex-col">
-            {/* Chat header */}
+            {/* Chat header with verified badge + online status */}
             <div className="glass border-b border-border/30 p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <button onClick={() => setActiveMatchId(null)} className="md:hidden">
                   <ArrowLeft className="w-5 h-5" />
                 </button>
-                <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center overflow-hidden">
-                  {activeMatch.partnerAvatar ? (
-                    <img src={activeMatch.partnerAvatar} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="font-bold text-muted-foreground">{activeMatch.partnerName.charAt(0)}</span>
-                  )}
+                <div className="relative">
+                  <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center overflow-hidden">
+                    {activeMatch.partnerAvatar ? (
+                      <img src={activeMatch.partnerAvatar} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="font-bold text-muted-foreground">{activeMatch.partnerName.charAt(0)}</span>
+                    )}
+                  </div>
+                  {/* Online indicator */}
+                  <span className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-background ${
+                    isPartnerOnline ? "bg-green-500" : "bg-muted-foreground/40"
+                  }`} />
                 </div>
-                <h3 className="font-bold text-sm">{activeMatch.partnerName}</h3>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <h3 className="font-bold text-sm">{activeMatch.partnerName}</h3>
+                    {activeMatch.partnerVerified && (
+                      <Shield className="w-3.5 h-3.5 text-primary" />
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {isPartnerOnline ? "Online" : "Offline"}
+                  </p>
+                </div>
               </div>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -480,6 +602,18 @@ const Messages = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
+
+            {/* Upsell banner for high credit spenders */}
+            {isFreeTier && creditsSpentThisMonth >= 10 && (
+              <div className="bg-gradient-to-r from-primary/20 to-accent/10 border-b border-primary/20 px-4 py-3 flex items-center gap-3">
+                <Crown className="w-5 h-5 text-primary flex-shrink-0" />
+                <p className="text-xs text-foreground flex-1">
+                  You've spent <span className="font-bold text-primary">${creditsSpentThisMonth.toFixed(2)}</span> on message credits this month.
+                  Premium is only <span className="font-bold">${STRIPE_PRODUCTS.premium.price}/month</span> and includes unlimited messaging —{" "}
+                  <Link to="/pricing" className="text-primary font-bold underline">upgrade and save</Link>.
+                </p>
+              </div>
+            )}
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
@@ -498,49 +632,83 @@ const Messages = () => {
                   }
                 }
                 return (
-                  <motion.div
-                    key={m.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={`flex ${fromMe ? "justify-end" : "justify-start"}`}
-                  >
-                    <div className={`max-w-[70%] p-3 rounded-2xl text-sm ${
-                      fromMe
-                        ? "bg-primary text-primary-foreground rounded-br-md"
-                        : "bg-secondary text-secondary-foreground rounded-bl-md"
-                    }`}>
-                      <p>{m.content}</p>
-                      <p className={`text-xs mt-1 ${fromMe ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
-                        {formatTime(m.created_at)}
-                      </p>
-                    </div>
-                  </motion.div>
+                  <div key={m.id}>
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className={`flex ${fromMe ? "justify-end" : "justify-start"}`}
+                    >
+                      <div className={`max-w-[70%] p-3 rounded-2xl text-sm ${
+                        fromMe
+                          ? "bg-primary text-primary-foreground rounded-br-md"
+                          : "bg-secondary text-secondary-foreground rounded-bl-md"
+                      }`}>
+                        <p>{m.content}</p>
+                        <div className={`flex items-center gap-1 mt-1 ${fromMe ? "justify-end" : ""}`}>
+                          <span className={`text-xs ${fromMe ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
+                            {formatTime(m.created_at)}
+                          </span>
+                          {/* Read receipt for sent messages */}
+                          {fromMe && (
+                            m.is_read ? (
+                              <Eye className="w-3 h-3 text-primary-foreground/60" />
+                            ) : (
+                              <Check className="w-3 h-3 text-primary-foreground/40" />
+                            )
+                          )}
+                        </div>
+                      </div>
+                    </motion.div>
+                    {/* Content moderation warning */}
+                    {!fromMe && m.is_flagged && (
+                      <ContentWarning
+                        reason={m.flag_reason}
+                        onReport={() => setReportOpen(true)}
+                        onBlock={handleBlock}
+                      />
+                    )}
+                  </div>
                 );
               })}
+
+              {/* Typing indicator */}
+              <AnimatePresence>
+                {isPartnerTyping && <TypingIndicator />}
+              </AnimatePresence>
+
               <div ref={messagesEndRef} />
             </div>
 
             {/* Input */}
             <div className="p-4 border-t border-border/30 relative">
-              {isFreeTier && (
+              {/* Free tier limit banner */}
+              {isFreeTier && !canSendMessage && (
+                <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-3 mb-3 text-center">
+                  <p className="text-sm text-foreground font-medium mb-1">
+                    You've used all your messages for today.
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    <Link to="/pricing" className="text-primary font-bold underline">Upgrade to Premium</Link> for unlimited messaging
+                    or <Link to="/pricing" className="text-primary font-bold underline">purchase message credits</Link>.
+                  </p>
+                </div>
+              )}
+
+              {isFreeTier && canSendMessage && (
                 <div className="text-xs text-muted-foreground text-center mb-2 flex items-center justify-center gap-3 flex-wrap">
                   <span>
                     {remainingFree > 0
                       ? `${remainingFree} free message${remainingFree !== 1 ? "s" : ""} left today`
-                      : "Daily free messages used"}
+                      : "Using message credits"}
                   </span>
                   {messageCredits > 0 && (
                     <span className="text-primary font-bold">
                       + {messageCredits} credit{messageCredits !== 1 ? "s" : ""}
                     </span>
                   )}
-                  {!canSendMessage && (
-                    <span className="text-destructive">
-                      — <Link to="/pricing" className="underline">Buy credits</Link> or <Link to="/pricing" className="underline">upgrade</Link>
-                    </span>
-                  )}
                 </div>
               )}
+
               <GiftPicker open={giftOpen} onClose={() => setGiftOpen(false)} onSend={handleSendGift} />
               <div className="flex items-center gap-2">
                 <Button variant="ghost" size="icon" onClick={() => setGiftOpen((v) => !v)}>
@@ -548,9 +716,12 @@ const Messages = () => {
                 </Button>
                 <input
                   value={message}
-                  onChange={(e) => setMessage(e.target.value)}
+                  onChange={(e) => {
+                    setMessage(e.target.value);
+                    broadcastTyping();
+                  }}
                   onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
-                  placeholder={canSendMessage ? "Type a message..." : "No messages remaining — buy credits"}
+                  placeholder={canSendMessage ? "Type a message..." : "No messages remaining"}
                   disabled={!canSendMessage}
                   maxLength={2000}
                   className="flex-1 bg-secondary border border-border rounded-full px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary disabled:opacity-50"
