@@ -116,6 +116,39 @@ export type Database = {
         }
         Relationships: []
       }
+      virtual_gifts_sent: {
+        Row: {
+          created_at: string
+          gift_emoji: string
+          gift_id: string
+          gift_name: string
+          gift_price: number
+          id: string
+          receiver_id: string
+          sender_id: string
+        }
+        Insert: {
+          created_at?: string
+          gift_emoji: string
+          gift_id: string
+          gift_name: string
+          gift_price: number
+          id?: string
+          receiver_id: string
+          sender_id: string
+        }
+        Update: {
+          created_at?: string
+          gift_emoji?: string
+          gift_id?: string
+          gift_name?: string
+          gift_price?: number
+          id?: string
+          receiver_id?: string
+          sender_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
