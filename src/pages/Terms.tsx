@@ -57,7 +57,7 @@ const Terms = () => {
                 <h3 className="font-bold text-primary/80 mb-2 mt-4">2.3 One Account Per Person</h3>
                 <p className="text-muted-foreground">Each user is permitted one account only. Creating multiple accounts to circumvent a suspension, ban, or verification requirement is strictly prohibited.</p>
                 <h3 className="font-bold text-primary/80 mb-2 mt-4">2.4 Account Security</h3>
-                <p className="text-muted-foreground">You are responsible for maintaining the confidentiality of your login credentials. Notify GapRomance immediately at support@gapromance.com if you suspect unauthorized use of your account.</p>
+                <p className="text-muted-foreground">You are responsible for maintaining the confidentiality of your login credentials. Notify GapRomance immediately at GapRomanceSupport@proton.me if you suspect unauthorized use of your account.</p>
               </section>
 
               <section>
@@ -111,7 +111,7 @@ const Terms = () => {
                   <li>Spotlight Badge — $7.00 per week</li>
                   <li>Virtual Gifts — $1.00–$5.00 each</li>
                 </ul>
-                <p className="text-muted-foreground mt-3">All payments are processed through Stripe. Subscriptions renew automatically. All purchases are generally non-refundable. Refund requests can be sent to support@gapromance.com within 7 days.</p>
+                <p className="text-muted-foreground mt-3">All payments are processed through Stripe. Subscriptions renew automatically. All purchases are generally non-refundable. Refund requests can be sent to GapRomanceSupport@proton.me within 7 days.</p>
               </section>
 
               <section>
@@ -157,7 +157,7 @@ const Terms = () => {
 
               <section>
                 <h2 className="text-xl font-heading font-bold text-primary mb-3">16. Governing Law & Dispute Resolution</h2>
-                <p className="text-muted-foreground">These Terms are governed by the laws of the United States. Disputes shall be resolved by binding arbitration. You waive any right to a jury trial or class action participation. Before formal proceedings, contact support@gapromance.com to attempt informal resolution.</p>
+                <p className="text-muted-foreground">These Terms are governed by the laws of the United States. Disputes shall be resolved by binding arbitration. You waive any right to a jury trial or class action participation. Before formal proceedings, contact GapRomanceSupport@proton.me to attempt informal resolution.</p>
               </section>
 
               <section>
@@ -172,7 +172,7 @@ const Terms = () => {
 
               <section>
                 <h2 className="text-xl font-heading font-bold text-primary mb-3">19. Contact Information</h2>
-                <p className="text-muted-foreground">Email: <a href="mailto:support@gapromance.com" className="text-primary hover:underline">support@gapromance.com</a></p>
+                <p className="text-muted-foreground">Email: <a href="mailto:GapRomanceSupport@proton.me" className="text-primary hover:underline">GapRomanceSupport@proton.me</a></p>
                 <p className="text-muted-foreground">Website: www.gapromance.com</p>
                 <p className="text-muted-foreground mt-2">We aim to respond to all inquiries within 2 business days.</p>
               </section>
