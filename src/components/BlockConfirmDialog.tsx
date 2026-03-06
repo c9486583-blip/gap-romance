@@ -30,18 +30,36 @@ const BlockConfirmDialog = ({ open, onOpenChange, blockedUserId, blockedUserName
   const handleBlock = async () => {
     if (!user) return;
     setBlocking(true);
-    await supabase.from("blocks").insert({
-      blocker_id: user.id,
-      blocked_id: blockedUserId,
-    } as any);
-    toast({ title: "User blocked", description: "They can no longer see your profile or contact you." });
-    setBlocking(false);
-    onOpenChange(false);
-    onBlocked?.();
+
+    try {
+      const { error } = await supabase.from("blocks").insert({
+        blocker_id: user.id,
+        blocked_id: blockedUserId,
+      } as any);
+
+      if (error) {
+        toast({ title: "Failed to block user", description: error.message, variant: "destructive" });
+        setBlocking(false);
+        return;
+      }
+
+      // Close dialog first
+      onOpenChange(false);
+      setBlocking(false);
+
+      // Show success toast
+      toast({ title: "User has been blocked", description: "They can no longer see your profile or contact you." });
+
+      // Callback to refresh parent state
+      onBlocked?.();
+    } catch (err: any) {
+      toast({ title: "Failed to block user", variant: "destructive" });
+      setBlocking(false);
+    }
   };
 
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
+    <AlertDialog open={open} onOpenChange={(v) => { if (!blocking) onOpenChange(v); }}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
@@ -52,9 +70,9 @@ const BlockConfirmDialog = ({ open, onOpenChange, blockedUserId, blockedUserName
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={blocking}>Cancel</AlertDialogCancel>
           <Button variant="destructive" onClick={handleBlock} disabled={blocking}>
-            {blocking ? "Blocking..." : "Confirm Block"}
+            {blocking ? "Blocking..." : "Yes, Block"}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
