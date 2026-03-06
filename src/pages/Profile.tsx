@@ -121,16 +121,14 @@ const Profile = () => {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <nav className="sticky top-0 z-50 glass border-b border-border/30">
-        <div className="container mx-auto flex items-center justify-between h-16 px-4">
-          <Link to="/" className="text-2xl font-heading font-bold text-gradient">GapRomance</Link>
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" asChild><Link to="/discover">Discover</Link></Button>
-            <Button variant="ghost" size="sm" asChild><Link to="/messages">Messages</Link></Button>
-            <Button variant="ghost" size="sm" asChild><Link to="/settings">Settings</Link></Button>
-          </div>
-        </div>
-      </nav>
+      <TopNav rightContent={
+        <>
+          <Button variant="outline" size="sm" onClick={() => setShowPreview(true)}>
+            <Eye className="w-4 h-4 mr-1" /> Preview My Profile
+          </Button>
+          <Button variant="ghost" size="sm" asChild><Link to="/settings">Settings</Link></Button>
+        </>
+      } />
 
       <div className="container mx-auto px-4 py-8 max-w-3xl">
         {/* 3-day nudge */}
