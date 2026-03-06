@@ -109,7 +109,7 @@ const Privacy = () => {
 
               <section>
                 <h2 className="text-xl font-heading font-bold text-primary mb-3">10. Your Privacy Rights</h2>
-                <p className="text-muted-foreground">Depending on your location, you may have rights to access, rectify, erase, port, or object to processing of your data. Contact support@gapromance.com to exercise these rights. We respond within 30 days.</p>
+                <p className="text-muted-foreground">Depending on your location, you may have rights to access, rectify, erase, port, or object to processing of your data. Contact GapRomanceSupport@proton.me to exercise these rights. We respond within 30 days.</p>
               </section>
 
               <section>
