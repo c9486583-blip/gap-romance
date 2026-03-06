@@ -168,31 +168,20 @@ const Profile = () => {
         <div className="flex items-start justify-between mb-4">
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <h1 className="text-3xl font-heading font-bold">{mockProfile.name}, {mockProfile.age}</h1>
-              {mockProfile.verified && (
+              <h1 className="text-3xl font-heading font-bold">
+                {profile?.first_name || "Your Name"} {profile?.last_initial || ""}{(() => { const age = profile?.date_of_birth ? (() => { const b = new Date(profile.date_of_birth); const t = new Date(); let a = t.getFullYear() - b.getFullYear(); const m = t.getMonth() - b.getMonth(); if (m < 0 || (m === 0 && t.getDate() < b.getDate())) a--; return a; })() : null; return age ? `, ${age}` : ""; })()}
+              </h1>
+              {profile?.is_verified && (
                 <ProfileBadge variant="gold"><Shield className="w-3 h-3 mr-1" /> Verified</ProfileBadge>
               )}
             </div>
             <div className="flex items-center gap-2 text-muted-foreground text-sm">
-              <MapPin className="w-3.5 h-3.5" /> {mockProfile.location}
+              <MapPin className="w-3.5 h-3.5" /> {profile?.city || "Location not set"}
             </div>
           </div>
           <div className="flex items-center gap-2">
             <ProfileBadge variant="primary">{datingModeLabel}</ProfileBadge>
             <Button variant="ghost" size="icon" asChild><Link to="/settings"><Edit3 className="w-4 h-4" /></Link></Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon"><MoreVertical className="w-4 h-4" /></Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setReportOpen(true)} className="text-destructive">
-                  <Flag className="w-4 h-4 mr-2" /> Report User
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setBlockOpen(true)} className="text-destructive">
-                  <Ban className="w-4 h-4 mr-2" /> Block User
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
           </div>
         </div>
 
