@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Check, Zap, Crown, Sparkles, Shield, Clock } from "lucide-react";
@@ -70,6 +70,7 @@ const Pricing = () => {
   }, [user]);
 
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
+  const checkoutInProgress = useRef(false);
 
   const handleCheckout = async (priceId: string, mode: "subscription" | "payment" = "subscription", successUrl?: string) => {
     if (!user) {
@@ -78,19 +79,19 @@ const Pricing = () => {
       return;
     }
 
+    // Prevent duplicate requests
+    if (checkoutInProgress.current) return;
+    checkoutInProgress.current = true;
     setCheckoutLoading(priceId);
+
     try {
-      // Ensure we have a fresh session token
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData?.session?.access_token;
       
       if (!accessToken) {
         toast({ title: "Please log in again", description: "Your session has expired.", variant: "destructive" });
-        setCheckoutLoading(null);
         return;
       }
-
-      console.log("[Checkout] Calling create-checkout with token present:", !!accessToken);
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout`,
@@ -106,7 +107,6 @@ const Pricing = () => {
       );
 
       const result = await response.json();
-      console.log("[Checkout] Response:", response.status, result);
 
       if (!response.ok) {
         toast({ title: "Checkout failed", description: result?.error || "Unknown error", variant: "destructive" });
@@ -115,13 +115,14 @@ const Pricing = () => {
 
       if (result?.url) {
         window.location.href = result.url;
+        return; // Don't reset loading - we're navigating away
       } else {
         toast({ title: "Checkout failed", description: "No checkout URL returned", variant: "destructive" });
       }
     } catch (err: any) {
-      console.error("[Checkout] Error:", err);
       toast({ title: "Checkout failed", description: err?.message || "Something went wrong", variant: "destructive" });
     } finally {
+      checkoutInProgress.current = false;
       setCheckoutLoading(null);
     }
   };
@@ -133,9 +134,16 @@ const Pricing = () => {
       <nav className="sticky top-0 z-50 glass border-b border-border/30">
         <div className="container mx-auto flex items-center justify-between h-16 px-4">
           <Link to="/" className="text-2xl font-heading font-bold text-gradient">GapRomance</Link>
-          <Button variant="hero" size="sm" asChild>
-            <Link to={user ? "/discover" : "/signup"}>{user ? "Discover" : "Join Free"}</Link>
-          </Button>
+          <div className="flex items-center gap-3">
+            {user ? (
+              <>
+                <Button variant="ghost" size="sm" asChild><Link to="/discover">Discover</Link></Button>
+                <Button variant="hero" size="sm" asChild><Link to="/profile">Profile</Link></Button>
+              </>
+            ) : (
+              <Button variant="hero" size="sm" asChild><Link to="/signup">Join Free</Link></Button>
+            )}
+          </div>
         </div>
       </nav>
 
