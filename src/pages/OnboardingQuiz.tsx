@@ -263,8 +263,8 @@ const OnboardingQuiz = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-lg">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+      <OnboardingProgress currentStep={2} totalSteps={5} stepLabel="Personality Quiz" />
         {/* Progress */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2">
