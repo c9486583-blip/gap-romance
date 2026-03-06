@@ -162,7 +162,7 @@ const Safety = () => {
                   <li>Rejection is a normal part of dating. It does not define your worth.</li>
                   <li>If you are struggling, reach out to a qualified mental health professional.</li>
                 </ul>
-                <p className="text-muted-foreground mt-3">If you encounter a user who appears to be in crisis or expresses thoughts of self-harm, please report it immediately to <a href="mailto:support@gapromance.com" className="text-primary hover:underline">support@gapromance.com</a>.</p>
+                <p className="text-muted-foreground mt-3">If you encounter a user who appears to be in crisis or expresses thoughts of self-harm, please report it immediately to <a href="mailto:GapRomanceSupport@proton.me" className="text-primary hover:underline">GapRomanceSupport@proton.me</a>.</p>
               </section>
 
               <section>
