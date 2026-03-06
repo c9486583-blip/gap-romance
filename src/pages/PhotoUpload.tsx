@@ -42,7 +42,7 @@ const PhotoUpload = () => {
 
     await refreshProfile();
     setSaving(false);
-    navigate("/verify-identity");
+    navigate("/onboarding");
   };
 
   if (!user) {
