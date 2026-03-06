@@ -392,7 +392,7 @@ const Messages = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col pb-20">
       <nav className="sticky top-0 z-50 glass border-b border-border/30">
         <div className="container mx-auto flex items-center justify-between h-16 px-4">
           <Link to="/" className="text-2xl font-heading font-bold text-gradient">GapRomance</Link>
