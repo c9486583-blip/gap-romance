@@ -172,7 +172,7 @@ const Terms = () => {
 
               <section>
                 <h2 className="text-xl font-heading font-bold text-primary mb-3">19. Contact Information</h2>
-                <p className="text-muted-foreground">Email: <a href="mailto:support@gapromance.com" className="text-primary hover:underline">support@gapromance.com</a></p>
+                <p className="text-muted-foreground">Email: <a href="mailto:GapRomanceSupport@proton.me" className="text-primary hover:underline">GapRomanceSupport@proton.me</a></p>
                 <p className="text-muted-foreground">Website: www.gapromance.com</p>
                 <p className="text-muted-foreground mt-2">We aim to respond to all inquiries within 2 business days.</p>
               </section>

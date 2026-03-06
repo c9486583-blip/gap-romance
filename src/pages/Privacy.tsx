@@ -134,7 +134,7 @@ const Privacy = () => {
 
               <section>
                 <h2 className="text-xl font-heading font-bold text-primary mb-3">15. Contact Us</h2>
-                <p className="text-muted-foreground">Email: <a href="mailto:support@gapromance.com" className="text-primary hover:underline">support@gapromance.com</a></p>
+                <p className="text-muted-foreground">Email: <a href="mailto:GapRomanceSupport@proton.me" className="text-primary hover:underline">GapRomanceSupport@proton.me</a></p>
                 <p className="text-muted-foreground">We aim to respond within 2 business days.</p>
               </section>
 
