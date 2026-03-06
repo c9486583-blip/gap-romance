@@ -157,7 +157,7 @@ const Terms = () => {
 
               <section>
                 <h2 className="text-xl font-heading font-bold text-primary mb-3">16. Governing Law & Dispute Resolution</h2>
-                <p className="text-muted-foreground">These Terms are governed by the laws of the United States. Disputes shall be resolved by binding arbitration. You waive any right to a jury trial or class action participation. Before formal proceedings, contact support@gapromance.com to attempt informal resolution.</p>
+                <p className="text-muted-foreground">These Terms are governed by the laws of the United States. Disputes shall be resolved by binding arbitration. You waive any right to a jury trial or class action participation. Before formal proceedings, contact GapRomanceSupport@proton.me to attempt informal resolution.</p>
               </section>
 
               <section>
