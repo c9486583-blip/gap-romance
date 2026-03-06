@@ -97,12 +97,22 @@ const PaymentSuccess = () => {
             )}
 
             <div className="flex flex-col gap-3">
-              <Button variant="hero" size="lg" asChild>
-                <Link to="/discover"><ArrowRight className="mr-2 w-4 h-4" /> Continue Exploring</Link>
-              </Button>
-              <Button variant="outline" size="sm" asChild>
-                <Link to="/messages"><MessageCircle className="mr-2 w-4 h-4" /> Go to Messages</Link>
-              </Button>
+              {isGiftPurchase ? (
+                <>
+                  <Button variant="hero" size="lg" asChild>
+                    <Link to="/messages"><Gift className="mr-2 w-4 h-4" /> Send Gift in Chat</Link>
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button variant="hero" size="lg" asChild>
+                    <Link to="/discover"><ArrowRight className="mr-2 w-4 h-4" /> Continue Exploring</Link>
+                  </Button>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link to="/messages"><MessageCircle className="mr-2 w-4 h-4" /> Go to Messages</Link>
+                  </Button>
+                </>
+              )}
             </div>
           </>
         )}
