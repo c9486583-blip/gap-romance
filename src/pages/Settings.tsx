@@ -726,12 +726,24 @@ const NotificationSettings = ({ user }: { user: any }) => {
   useEffect(() => {
     if (!user) return;
     const load = async () => {
-      const { data } = await supabase
-        .from("notification_preferences")
-        .select("*")
-        .eq("user_id", user.id)
-        .single();
-      if (data) setPrefs(data);
+      try {
+        const { data, error } = await withTimeout(
+          supabase
+            .from("notification_preferences")
+            .select("*")
+            .eq("user_id", user.id)
+            .maybeSingle()
+        );
+
+        if (error) {
+          console.error("Failed to load notification preferences:", error);
+          return;
+        }
+
+        if (data) setPrefs(data);
+      } catch (err) {
+        console.error("Failed to load notification preferences:", err);
+      }
     };
     load();
   }, [user]);
@@ -743,24 +755,37 @@ const NotificationSettings = ({ user }: { user: any }) => {
   const savePrefs = async () => {
     if (!user) return;
     setSaving(true);
-    const { error } = await supabase
-      .from("notification_preferences")
-      .upsert({
-        user_id: user.id,
-        new_matches: prefs.new_matches,
-        new_messages: prefs.new_messages,
-        virtual_gifts: prefs.virtual_gifts,
-        super_likes: prefs.super_likes,
-        profile_activity: prefs.profile_activity,
-        subscription_reminders: prefs.subscription_reminders,
-        daily_reminders: prefs.daily_reminders,
-        dnd_enabled: prefs.dnd_enabled,
-        dnd_start: prefs.dnd_start,
-        dnd_end: prefs.dnd_end,
-        updated_at: new Date().toISOString(),
-      } as any, { onConflict: "user_id" });
-    setSaving(false);
-    toast({ title: error ? "Failed to save" : "Notification preferences saved!", variant: error ? "destructive" : "default" });
+    try {
+      const { error } = await withTimeout(
+        supabase
+          .from("notification_preferences")
+          .upsert({
+            user_id: user.id,
+            new_matches: prefs.new_matches,
+            new_messages: prefs.new_messages,
+            virtual_gifts: prefs.virtual_gifts,
+            super_likes: prefs.super_likes,
+            profile_activity: prefs.profile_activity,
+            subscription_reminders: prefs.subscription_reminders,
+            daily_reminders: prefs.daily_reminders,
+            dnd_enabled: prefs.dnd_enabled,
+            dnd_start: prefs.dnd_start,
+            dnd_end: prefs.dnd_end,
+            updated_at: new Date().toISOString(),
+          } as any, { onConflict: "user_id" })
+      );
+
+      if (error) {
+        toast({ title: "Failed to save", variant: "destructive" });
+        return;
+      }
+
+      toast({ title: "Notification preferences saved!" });
+    } catch (err: any) {
+      toast({ title: err?.message || "Failed to save", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (

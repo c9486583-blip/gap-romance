@@ -27,6 +27,17 @@ const MIN_DIMENSION = 400;
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/heic", "image/heif"];
 
+const UPLOAD_TIMEOUT_MS = 30000;
+
+const withTimeout = async <T,>(promise: Promise<T>, timeoutMs = UPLOAD_TIMEOUT_MS): Promise<T> => {
+  return await Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error("Upload timed out. Please try a smaller file or better connection.")), timeoutMs)
+    ),
+  ]);
+};
+
 const validateImage = (file: File): Promise<{ valid: boolean; error?: string }> => {
   return new Promise((resolve) => {
     if (!ACCEPTED_TYPES.includes(file.type)) {
