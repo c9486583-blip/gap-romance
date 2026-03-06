@@ -2,14 +2,14 @@ export const STRIPE_PUBLISHABLE_KEY = "pk_test_51T7UMW30RgnjoIxNuHXfSxtfbtwjQ3dr
 
 export const STRIPE_PRODUCTS = {
   premium: {
-    product_id: "prod_U5g9XMxRsS0LVp",
-    price_id: "price_1T7UnE30RgnjoIxN9Dj2eevl",
+    product_id: "prod_U61w6SFz6fxpXF",
+    price_id: "price_1T7psPKKKR3maVmC7Yvb5q4F",
     name: "Premium",
     price: 19.99,
   },
   elite: {
-    product_id: "prod_U5g9c98SqspkzJ",
-    price_id: "price_1T7UnX30RgnjoIxNy85Kf3Io",
+    product_id: "prod_U61wIicHFsQSf2",
+    price_id: "price_1T7psiKKKR3maVmCZLdZ0eq1",
     name: "Elite",
     price: 34.99,
   },
@@ -17,20 +17,20 @@ export const STRIPE_PRODUCTS = {
 
 export const STRIPE_ADDONS = {
   boost: {
-    product_id: "prod_U5gA258zZMT0xO",
-    price_id: "price_1T7Unt30RgnjoIxN9g62E01V",
+    product_id: "prod_U61wjf6FtTsN5Q",
+    price_id: "price_1T7pszKKKR3maVmCWqRNelMa",
     name: "Profile Boost",
     price: 5,
   },
   superLike: {
-    product_id: "prod_U5gBZ9HIDoDZVR",
-    price_id: "price_1T7UpJ30RgnjoIxN5MZLSPBo",
+    product_id: "prod_U61xO1BEt66ADE",
+    price_id: "price_1T7ptJKKKR3maVmCk3u2PyxS",
     name: "Super Like",
     price: 2,
   },
   spotlight: {
-    product_id: "prod_U5gCtQWNRtufj4",
-    price_id: "price_1T7Uph30RgnjoIxNtPEBU8Q5",
+    product_id: "prod_U61xQelJ1BhQW8",
+    price_id: "price_1T7ptcKKKR3maVmCZlojviO0",
     name: "Spotlight Badge",
     price: 7,
   },
@@ -38,22 +38,22 @@ export const STRIPE_ADDONS = {
 
 export const STRIPE_TIME_CREDITS = {
   thirtyMin: {
-    product_id: "prod_U5zq04PHrIkLY9",
-    price_id: "price_1T7nqT30RgnjoIxNAYkcHxwq",
+    product_id: "prod_U61xFBK1RoVx3t",
+    price_id: "price_1T7ptuKKKR3maVmC4QAr74HP",
     name: "30 Minutes Extra",
     seconds: 1800,
     price: 0.99,
   },
   twoHours: {
-    product_id: "prod_U5zqXPmEXJEODu",
-    price_id: "price_1T7nqq30RgnjoIxNKmciHQaY",
+    product_id: "prod_U61yAWrXnRjvV7",
+    price_id: "price_1T7puBKKKR3maVmCMPneBSp4",
     name: "2 Hours Extra",
     seconds: 7200,
     price: 2.99,
   },
   unlimitedDay: {
-    product_id: "prod_U5zq0I05x3tFuj",
-    price_id: "price_1T7nr530RgnjoIxN8sAVrQ0Y",
+    product_id: "prod_U61yLNwgjmuZFr",
+    price_id: "price_1T7puSKKKR3maVmCQMovMa3M",
     name: "Unlimited Today",
     seconds: -1, // -1 means unlimited
     price: 4.99,
