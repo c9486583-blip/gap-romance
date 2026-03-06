@@ -415,21 +415,6 @@ const Signup = () => {
                     </button>
                   </div>
 
-                  {window.location.hostname.includes("preview") && (
-                    <Button
-                      variant="outline"
-                      className="w-full border-dashed border-yellow-500 text-yellow-500 hover:bg-yellow-500/10"
-                      size="lg"
-                      onClick={handleDevSkip}
-                      disabled={loading}
-                    >
-                      {loading ? (
-                        <><Loader2 className="mr-2 w-4 h-4 animate-spin" /> Creating Test Account...</>
-                      ) : (
-                        "⚡ Skip Verification (Dev Only)"
-                      )}
-                    </Button>
-                  )}
                 </div>
               </motion.div>
             )}
