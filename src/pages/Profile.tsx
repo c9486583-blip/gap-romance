@@ -1,17 +1,14 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Heart, MessageCircle, Shield, MapPin, Music, Edit3, Camera, MoreVertical, Flag, Ban, MessageSquare, Clock } from "lucide-react";
+import { Heart, MessageCircle, Shield, MapPin, Music, Edit3, Camera, MessageSquare, Clock, Eye } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import ReportModal from "@/components/ReportModal";
-import BlockConfirmDialog from "@/components/BlockConfirmDialog";
 import { LIFESTYLE_ICONS, PERSONALITY_ICONS } from "@/lib/profile-constants";
+import TopNav from "@/components/TopNav";
+import ProfilePreviewCard from "@/components/ProfilePreviewCard";
 
 const NOTE_PLACEHOLDERS = [
   "Just got back from hiking...",
