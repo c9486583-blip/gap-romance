@@ -40,6 +40,7 @@ const GiftPicker = ({ open, onClose, onSend, recipientId, matchId }: GiftPickerP
       sessionStorage.setItem("pending_gift", JSON.stringify({
         gift,
         recipientId,
+        matchId,
       }));
 
       const response = await fetch(
