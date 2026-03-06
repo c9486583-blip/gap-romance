@@ -40,6 +40,7 @@ const PaymentSuccess = () => {
           try {
             const pendingGift = JSON.parse(pendingGiftStr);
             sessionStorage.removeItem("pending_gift");
+            setIsGiftPurchase(true);
             // Store completed gift info for Messages page to process
             sessionStorage.setItem("pending_gift_complete", JSON.stringify({
               gift: pendingGift.gift,
