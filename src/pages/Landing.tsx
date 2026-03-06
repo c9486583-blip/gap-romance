@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Heart, Shield, Sparkles, Users, Star, ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import Footer from "@/components/Footer";
+import gapromanceLogo from "@/assets/gapromance_logo.png";
 
 const features = [
 { icon: Heart, title: "Two Dating Modes", desc: "Choose Serious or Casual dating — or both. Your call." },
@@ -19,7 +20,10 @@ const Landing = () => {
       {/* Nav */}
       <nav className="fixed top-0 w-full z-50 glass border-b border-border/30">
         <div className="container mx-auto flex items-center justify-between h-16 px-4">
-          <Link to="/" className="text-2xl font-heading font-bold text-gradient">GapRomance</Link>
+          <Link to="/" className="flex items-center gap-2 text-2xl font-heading font-bold text-gradient">
+            <img src={gapromanceLogo} alt="GapRomance logo" className="h-8 w-auto" />
+            GapRomance
+          </Link>
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="sm" asChild>
               <Link to="/login">Log In</Link>
