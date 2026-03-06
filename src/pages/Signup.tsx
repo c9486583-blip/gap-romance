@@ -198,7 +198,7 @@ const Signup = () => {
 
       if (data.session) {
         toast({ title: "Email verified!", description: "Welcome to GapRomance!" });
-        navigate("/onboarding");
+        navigate("/upload-photos");
       } else {
         toast({ title: "Verification failed", description: "Please try again.", variant: "destructive" });
       }
@@ -265,7 +265,7 @@ const Signup = () => {
         }
         await supabase.from("profiles").update(updateData).eq("user_id", data.user.id);
       }
-      navigate("/onboarding");
+      navigate("/upload-photos");
     } finally {
       setLoading(false);
     }

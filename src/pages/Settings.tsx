@@ -14,6 +14,8 @@ import {
 } from "@/lib/profile-constants";
 import { calculateProfileCompleteness } from "@/lib/profile-completeness";
 import PhotoManager from "@/components/PhotoManager";
+import TopNav from "@/components/TopNav";
+import DeleteAccountDialog from "@/components/DeleteAccountDialog";
 
 const NOTE_PLACEHOLDERS = [
   "Just got back from hiking...",
@@ -227,15 +229,12 @@ const Settings = () => {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <nav className="sticky top-0 z-50 glass border-b border-border/30">
-        <div className="container mx-auto flex items-center justify-between h-16 px-4">
-          <Link to="/" className="text-2xl font-heading font-bold text-gradient">GapRomance</Link>
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" asChild><Link to="/discover">Discover</Link></Button>
-            <Button variant="ghost" size="sm" asChild><Link to="/profile">Profile</Link></Button>
-          </div>
-        </div>
-      </nav>
+      <TopNav rightContent={
+        <>
+          <Button variant="ghost" size="sm" asChild><Link to="/discover">Discover</Link></Button>
+          <Button variant="ghost" size="sm" asChild><Link to="/profile">Profile</Link></Button>
+        </>
+      } />
 
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <h1 className="text-3xl font-heading font-bold mb-8">Settings</h1>
@@ -624,7 +623,7 @@ const Settings = () => {
                   <div className="pt-4">
                     <Button variant="outline">Block List</Button>
                   </div>
-                  <DeleteAccountButton user={user} signOut={signOut} />
+                  <DeleteAccountDialog user={user} signOut={signOut} />
                 </div>
               </div>
             )}
@@ -635,68 +634,6 @@ const Settings = () => {
   );
 };
 
-// Delete Account Button with confirmation
-const DeleteAccountButton = ({ user, signOut }: { user: any; signOut: () => Promise<void> }) => {
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const { toast } = useToast();
-  const navigate = useNavigate();
-
-  const handleDelete = async () => {
-    setDeleting(true);
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData?.session?.access_token;
-      if (!accessToken) {
-        toast({ title: "Session expired", variant: "destructive" });
-        setDeleting(false);
-        return;
-      }
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-account`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${accessToken}`,
-            "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-          },
-        }
-      );
-      const result = await response.json();
-      if (!response.ok) {
-        toast({ title: "Failed to delete account", description: result?.error, variant: "destructive" });
-        setDeleting(false);
-        return;
-      }
-      await signOut();
-      navigate("/");
-      toast({ title: "Account deleted", description: "Your account has been permanently deleted." });
-    } catch (err: any) {
-      toast({ title: "Failed to delete account", description: err?.message, variant: "destructive" });
-      setDeleting(false);
-    }
-  };
-
-  return (
-    <div className="pt-2">
-      {!confirmOpen ? (
-        <Button variant="destructive" onClick={() => setConfirmOpen(true)}>Delete Account</Button>
-      ) : (
-        <div className="glass rounded-xl p-4 border border-destructive/30 space-y-3">
-          <p className="text-sm font-bold text-destructive">Are you sure you want to delete your account? This cannot be undone.</p>
-          <p className="text-xs text-muted-foreground">All your data, photos, matches, and messages will be permanently deleted.</p>
-          <div className="flex gap-2">
-            <Button variant="destructive" size="sm" onClick={handleDelete} disabled={deleting}>
-              {deleting ? "Deleting..." : "Yes, Delete My Account"}
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setConfirmOpen(false)} disabled={deleting}>Cancel</Button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
 
 // Notification Settings Component
 const NOTIF_CATEGORIES = [

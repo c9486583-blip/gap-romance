@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import PhotoManager from "@/components/PhotoManager";
+import OnboardingProgress from "@/components/OnboardingProgress";
 
 const PhotoUpload = () => {
   const navigate = useNavigate();
@@ -41,7 +42,7 @@ const PhotoUpload = () => {
 
     await refreshProfile();
     setSaving(false);
-    navigate("/verify-identity");
+    navigate("/onboarding");
   };
 
   if (!user) {
@@ -50,7 +51,8 @@ const PhotoUpload = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+      <OnboardingProgress currentStep={1} totalSteps={5} stepLabel="Upload Photos" />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

@@ -1,17 +1,14 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Heart, MessageCircle, Shield, MapPin, Music, Edit3, Camera, MoreVertical, Flag, Ban, MessageSquare, Clock } from "lucide-react";
+import { Heart, MessageCircle, Shield, MapPin, Music, Edit3, Camera, MessageSquare, Clock, Eye } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import ReportModal from "@/components/ReportModal";
-import BlockConfirmDialog from "@/components/BlockConfirmDialog";
 import { LIFESTYLE_ICONS, PERSONALITY_ICONS } from "@/lib/profile-constants";
+import TopNav from "@/components/TopNav";
+import ProfilePreviewCard from "@/components/ProfilePreviewCard";
 
 const NOTE_PLACEHOLDERS = [
   "Just got back from hiking...",
@@ -70,9 +67,8 @@ const isNoteActive = (updatedAt: string | null) => {
 const Profile = () => {
   const { user, profile, refreshProfile } = useAuth();
   const { toast } = useToast();
-  const [reportOpen, setReportOpen] = useState(false);
-  const [blockOpen, setBlockOpen] = useState(false);
   const [editingNote, setEditingNote] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const [noteText, setNoteText] = useState("");
   const [savingNote, setSavingNote] = useState(false);
 
@@ -125,16 +121,14 @@ const Profile = () => {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <nav className="sticky top-0 z-50 glass border-b border-border/30">
-        <div className="container mx-auto flex items-center justify-between h-16 px-4">
-          <Link to="/" className="text-2xl font-heading font-bold text-gradient">GapRomance</Link>
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" asChild><Link to="/discover">Discover</Link></Button>
-            <Button variant="ghost" size="sm" asChild><Link to="/messages">Messages</Link></Button>
-            <Button variant="ghost" size="sm" asChild><Link to="/settings">Settings</Link></Button>
-          </div>
-        </div>
-      </nav>
+      <TopNav rightContent={
+        <>
+          <Button variant="outline" size="sm" onClick={() => setShowPreview(true)}>
+            <Eye className="w-4 h-4 mr-1" /> Preview My Profile
+          </Button>
+          <Button variant="ghost" size="sm" asChild><Link to="/settings">Settings</Link></Button>
+        </>
+      } />
 
       <div className="container mx-auto px-4 py-8 max-w-3xl">
         {/* 3-day nudge */}
@@ -174,31 +168,20 @@ const Profile = () => {
         <div className="flex items-start justify-between mb-4">
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <h1 className="text-3xl font-heading font-bold">{mockProfile.name}, {mockProfile.age}</h1>
-              {mockProfile.verified && (
+              <h1 className="text-3xl font-heading font-bold">
+                {profile?.first_name || "Your Name"} {profile?.last_initial || ""}{(() => { const age = profile?.date_of_birth ? (() => { const b = new Date(profile.date_of_birth); const t = new Date(); let a = t.getFullYear() - b.getFullYear(); const m = t.getMonth() - b.getMonth(); if (m < 0 || (m === 0 && t.getDate() < b.getDate())) a--; return a; })() : null; return age ? `, ${age}` : ""; })()}
+              </h1>
+              {profile?.is_verified && (
                 <ProfileBadge variant="gold"><Shield className="w-3 h-3 mr-1" /> Verified</ProfileBadge>
               )}
             </div>
             <div className="flex items-center gap-2 text-muted-foreground text-sm">
-              <MapPin className="w-3.5 h-3.5" /> {mockProfile.location}
+              <MapPin className="w-3.5 h-3.5" /> {profile?.city || "Location not set"}
             </div>
           </div>
           <div className="flex items-center gap-2">
             <ProfileBadge variant="primary">{datingModeLabel}</ProfileBadge>
             <Button variant="ghost" size="icon" asChild><Link to="/settings"><Edit3 className="w-4 h-4" /></Link></Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon"><MoreVertical className="w-4 h-4" /></Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setReportOpen(true)} className="text-destructive">
-                  <Flag className="w-4 h-4 mr-2" /> Report User
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setBlockOpen(true)} className="text-destructive">
-                  <Ban className="w-4 h-4 mr-2" /> Block User
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
           </div>
         </div>
 
@@ -368,17 +351,17 @@ const Profile = () => {
 
         {/* Actions */}
         <div className="flex justify-center gap-4 pb-10">
-          <Button variant="hero-outline" size="lg">
-            <MessageCircle className="mr-2" /> Message
-          </Button>
-          <Button variant="hero" size="lg">
-            <Heart className="mr-2" /> Like
+          <Button variant="hero-outline" size="lg" asChild>
+            <Link to="/settings"><Edit3 className="mr-2 w-4 h-4" /> Edit Profile</Link>
           </Button>
         </div>
       </div>
 
-      <ReportModal open={reportOpen} onOpenChange={setReportOpen} reportedUserId="mock-user-id" source="profile" />
-      <BlockConfirmDialog open={blockOpen} onOpenChange={setBlockOpen} blockedUserId="mock-user-id" blockedUserName={mockProfile.name} />
+      <AnimatePresence>
+        {showPreview && profile && (
+          <ProfilePreviewCard profile={profile} onClose={() => setShowPreview(false)} />
+        )}
+      </AnimatePresence>
     </div>
   );
 };

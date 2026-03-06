@@ -6,6 +6,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import OnboardingProgress from "@/components/OnboardingProgress";
 
 const ProfilePreview = () => {
   const navigate = useNavigate();
@@ -97,7 +98,7 @@ const ProfilePreview = () => {
 
     await refreshProfile();
     setSaving(false);
-    navigate("/upload-photos");
+    navigate("/verify-identity");
   };
 
   if (!user) {
@@ -106,7 +107,8 @@ const ProfilePreview = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+      <OnboardingProgress currentStep={3} totalSteps={5} stepLabel="Review Bio" />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
