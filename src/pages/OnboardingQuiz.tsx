@@ -263,67 +263,70 @@ const OnboardingQuiz = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex flex-col p-4">
       <OnboardingProgress currentStep={2} totalSteps={5} stepLabel="Personality Quiz" />
-        {/* Progress */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-muted-foreground font-body">Step {step + 1} of {steps.length}</span>
-            <span className="text-sm text-primary font-body">{Math.round(progress)}%</span>
+      <div className="flex-1 flex items-center justify-center">
+        <div className="w-full max-w-lg">
+          {/* Internal progress */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-muted-foreground font-body">Question {step + 1} of {steps.length}</span>
+              <span className="text-sm text-primary font-body">{Math.round(progress)}%</span>
+            </div>
+            <div className="h-1 bg-secondary rounded-full overflow-hidden">
+              <motion.div
+                className="h-full bg-primary rounded-full"
+                animate={{ width: `${progress}%` }}
+                transition={{ duration: 0.3 }}
+              />
+            </div>
           </div>
-          <div className="h-1 bg-secondary rounded-full overflow-hidden">
+
+          <AnimatePresence mode="wait">
             <motion.div
-              className="h-full bg-primary rounded-full"
-              animate={{ width: `${progress}%` }}
+              key={step}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.3 }}
-            />
-          </div>
-        </div>
+            >
+              <h2 className="text-3xl font-heading font-bold mb-2">{steps[step].title}</h2>
+              <p className="text-muted-foreground mb-8">{steps[step].subtitle}</p>
+              {renderStep()}
+            </motion.div>
+          </AnimatePresence>
 
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={step}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.3 }}
-          >
-            <h2 className="text-3xl font-heading font-bold mb-2">{steps[step].title}</h2>
-            <p className="text-muted-foreground mb-8">{steps[step].subtitle}</p>
-            {renderStep()}
-          </motion.div>
-        </AnimatePresence>
-
-        {/* Nav */}
-        <div className="flex justify-between mt-10">
-          <Button variant="ghost" onClick={() => setStep(Math.max(0, step - 1))} disabled={step === 0}>
-            <ChevronLeft className="mr-1" /> Back
-          </Button>
-          {step < steps.length - 1 ? (
-            <Button variant="hero" onClick={() => setStep(step + 1)}>
-              Next <ChevronRight className="ml-1" />
+          {/* Nav */}
+          <div className="flex justify-between mt-10">
+            <Button variant="ghost" onClick={() => setStep(Math.max(0, step - 1))} disabled={step === 0}>
+              <ChevronLeft className="mr-1" /> Back
             </Button>
-          ) : (
-            <Button variant="hero" onClick={() => navigate("/profile-preview", {
-              state: {
-                quizData: {
-                  personality,
-                  hobbies,
-                  lifestyle,
-                  music,
-                  cuisine,
-                  loveLang,
-                  intent,
-                  ageRange,
-                  dealbreakers: selectedDealbreakers,
-                  promptAnswers,
-                  vibeAnswer,
+            {step < steps.length - 1 ? (
+              <Button variant="hero" onClick={() => setStep(step + 1)}>
+                Next <ChevronRight className="ml-1" />
+              </Button>
+            ) : (
+              <Button variant="hero" onClick={() => navigate("/profile-preview", {
+                state: {
+                  quizData: {
+                    personality,
+                    hobbies,
+                    lifestyle,
+                    music,
+                    cuisine,
+                    loveLang,
+                    intent,
+                    ageRange,
+                    dealbreakers: selectedDealbreakers,
+                    promptAnswers,
+                    vibeAnswer,
+                  },
                 },
-              },
-            })}>
-              <Sparkles className="mr-1" /> Generate My Profile
-            </Button>
-          )}
+              })}>
+                <Sparkles className="mr-1" /> Generate My Profile
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </div>
