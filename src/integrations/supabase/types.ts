@@ -148,6 +148,39 @@ export type Database = {
           },
         ]
       }
+      messaging_time: {
+        Row: {
+          bonus_seconds: number
+          created_at: string
+          date: string
+          has_unlimited: boolean
+          id: string
+          seconds_used: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bonus_seconds?: number
+          created_at?: string
+          date?: string
+          has_unlimited?: boolean
+          id?: string
+          seconds_used?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bonus_seconds?: number
+          created_at?: string
+          date?: string
+          has_unlimited?: boolean
+          id?: string
+          seconds_used?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       moderation_logs: {
         Row: {
           classification: string

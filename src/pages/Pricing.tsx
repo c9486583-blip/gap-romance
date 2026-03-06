@@ -1,21 +1,21 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Check, Zap, Crown, Sparkles, Shield } from "lucide-react";
+import { Check, Zap, Crown, Sparkles, Shield, Clock } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { STRIPE_PRODUCTS, STRIPE_ADDONS, STRIPE_CREDIT_PACKS } from "@/lib/stripe-products";
+import { STRIPE_PRODUCTS, STRIPE_ADDONS, STRIPE_TIME_CREDITS } from "@/lib/stripe-products";
 import { useToast } from "@/hooks/use-toast";
 
 const plans = [
   {
     name: "Free", price: "$0", period: "forever", icon: Sparkles,
-    features: ["Browse profiles", "Limited likes per day", "Basic filters", "Create your profile"],
+    features: ["Browse profiles", "Limited likes per day", "Basic filters", "1 hour messaging time/day"],
     cta: "Get Started", variant: "outline" as const, popular: false, priceId: null,
   },
   {
     name: "Premium", price: "$19.99", period: "/month", icon: Zap,
-    features: ["Everything in Free", "Unlimited messaging", "See who liked you", "Advanced filters", "Read receipts", "No ads"],
+    features: ["Everything in Free", "Unlimited messaging time", "See who liked you", "Advanced filters", "Read receipts", "No ads"],
     cta: "Go Premium", variant: "hero" as const, popular: true, priceId: STRIPE_PRODUCTS.premium.price_id,
   },
   {
@@ -31,10 +31,10 @@ const addons = [
   { name: "Spotlight Badge", price: "$7/week", desc: "Gold ring around your profile in discovery", priceId: STRIPE_ADDONS.spotlight.price_id },
 ];
 
-const creditPacks = [
-  { ...STRIPE_CREDIT_PACKS.credits20, desc: "Perfect for a quick chat burst" },
-  { ...STRIPE_CREDIT_PACKS.credits50, desc: "Keep the conversations flowing all week" },
-  { ...STRIPE_CREDIT_PACKS.credits100, desc: "Best value — message freely for weeks" },
+const timePacks = [
+  { ...STRIPE_TIME_CREDITS.thirtyMin, label: "30 Minutes", desc: "Quick burst to finish a conversation", icon: "⏱️" },
+  { ...STRIPE_TIME_CREDITS.twoHours, label: "2 Hours", desc: "Keep the conversations flowing all evening", icon: "⏰" },
+  { ...STRIPE_TIME_CREDITS.unlimitedDay, label: "Unlimited Today", desc: "Message as much as you want — all day, all chats", icon: "♾️" },
 ];
 
 const virtualGifts = [
@@ -157,22 +157,24 @@ const Pricing = () => {
           </div>
         </div>
 
-        {/* Message Credits */}
+        {/* Messaging Time Credits */}
         <div className="max-w-3xl mx-auto mt-16">
           <h2 className="text-3xl font-heading font-bold text-center mb-3">
-            Message <span className="text-gradient">Credits</span>
+            Messaging Time <span className="text-gradient">Credits</span>
           </h2>
-          <p className="text-muted-foreground text-center mb-8">Free users get 20 messages/day. Need more? Buy extra credits — no subscription required.</p>
+          <p className="text-muted-foreground text-center mb-8">
+            Free users get 1 hour of active messaging time per day. Need more? Buy extra time — no subscription required.
+          </p>
           <div className="grid md:grid-cols-3 gap-4">
-            {creditPacks.map((pack, i) => (
+            {timePacks.map((pack, i) => (
               <motion.div key={pack.name} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}
                 className="glass rounded-xl p-6 text-center hover-lift">
-                <div className="text-4xl font-heading font-bold text-primary mb-1">{pack.credits}</div>
-                <p className="text-sm text-muted-foreground mb-1">messages</p>
-                <div className="text-2xl font-heading font-bold mb-2">${pack.price.toFixed(2)}</div>
+                <div className="text-4xl mb-2">{pack.icon}</div>
+                <div className="text-xl font-heading font-bold mb-1">{pack.label}</div>
+                <div className="text-2xl font-heading font-bold text-primary mb-2">${pack.price.toFixed(2)}</div>
                 <p className="text-xs text-muted-foreground mb-4">{pack.desc}</p>
                 <Button variant="outline" className="w-full" onClick={() => handleCheckout(pack.price_id, "payment", "/credit-success")}>
-                  Buy Credits
+                  Buy Time
                 </Button>
               </motion.div>
             ))}
