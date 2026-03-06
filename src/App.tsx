@@ -2,9 +2,10 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import NotificationPrompt from "@/components/NotificationPrompt";
+import BottomNav from "@/components/BottomNav";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -14,6 +15,7 @@ import VerificationPending from "./pages/VerificationPending";
 import ProfilePreview from "./pages/ProfilePreview";
 import Profile from "./pages/Profile";
 import Discover from "./pages/Discover";
+import Matches from "./pages/Matches";
 import Messages from "./pages/Messages";
 import Pricing from "./pages/Pricing";
 import Settings from "./pages/Settings";
@@ -28,6 +30,13 @@ import PhotoUpload from "./pages/PhotoUpload";
 
 const queryClient = new QueryClient();
 
+const HomeRedirect = () => {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (user) return <Navigate to="/discover" replace />;
+  return <Landing />;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -37,7 +46,7 @@ const App = () => (
         <AuthProvider>
           <NotificationPrompt />
           <Routes>
-            <Route path="/" element={<Landing />} />
+            <Route path="/" element={<HomeRedirect />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/onboarding" element={<OnboardingQuiz />} />
@@ -47,6 +56,7 @@ const App = () => (
             <Route path="/verification-pending" element={<VerificationPending />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/discover" element={<Discover />} />
+            <Route path="/matches" element={<Matches />} />
             <Route path="/messages" element={<Messages />} />
             <Route path="/pricing" element={<Pricing />} />
             <Route path="/settings" element={<Settings />} />
@@ -58,6 +68,7 @@ const App = () => (
             <Route path="/admin" element={<Admin />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
+          <BottomNav />
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
