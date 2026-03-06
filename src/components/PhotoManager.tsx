@@ -29,9 +29,9 @@ const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/heic", "image/heif"];
 
 const UPLOAD_TIMEOUT_MS = 30000;
 
-const withTimeout = async <T,>(promise: Promise<T>, timeoutMs = UPLOAD_TIMEOUT_MS): Promise<T> => {
+const withTimeout = async <T,>(promiseLike: PromiseLike<T>, timeoutMs = UPLOAD_TIMEOUT_MS): Promise<T> => {
   return await Promise.race([
-    promise,
+    Promise.resolve(promiseLike),
     new Promise<T>((_, reject) =>
       setTimeout(() => reject(new Error("Upload timed out. Please try a smaller file or better connection.")), timeoutMs)
     ),

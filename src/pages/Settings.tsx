@@ -26,9 +26,9 @@ const NOTE_PLACEHOLDERS = [
 
 const REQUEST_TIMEOUT_MS = 15000;
 
-const withTimeout = async <T,>(promise: Promise<T>, timeoutMs = REQUEST_TIMEOUT_MS): Promise<T> => {
+const withTimeout = async <T,>(promiseLike: PromiseLike<T>, timeoutMs = REQUEST_TIMEOUT_MS): Promise<T> => {
   return await Promise.race([
-    promise,
+    Promise.resolve(promiseLike),
     new Promise<T>((_, reject) =>
       setTimeout(() => reject(new Error("Request timed out. Please try again.")), timeoutMs)
     ),
