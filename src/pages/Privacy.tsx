@@ -104,7 +104,7 @@ const Privacy = () => {
 
               <section>
                 <h2 className="text-xl font-heading font-bold text-primary mb-3">9. Children's Privacy</h2>
-                <p className="text-muted-foreground">GapRomance is strictly for adults. Women must be 18+ and men must be 25+. We do not knowingly collect information from anyone under the applicable minimum age. Contact support@gapromance.com if you believe a minor has created an account.</p>
+                <p className="text-muted-foreground">GapRomance is strictly for adults. Women must be 18+ and men must be 25+. We do not knowingly collect information from anyone under the applicable minimum age. Contact GapRomanceSupport@proton.me if you believe a minor has created an account.</p>
               </section>
 
               <section>
