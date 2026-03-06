@@ -28,7 +28,7 @@ const MessagingTimePopup = ({ open, onClose }: MessagingTimePopupProps) => {
   const handlePurchase = async (priceId: string) => {
     setPurchasing(priceId);
     if (!user) {
-      sessionStorage.setItem("pending_checkout", JSON.stringify({ priceId, mode: "payment", successUrl: "/credit-success" }));
+      sessionStorage.setItem("pending_checkout", JSON.stringify({ priceId, mode: "payment", successUrl: "/payment-success" }));
       navigate("/signup?redirect=/pricing");
       onClose();
       return;
@@ -50,7 +50,7 @@ const MessagingTimePopup = ({ open, onClose }: MessagingTimePopupProps) => {
             "Authorization": `Bearer ${accessToken}`,
             "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
           },
-          body: JSON.stringify({ priceId, mode: "payment", successUrl: "/credit-success" }),
+          body: JSON.stringify({ priceId, mode: "payment", successUrl: "/payment-success" }),
         }
       );
       const result = await response.json();

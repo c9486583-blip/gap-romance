@@ -24,6 +24,7 @@ import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import Safety from "./pages/Safety";
 import CreditSuccess from "./pages/CreditSuccess";
+import PaymentSuccess from "./pages/PaymentSuccess";
 import NotFound from "./pages/NotFound";
 import Admin from "./pages/Admin";
 import PhotoUpload from "./pages/PhotoUpload";
@@ -65,6 +66,7 @@ const App = () => (
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/safety" element={<Safety />} />
             <Route path="/credit-success" element={<CreditSuccess />} />
+            <Route path="/payment-success" element={<PaymentSuccess />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

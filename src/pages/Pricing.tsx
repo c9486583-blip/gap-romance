@@ -240,7 +240,7 @@ const Pricing = () => {
                 <div className="text-xl font-heading font-bold mb-1">{pack.label}</div>
                 <div className="text-2xl font-heading font-bold text-primary mb-2">${pack.price.toFixed(2)}</div>
                 <p className="text-xs text-muted-foreground mb-4">{pack.desc}</p>
-                <Button variant="outline" className="w-full" onClick={() => handleCheckout(pack.price_id, "payment", "/credit-success")} disabled={checkoutLoading === pack.price_id}>
+                <Button variant="outline" className="w-full" onClick={() => handleCheckout(pack.price_id, "payment", "/payment-success")} disabled={checkoutLoading === pack.price_id}>
                   {checkoutLoading === pack.price_id ? "Loading..." : "Buy Time"}
                 </Button>
               </motion.div>
