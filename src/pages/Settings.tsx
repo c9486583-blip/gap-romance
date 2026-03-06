@@ -634,68 +634,6 @@ const Settings = () => {
   );
 };
 
-// Delete Account Button with confirmation
-const DeleteAccountButton = ({ user, signOut }: { user: any; signOut: () => Promise<void> }) => {
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const { toast } = useToast();
-  const navigate = useNavigate();
-
-  const handleDelete = async () => {
-    setDeleting(true);
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData?.session?.access_token;
-      if (!accessToken) {
-        toast({ title: "Session expired", variant: "destructive" });
-        setDeleting(false);
-        return;
-      }
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-account`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${accessToken}`,
-            "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-          },
-        }
-      );
-      const result = await response.json();
-      if (!response.ok) {
-        toast({ title: "Failed to delete account", description: result?.error, variant: "destructive" });
-        setDeleting(false);
-        return;
-      }
-      await signOut();
-      navigate("/");
-      toast({ title: "Account deleted", description: "Your account has been permanently deleted." });
-    } catch (err: any) {
-      toast({ title: "Failed to delete account", description: err?.message, variant: "destructive" });
-      setDeleting(false);
-    }
-  };
-
-  return (
-    <div className="pt-2">
-      {!confirmOpen ? (
-        <Button variant="destructive" onClick={() => setConfirmOpen(true)}>Delete Account</Button>
-      ) : (
-        <div className="glass rounded-xl p-4 border border-destructive/30 space-y-3">
-          <p className="text-sm font-bold text-destructive">Are you sure you want to delete your account? This cannot be undone.</p>
-          <p className="text-xs text-muted-foreground">All your data, photos, matches, and messages will be permanently deleted.</p>
-          <div className="flex gap-2">
-            <Button variant="destructive" size="sm" onClick={handleDelete} disabled={deleting}>
-              {deleting ? "Deleting..." : "Yes, Delete My Account"}
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setConfirmOpen(false)} disabled={deleting}>Cancel</Button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
 
 // Notification Settings Component
 const NOTIF_CATEGORIES = [
