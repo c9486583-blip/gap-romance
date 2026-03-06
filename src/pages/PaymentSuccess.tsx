@@ -1,15 +1,17 @@
 import { useEffect, useState } from "react";
-import { useSearchParams, Link } from "react-router-dom";
+import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, Loader2, ArrowRight, MessageCircle, Clock } from "lucide-react";
+import { CheckCircle, Loader2, ArrowRight, MessageCircle, Clock, Gift } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 
 const PaymentSuccess = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { user, refreshSubscription } = useAuth();
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [timeDetails, setTimeDetails] = useState<{ unlimited?: boolean; seconds_added?: number } | null>(null);
+  const [isGiftPurchase, setIsGiftPurchase] = useState(false);
 
   useEffect(() => {
     const sessionId = searchParams.get("session_id");
@@ -31,6 +33,25 @@ const PaymentSuccess = () => {
         }
         // Refresh subscription status
         if (refreshSubscription) await refreshSubscription();
+
+        // Check for pending gift purchase
+        const pendingGiftStr = sessionStorage.getItem("pending_gift");
+        if (pendingGiftStr && user) {
+          try {
+            const pendingGift = JSON.parse(pendingGiftStr);
+            sessionStorage.removeItem("pending_gift");
+            setIsGiftPurchase(true);
+            // Store completed gift info for Messages page to process
+            sessionStorage.setItem("pending_gift_complete", JSON.stringify({
+              gift: pendingGift.gift,
+              recipientId: pendingGift.recipientId,
+              matchId: pendingGift.matchId,
+            }));
+          } catch (e) {
+            console.error("Error processing pending gift:", e);
+          }
+        }
+
         setStatus("success");
       } catch {
         setStatus("success"); // Still show success — Stripe handled the payment
@@ -59,9 +80,13 @@ const PaymentSuccess = () => {
         ) : (
           <>
             <CheckCircle className="w-14 h-14 mx-auto mb-4 text-primary" />
-            <h1 className="text-3xl font-heading font-bold mb-2">Payment Successful!</h1>
+            <h1 className="text-3xl font-heading font-bold mb-2">
+              {isGiftPurchase ? "Gift Purchased!" : "Payment Successful!"}
+            </h1>
             <p className="text-muted-foreground mb-6">
-              Thank you for your purchase. Your account has been updated.
+              {isGiftPurchase
+                ? "Your gift will be sent when you return to the chat."
+                : "Thank you for your purchase. Your account has been updated."}
             </p>
 
             {timeDetails && (
@@ -72,12 +97,22 @@ const PaymentSuccess = () => {
             )}
 
             <div className="flex flex-col gap-3">
-              <Button variant="hero" size="lg" asChild>
-                <Link to="/discover"><ArrowRight className="mr-2 w-4 h-4" /> Continue Exploring</Link>
-              </Button>
-              <Button variant="outline" size="sm" asChild>
-                <Link to="/messages"><MessageCircle className="mr-2 w-4 h-4" /> Go to Messages</Link>
-              </Button>
+              {isGiftPurchase ? (
+                <>
+                  <Button variant="hero" size="lg" asChild>
+                    <Link to="/messages"><Gift className="mr-2 w-4 h-4" /> Send Gift in Chat</Link>
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button variant="hero" size="lg" asChild>
+                    <Link to="/discover"><ArrowRight className="mr-2 w-4 h-4" /> Continue Exploring</Link>
+                  </Button>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link to="/messages"><MessageCircle className="mr-2 w-4 h-4" /> Go to Messages</Link>
+                  </Button>
+                </>
+              )}
             </div>
           </>
         )}

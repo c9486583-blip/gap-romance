@@ -319,23 +319,46 @@ const Messages = () => {
     }
   };
 
+  // Gift sending is now handled via Stripe checkout.
+  // After successful payment, the gift is sent from the PaymentSuccess page.
   const handleSendGift = async (gift: VirtualGift) => {
-    if (!user || !activeMatch) return;
-    await supabase.from("messages").insert({
-      match_id: activeMatchId,
-      sender_id: user.id,
-      content: `🎁 Sent a ${gift.name} ${gift.emoji}`,
-    } as any);
-    await supabase.from("virtual_gifts_sent").insert({
-      sender_id: user.id,
-      receiver_id: activeMatch.partnerId,
-      gift_id: gift.id,
-      gift_name: gift.name,
-      gift_emoji: gift.emoji,
-      gift_price: gift.price,
-    });
-    setGiftOpen(false);
+    // This is now a no-op - the GiftPicker handles checkout directly
+    // The gift message + DB record are created after payment succeeds
   };
+
+  // Check for pending gift on mount (returning from payment)
+  useEffect(() => {
+    const pendingGift = sessionStorage.getItem("pending_gift_complete");
+    if (pendingGift && user) {
+      try {
+        const { gift, recipientId, matchId } = JSON.parse(pendingGift);
+        sessionStorage.removeItem("pending_gift_complete");
+        // Send the gift message and record
+        (async () => {
+          await supabase.from("messages").insert({
+            match_id: matchId,
+            sender_id: user.id,
+            content: `🎁 Sent a ${gift.name} ${gift.emoji}`,
+          } as any);
+          await supabase.from("virtual_gifts_sent").insert({
+            sender_id: user.id,
+            receiver_id: recipientId,
+            gift_id: gift.id,
+            gift_name: gift.name,
+            gift_emoji: gift.emoji,
+            gift_price: gift.price,
+          });
+          toast({ title: `${gift.emoji} ${gift.name} sent!`, description: "Your gift has been delivered." });
+          fetchMatches();
+          if (matchId === activeMatchId) {
+            fetchMessages();
+          }
+        })();
+      } catch (e) {
+        console.error("Error processing pending gift:", e);
+      }
+    }
+  }, [user]);
 
   const handleBlocked = () => {
     setActiveMatchId(null);
@@ -615,7 +638,7 @@ const Messages = () => {
                 </div>
               )}
 
-              <GiftPicker open={giftOpen} onClose={() => setGiftOpen(false)} onSend={handleSendGift} />
+              <GiftPicker open={giftOpen} onClose={() => setGiftOpen(false)} onSend={handleSendGift} recipientId={activeMatch?.partnerId} matchId={activeMatchId} />
               <div className="flex items-center gap-2">
                 <Button variant="ghost" size="icon" onClick={() => setGiftOpen((v) => !v)}>
                   <Gift className="w-5 h-5 text-primary" />
