@@ -79,9 +79,13 @@ const PaymentSuccess = () => {
         ) : (
           <>
             <CheckCircle className="w-14 h-14 mx-auto mb-4 text-primary" />
-            <h1 className="text-3xl font-heading font-bold mb-2">Payment Successful!</h1>
+            <h1 className="text-3xl font-heading font-bold mb-2">
+              {isGiftPurchase ? "Gift Purchased!" : "Payment Successful!"}
+            </h1>
             <p className="text-muted-foreground mb-6">
-              Thank you for your purchase. Your account has been updated.
+              {isGiftPurchase
+                ? "Your gift will be sent when you return to the chat."
+                : "Thank you for your purchase. Your account has been updated."}
             </p>
 
             {timeDetails && (
