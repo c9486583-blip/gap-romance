@@ -121,7 +121,7 @@ const Safety = () => {
                   <li>Use the in-app report feature to alert our safety team.</li>
                   <li>Screenshot and save threatening messages for potential law enforcement use.</li>
                   <li>If you feel you are in immediate danger, contact your local emergency services.</li>
-                  <li>Contact our support team at <a href="mailto:support@gapromance.com" className="text-primary hover:underline">support@gapromance.com</a>.</li>
+                  <li>Contact our support team at <a href="mailto:GapRomanceSupport@proton.me" className="text-primary hover:underline">GapRomanceSupport@proton.me</a>.</li>
                 </ul>
               </section>
 
