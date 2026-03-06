@@ -59,14 +59,19 @@ const Pricing = () => {
       toast({ title: "Please log in first", variant: "destructive" });
       return;
     }
-    const { data, error } = await supabase.functions.invoke("create-checkout", {
-      body: { priceId, mode, successUrl },
-    });
-    if (error || !data?.url) {
-      toast({ title: "Checkout failed", description: error?.message || "Please try again", variant: "destructive" });
-      return;
+    try {
+      const { data, error } = await supabase.functions.invoke("create-checkout", {
+        body: { priceId, mode, successUrl },
+      });
+      if (error || !data?.url) {
+        toast({ title: "Checkout failed", description: error?.message || "Please try again", variant: "destructive" });
+        return;
+      }
+      window.location.href = data.url;
+    } catch (err: any) {
+      console.error("Checkout error:", err);
+      toast({ title: "Checkout failed", description: err?.message || "Please try again", variant: "destructive" });
     }
-    window.open(data.url, "_blank");
   };
 
   const isCurrentPlan = (planName: string) => subscriptionTier === planName.toLowerCase();

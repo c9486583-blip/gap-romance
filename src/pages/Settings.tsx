@@ -34,12 +34,17 @@ const Settings = () => {
   };
 
   const handleManageSubscription = async () => {
-    const { data, error } = await supabase.functions.invoke("customer-portal");
-    if (error || !data?.url) {
+    try {
+      const { data, error } = await supabase.functions.invoke("customer-portal");
+      if (error || !data?.url) {
+        toast({ title: "Could not open portal", variant: "destructive" });
+        return;
+      }
+      window.location.href = data.url;
+    } catch (err: any) {
+      console.error("Portal error:", err);
       toast({ title: "Could not open portal", variant: "destructive" });
-      return;
     }
-    window.open(data.url, "_blank");
   };
 
   const handleVerify = async () => {

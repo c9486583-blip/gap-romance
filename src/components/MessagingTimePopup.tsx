@@ -31,7 +31,7 @@ const MessagingTimePopup = ({ open, onClose }: MessagingTimePopupProps) => {
       if (error || !data?.url) {
         toast({ title: "Checkout failed", variant: "destructive" });
       } else {
-        window.open(data.url, "_blank");
+        window.location.href = data.url;
       }
     } catch {
       toast({ title: "Something went wrong", variant: "destructive" });

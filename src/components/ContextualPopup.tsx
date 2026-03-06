@@ -101,7 +101,7 @@ const ContextualPopup = ({ open, onClose, type }: ContextualPopupProps) => {
         toast({ title: "Checkout failed", variant: "destructive" });
         return;
       }
-      window.open(data.url, "_blank");
+      window.location.href = data.url;
       onClose();
     } catch {
       toast({ title: "Something went wrong", variant: "destructive" });
