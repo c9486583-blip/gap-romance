@@ -5,7 +5,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useGeolocation } from "@/hooks/useGeolocation";
-import { Phone, ArrowLeft, Loader2, MapPinOff } from "lucide-react";
+import { Mail, ArrowLeft, Loader2, MapPinOff } from "lucide-react";
 import PasswordStrengthIndicator, { isPasswordStrong, getPasswordRequirements } from "@/components/PasswordStrengthIndicator";
 
 const Signup = () => {
@@ -14,7 +14,6 @@ const Signup = () => {
   const [lastInitial, setLastInitial] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [phone, setPhone] = useState("");
   const [gender, setGender] = useState("");
   const [dob, setDob] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
@@ -27,7 +26,6 @@ const Signup = () => {
   const [otpSending, setOtpSending] = useState(false);
   const [otpVerifying, setOtpVerifying] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
-  const [testCode, setTestCode] = useState<string | null>(null);
 
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -61,10 +59,6 @@ const Signup = () => {
     }
     if (!dob) {
       toast({ title: "Please enter your date of birth", variant: "destructive" });
-      return false;
-    }
-    if (!phone || phone.length < 10) {
-      toast({ title: "Please enter a valid phone number", variant: "destructive" });
       return false;
     }
     if (!firstName.trim()) {
@@ -101,34 +95,53 @@ const Signup = () => {
     return true;
   };
 
-  const sendOtp = async () => {
+  const handleSendVerification = async () => {
+    if (!validateForm()) return;
     setOtpSending(true);
     try {
-      const { data, error } = await supabase.functions.invoke("send-phone-otp", {
-        body: { phone },
+      // Create the account — Supabase will send a confirmation email with a 6-digit code
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo: window.location.origin },
       });
-      if (error || !data?.success) {
-        toast({ title: "Failed to send code", description: error?.message || data?.error, variant: "destructive" });
-        return false;
+
+      if (error) {
+        toast({ title: "Signup failed", description: error.message, variant: "destructive" });
+        return;
       }
-      // For testing: store the code (remove in production)
-      if (data._test_code) setTestCode(data._test_code);
+
+      // If user already exists and is confirmed, they should login instead
+      if (data.user && data.user.identities && data.user.identities.length === 0) {
+        toast({ title: "Account already exists", description: "Please log in instead.", variant: "destructive" });
+        return;
+      }
+
+      // Update profile with the form data immediately
+      if (data.user) {
+        const updateData: any = {
+          first_name: firstName,
+          last_initial: lastInitial,
+          gender,
+          date_of_birth: dob,
+        };
+        if (location) {
+          updateData.latitude = location.lat;
+          updateData.longitude = location.lng;
+          updateData.city = location.city;
+        }
+        await supabase.from("profiles").update(updateData).eq("user_id", data.user.id);
+      }
+
       setResendCooldown(60);
-      toast({ title: "Code sent!", description: `A 6-digit code was sent to ${phone}` });
-      return true;
+      toast({ title: "Verification code sent!", description: `Check your inbox at ${email}` });
+      setStep("verify");
     } catch (err: any) {
-      console.error("Send OTP error:", err);
-      toast({ title: "Failed to send code", description: err?.message || "Please try again", variant: "destructive" });
-      return false;
+      console.error("Signup error:", err);
+      toast({ title: "Something went wrong", description: err?.message || "Please try again", variant: "destructive" });
     } finally {
       setOtpSending(false);
     }
-  };
-
-  const handleSendVerification = async () => {
-    if (!validateForm()) return;
-    const sent = await sendOtp();
-    if (sent) setStep("verify");
   };
 
   const handleOtpChange = (index: number, value: string) => {
@@ -137,7 +150,6 @@ const Signup = () => {
     const newCode = [...otpCode];
     newCode[index] = value;
     setOtpCode(newCode);
-    // Auto-focus next
     if (value && index < 5) {
       const next = document.getElementById(`otp-${index + 1}`);
       next?.focus();
@@ -167,57 +179,33 @@ const Signup = () => {
     }
 
     setOtpVerifying(true);
-
     try {
-      // Verify OTP
-      const { data: verifyData, error: verifyError } = await supabase.functions.invoke("verify-phone-otp", {
-        body: { phone, code },
+      // Verify the OTP code via Supabase Auth
+      const { data, error } = await supabase.auth.verifyOtp({
+        email,
+        token: code,
+        type: "signup",
       });
 
-      if (verifyError || !verifyData?.verified) {
+      if (error) {
         toast({
           title: "Verification failed",
-          description: verifyData?.error || verifyError?.message || "Invalid or expired code",
+          description: error.message || "Invalid or expired code. Please try again.",
           variant: "destructive",
         });
         return;
       }
 
-      // Phone verified — now create the account
-      setLoading(true);
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: { emailRedirectTo: window.location.origin },
-      });
-
-      if (error) {
-        toast({ title: "Signup failed", description: error.message, variant: "destructive" });
-        return;
+      if (data.session) {
+        toast({ title: "Email verified!", description: "Welcome to GapRomance!" });
+        navigate("/onboarding");
+      } else {
+        toast({ title: "Verification failed", description: "Please try again.", variant: "destructive" });
       }
-
-      if (data.user) {
-        const updateData: any = {
-          first_name: firstName,
-          last_initial: lastInitial,
-          phone,
-          gender,
-          date_of_birth: dob,
-        };
-        if (location) {
-          updateData.latitude = location.lat;
-          updateData.longitude = location.lng;
-          updateData.city = location.city;
-        }
-        await supabase.from("profiles").update(updateData).eq("user_id", data.user.id);
-      }
-
-      navigate("/onboarding");
     } catch (err: any) {
-      console.error("Verify & signup error:", err);
+      console.error("Verify error:", err);
       toast({ title: "Something went wrong", description: err?.message || "Please try again", variant: "destructive" });
     } finally {
-      setLoading(false);
       setOtpVerifying(false);
     }
   };
@@ -225,7 +213,23 @@ const Signup = () => {
   const handleResend = async () => {
     if (resendCooldown > 0) return;
     setOtpCode(["", "", "", "", "", ""]);
-    await sendOtp();
+    setOtpSending(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email,
+      });
+      if (error) {
+        toast({ title: "Failed to resend code", description: error.message, variant: "destructive" });
+        return;
+      }
+      setResendCooldown(60);
+      toast({ title: "Code resent!", description: `Check your inbox at ${email}` });
+    } catch (err: any) {
+      toast({ title: "Failed to resend", description: err?.message || "Please try again", variant: "destructive" });
+    } finally {
+      setOtpSending(false);
+    }
   };
 
   const handleDevSkip = async () => {
@@ -235,35 +239,36 @@ const Signup = () => {
       return;
     }
     setLoading(true);
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { emailRedirectTo: window.location.origin },
-    });
-    if (error) {
-      toast({ title: "Signup failed", description: error.message, variant: "destructive" });
-      setLoading(false);
-      return;
-    }
-    if (data.user) {
-      const updateData: any = {
-        first_name: firstName || "TestUser",
-        last_initial: lastInitial || "T",
-        phone: phone || "+15555550000",
-        gender: gender || "Man",
-        date_of_birth: dob || "1990-01-01",
-        is_verified: true,
-        verification_status: "verified",
-      };
-      if (location) {
-        updateData.latitude = location.lat;
-        updateData.longitude = location.lng;
-        updateData.city = location.city;
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo: window.location.origin },
+      });
+      if (error) {
+        toast({ title: "Signup failed", description: error.message, variant: "destructive" });
+        return;
       }
-      await supabase.from("profiles").update(updateData).eq("user_id", data.user.id);
+      if (data.user) {
+        const updateData: any = {
+          first_name: firstName || "TestUser",
+          last_initial: lastInitial || "T",
+          gender: gender || "Man",
+          date_of_birth: dob || "1990-01-01",
+          is_verified: true,
+          verification_status: "verified",
+        };
+        if (location) {
+          updateData.latitude = location.lat;
+          updateData.longitude = location.lng;
+          updateData.city = location.city;
+        }
+        await supabase.from("profiles").update(updateData).eq("user_id", data.user.id);
+      }
+      navigate("/onboarding");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-    navigate("/onboarding");
   };
 
   const inputClass = "w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary";
@@ -274,12 +279,11 @@ const Signup = () => {
         <div className="text-center mb-8">
           <Link to="/" className="text-3xl font-heading font-bold text-gradient">GapRomance</Link>
           <p className="text-muted-foreground mt-2">
-            {step === "form" ? "Create your account" : "Verify your phone number"}
+            {step === "form" ? "Create your account" : "Verify your email address"}
           </p>
         </div>
 
         <div className="glass rounded-2xl p-8">
-          {/* US-only geo block */}
           {isOutsideUS && (
             <div className="mb-6 p-4 rounded-xl bg-destructive/10 border border-destructive/30 text-center">
               <MapPinOff className="w-8 h-8 text-destructive mx-auto mb-2" />
@@ -298,16 +302,6 @@ const Signup = () => {
                   <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" type="email" className={inputClass} />
                   <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" type="password" className={inputClass} />
                   <PasswordStrengthIndicator password={password} />
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <input
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="+1 (555) 123-4567"
-                      type="tel"
-                      className={`${inputClass} pl-10`}
-                    />
-                  </div>
                   <div>
                     <label className="text-sm text-muted-foreground block mb-2">I am a</label>
                     <div className="grid grid-cols-2 gap-3">
@@ -325,7 +319,6 @@ const Signup = () => {
                     {gender === "Man" && <p className="text-xs text-muted-foreground mt-1">Must be 25 or older</p>}
                   </div>
 
-                  {/* Checkboxes */}
                   <div className="flex items-start gap-3 mt-2">
                     <input type="checkbox" checked={agreedToTerms} onChange={(e) => setAgreedToTerms(e.target.checked)} className="mt-1 accent-primary" id="terms-checkbox" />
                     <label htmlFor="terms-checkbox" className="text-sm text-muted-foreground">
@@ -353,9 +346,9 @@ const Signup = () => {
                     disabled={otpSending || !agreedToTerms || !agreedToPrivacy || !agreedToSafety || !!isOutsideUS}
                   >
                     {otpSending ? (
-                      <><Loader2 className="mr-2 w-4 h-4 animate-spin" /> Sending Code...</>
+                      <><Loader2 className="mr-2 w-4 h-4 animate-spin" /> Creating Account...</>
                     ) : (
-                      "Verify Phone & Create Account"
+                      "Verify Email & Create Account"
                     )}
                   </Button>
 
@@ -385,15 +378,15 @@ const Signup = () => {
 
                   <div className="text-center">
                     <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                      <Phone className="w-7 h-7 text-primary" />
+                      <Mail className="w-7 h-7 text-primary" />
                     </div>
                     <h3 className="font-heading text-xl font-bold mb-1">Enter verification code</h3>
                     <p className="text-sm text-muted-foreground">
-                      We sent a 6-digit code to <span className="text-foreground font-medium">{phone}</span>
+                      We sent a 6-digit code to <span className="text-foreground font-medium">{email}</span>
                     </p>
+                    <p className="text-xs text-muted-foreground mt-1">Check your spam folder if you don't see it.</p>
                   </div>
 
-                  {/* OTP Input */}
                   <div className="flex justify-center gap-2" onPaste={handleOtpPaste}>
                     {otpCode.map((digit, i) => (
                       <input
@@ -410,21 +403,14 @@ const Signup = () => {
                     ))}
                   </div>
 
-                  {/* Test code hint (remove in production) */}
-                  {testCode && (
-                    <p className="text-xs text-center text-muted-foreground">
-                      Test code: <span className="text-primary font-mono font-bold">{testCode}</span>
-                    </p>
-                  )}
-
                   <Button
                     variant="hero"
                     className="w-full"
                     size="lg"
                     onClick={handleVerifyAndSignup}
-                    disabled={otpVerifying || loading || otpCode.join("").length !== 6}
+                    disabled={otpVerifying || otpCode.join("").length !== 6}
                   >
-                    {otpVerifying || loading ? (
+                    {otpVerifying ? (
                       <><Loader2 className="mr-2 w-4 h-4 animate-spin" /> Verifying...</>
                     ) : (
                       "Verify & Create Account"
@@ -435,12 +421,12 @@ const Signup = () => {
                     <p className="text-sm text-muted-foreground mb-1">Didn't receive the code?</p>
                     <button
                       onClick={handleResend}
-                      disabled={resendCooldown > 0}
+                      disabled={resendCooldown > 0 || otpSending}
                       className={`text-sm font-medium transition-colors ${
-                        resendCooldown > 0 ? "text-muted-foreground cursor-not-allowed" : "text-primary hover:underline"
+                        resendCooldown > 0 || otpSending ? "text-muted-foreground cursor-not-allowed" : "text-primary hover:underline"
                       }`}
                     >
-                      {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend Code"}
+                      {otpSending ? "Sending..." : resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend Code"}
                     </button>
                   </div>
 
