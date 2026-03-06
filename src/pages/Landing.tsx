@@ -5,17 +5,17 @@ import { Link } from "react-router-dom";
 import Footer from "@/components/Footer";
 
 const features = [
-  { icon: Heart, title: "Two Dating Modes", desc: "Choose Serious or Casual dating — or both. Your call." },
-  { icon: Sparkles, title: "AI-Powered Matching", desc: "Our quiz learns your vibe and finds your perfect match from day one." },
-  { icon: Shield, title: "Verified Profiles", desc: "Photo & ID verification for a safer, more authentic experience." },
-  { icon: Users, title: "Your Age, Your Rules", desc: "Search any age range you want. No forced defaults." },
-];
+{ icon: Heart, title: "Two Dating Modes", desc: "Choose Serious or Casual dating — or both. Your call." },
+{ icon: Sparkles, title: "AI-Powered Matching", desc: "Our quiz learns your vibe and finds your perfect match from day one." },
+{ icon: Shield, title: "Verified Profiles", desc: "Photo & ID verification for a safer, more authentic experience." },
+{ icon: Users, title: "Your Age, Your Rules", desc: "Search any age range you want. No forced defaults." }];
+
 
 const stats = [
-  { value: "500K+", label: "Active Members" },
-  { value: "89%", label: "Match Rate" },
-  { value: "4.8★", label: "App Rating" },
-];
+{ value: "500K+", label: "Active Members" },
+{ value: "89%", label: "Match Rate" },
+{ value: "4.8★", label: "App Rating" }];
+
 
 const Landing = () => {
   return (
@@ -45,12 +45,12 @@ const Landing = () => {
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-          >
+            transition={{ duration: 0.8 }}>
+            
             <p className="text-primary font-body font-bold tracking-[0.3em] uppercase text-sm mb-6">
               Premium Age-Gap Dating
             </p>
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-heading font-bold mb-6 leading-tight">
+            <h1 className="text-4xl md:text-5xl font-heading font-bold mb-6 leading-tight lg:text-7xl">
               Built for Those<br />
               <span className="text-gradient">Who Know What They Want</span>
             </h1>
@@ -75,14 +75,14 @@ const Landing = () => {
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.4 }}
-            className="mt-20 flex justify-center gap-12 md:gap-20"
-          >
-            {stats.map((s) => (
-              <div key={s.label} className="text-center">
+            className="mt-20 flex justify-center gap-12 md:gap-20">
+            
+            {stats.map((s) =>
+            <div key={s.label} className="text-center">
                 <div className="text-3xl md:text-4xl font-heading font-bold text-gradient">{s.value}</div>
                 <div className="text-muted-foreground text-sm mt-1">{s.label}</div>
               </div>
-            ))}
+            )}
           </motion.div>
         </div>
       </section>
@@ -94,8 +94,8 @@ const Landing = () => {
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
-            className="text-center mb-16"
-          >
+            className="text-center mb-16">
+            
             <h2 className="text-4xl md:text-5xl font-heading font-bold mb-4">
               Why <span className="text-gradient">GapRomance</span>?
             </h2>
@@ -105,22 +105,22 @@ const Landing = () => {
           </motion.div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {features.map((f, i) => (
-              <motion.div
-                key={f.title}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="glass rounded-xl p-6 hover-lift group cursor-default"
-              >
+            {features.map((f, i) =>
+            <motion.div
+              key={f.title}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.1 }}
+              className="glass rounded-xl p-6 hover-lift group cursor-default">
+              
                 <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
                   <f.icon className="w-6 h-6 text-primary" />
                 </div>
                 <h3 className="font-heading text-xl font-semibold mb-2">{f.title}</h3>
                 <p className="text-muted-foreground text-sm">{f.desc}</p>
               </motion.div>
-            ))}
+            )}
           </div>
         </div>
       </section>
@@ -144,8 +144,8 @@ const Landing = () => {
       </section>
 
       <Footer />
-    </div>
-  );
+    </div>);
+
 };
 
 export default Landing;
