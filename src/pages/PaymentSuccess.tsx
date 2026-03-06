@@ -31,6 +31,24 @@ const PaymentSuccess = () => {
         }
         // Refresh subscription status
         if (refreshSubscription) await refreshSubscription();
+
+        // Check for pending gift purchase
+        const pendingGiftStr = sessionStorage.getItem("pending_gift");
+        if (pendingGiftStr && user) {
+          try {
+            const pendingGift = JSON.parse(pendingGiftStr);
+            sessionStorage.removeItem("pending_gift");
+            // Store completed gift info for Messages page to process
+            sessionStorage.setItem("pending_gift_complete", JSON.stringify({
+              gift: pendingGift.gift,
+              recipientId: pendingGift.recipientId,
+              matchId: pendingGift.matchId,
+            }));
+          } catch (e) {
+            console.error("Error processing pending gift:", e);
+          }
+        }
+
         setStatus("success");
       } catch {
         setStatus("success"); // Still show success — Stripe handled the payment
