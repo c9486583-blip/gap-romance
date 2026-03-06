@@ -306,10 +306,7 @@ const Settings = () => {
   if (!user) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-muted-foreground mb-4">Please log in to access settings</p>
-          <Button variant="hero" asChild><Link to="/login">Log In</Link></Button>
-        </div>
+        <div className="text-muted-foreground">Loading...</div>
       </div>
     );
   }

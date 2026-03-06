@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import NotificationPrompt from "@/components/NotificationPrompt";
 import BottomNav from "@/components/BottomNav";
+import ProtectedRoute from "@/components/ProtectedRoute";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -38,6 +39,13 @@ const HomeRedirect = () => {
   return <Landing />;
 };
 
+const AuthRedirect = ({ children }: { children: React.ReactNode }) => {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (user) return <Navigate to="/discover" replace />;
+  return <>{children}</>;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -48,25 +56,25 @@ const App = () => (
           <NotificationPrompt />
           <Routes>
             <Route path="/" element={<HomeRedirect />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/onboarding" element={<OnboardingQuiz />} />
-            <Route path="/profile-preview" element={<ProfilePreview />} />
-            <Route path="/upload-photos" element={<PhotoUpload />} />
-            <Route path="/verify-identity" element={<IdentityVerification />} />
-            <Route path="/verification-pending" element={<VerificationPending />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/discover" element={<Discover />} />
-            <Route path="/matches" element={<Matches />} />
-            <Route path="/messages" element={<Messages />} />
+            <Route path="/login" element={<AuthRedirect><Login /></AuthRedirect>} />
+            <Route path="/signup" element={<AuthRedirect><Signup /></AuthRedirect>} />
+            <Route path="/onboarding" element={<ProtectedRoute requireVerified={false}><OnboardingQuiz /></ProtectedRoute>} />
+            <Route path="/profile-preview" element={<ProtectedRoute requireVerified={false}><ProfilePreview /></ProtectedRoute>} />
+            <Route path="/upload-photos" element={<ProtectedRoute requireVerified={false}><PhotoUpload /></ProtectedRoute>} />
+            <Route path="/verify-identity" element={<ProtectedRoute requireVerified={false}><IdentityVerification /></ProtectedRoute>} />
+            <Route path="/verification-pending" element={<ProtectedRoute requireVerified={false}><VerificationPending /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+            <Route path="/discover" element={<ProtectedRoute><Discover /></ProtectedRoute>} />
+            <Route path="/matches" element={<ProtectedRoute><Matches /></ProtectedRoute>} />
+            <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
+            <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+            <Route path="/credit-success" element={<ProtectedRoute><CreditSuccess /></ProtectedRoute>} />
+            <Route path="/payment-success" element={<ProtectedRoute><PaymentSuccess /></ProtectedRoute>} />
             <Route path="/pricing" element={<Pricing />} />
-            <Route path="/settings" element={<Settings />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/safety" element={<Safety />} />
-            <Route path="/credit-success" element={<CreditSuccess />} />
-            <Route path="/payment-success" element={<PaymentSuccess />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
