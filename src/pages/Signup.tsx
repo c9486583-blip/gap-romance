@@ -109,19 +109,19 @@ const Signup = () => {
       });
       if (error || !data?.success) {
         toast({ title: "Failed to send code", description: error?.message || data?.error, variant: "destructive" });
-        setOtpSending(false);
         return false;
       }
       // For testing: store the code (remove in production)
       if (data._test_code) setTestCode(data._test_code);
       setResendCooldown(60);
       toast({ title: "Code sent!", description: `A 6-digit code was sent to ${phone}` });
-      setOtpSending(false);
       return true;
-    } catch {
-      toast({ title: "Failed to send code", variant: "destructive" });
-      setOtpSending(false);
+    } catch (err: any) {
+      console.error("Send OTP error:", err);
+      toast({ title: "Failed to send code", description: err?.message || "Please try again", variant: "destructive" });
       return false;
+    } finally {
+      setOtpSending(false);
     }
   };
 
@@ -168,55 +168,58 @@ const Signup = () => {
 
     setOtpVerifying(true);
 
-    // Verify OTP
-    const { data: verifyData, error: verifyError } = await supabase.functions.invoke("verify-phone-otp", {
-      body: { phone, code },
-    });
-
-    if (verifyError || !verifyData?.verified) {
-      toast({
-        title: "Verification failed",
-        description: verifyData?.error || "Invalid or expired code",
-        variant: "destructive",
+    try {
+      // Verify OTP
+      const { data: verifyData, error: verifyError } = await supabase.functions.invoke("verify-phone-otp", {
+        body: { phone, code },
       });
-      setOtpVerifying(false);
-      return;
-    }
 
-    // Phone verified — now create the account
-    setLoading(true);
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { emailRedirectTo: window.location.origin },
-    });
+      if (verifyError || !verifyData?.verified) {
+        toast({
+          title: "Verification failed",
+          description: verifyData?.error || verifyError?.message || "Invalid or expired code",
+          variant: "destructive",
+        });
+        return;
+      }
 
-    if (error) {
-      toast({ title: "Signup failed", description: error.message, variant: "destructive" });
+      // Phone verified — now create the account
+      setLoading(true);
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo: window.location.origin },
+      });
+
+      if (error) {
+        toast({ title: "Signup failed", description: error.message, variant: "destructive" });
+        return;
+      }
+
+      if (data.user) {
+        const updateData: any = {
+          first_name: firstName,
+          last_initial: lastInitial,
+          phone,
+          gender,
+          date_of_birth: dob,
+        };
+        if (location) {
+          updateData.latitude = location.lat;
+          updateData.longitude = location.lng;
+          updateData.city = location.city;
+        }
+        await supabase.from("profiles").update(updateData).eq("user_id", data.user.id);
+      }
+
+      navigate("/onboarding");
+    } catch (err: any) {
+      console.error("Verify & signup error:", err);
+      toast({ title: "Something went wrong", description: err?.message || "Please try again", variant: "destructive" });
+    } finally {
       setLoading(false);
       setOtpVerifying(false);
-      return;
     }
-
-    if (data.user) {
-      const updateData: any = {
-        first_name: firstName,
-        last_initial: lastInitial,
-        phone,
-        gender,
-        date_of_birth: dob,
-      };
-      if (location) {
-        updateData.latitude = location.lat;
-        updateData.longitude = location.lng;
-        updateData.city = location.city;
-      }
-      await supabase.from("profiles").update(updateData).eq("user_id", data.user.id);
-    }
-
-    setLoading(false);
-    setOtpVerifying(false);
-    navigate("/onboarding");
   };
 
   const handleResend = async () => {
