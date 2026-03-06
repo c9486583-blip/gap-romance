@@ -79,7 +79,7 @@ serve(async (req) => {
       mode: mode || "subscription",
       success_url: successUrl
         ? `${origin}${successUrl}?session_id={CHECKOUT_SESSION_ID}`
-        : `${origin}/settings?checkout=success`,
+        : `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/pricing`,
     };
 
