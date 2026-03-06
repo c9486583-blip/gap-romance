@@ -40,29 +40,48 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Delete storage files
-    const { data: files } = await adminClient.storage
-      .from("profile-photos")
-      .list(userId);
-    if (files && files.length > 0) {
-      const paths = files.map((f: any) => `${userId}/${f.name}`);
-      await adminClient.storage.from("profile-photos").remove(paths);
+    // Delete storage files (ignore errors)
+    try {
+      const { data: files } = await adminClient.storage
+        .from("profile-photos")
+        .list(userId);
+      if (files && files.length > 0) {
+        const paths = files.map((f: any) => `${userId}/${f.name}`);
+        await adminClient.storage.from("profile-photos").remove(paths);
+      }
+    } catch (e) {
+      console.error("Storage cleanup error (non-fatal):", e);
     }
 
     // Delete related data (order matters for foreign keys)
-    await adminClient.from("virtual_gifts_sent").delete().or(`sender_id.eq.${userId},receiver_id.eq.${userId}`);
-    await adminClient.from("messages").delete().eq("sender_id", userId);
-    await adminClient.from("reports").delete().eq("reporter_id", userId);
-    await adminClient.from("reports").delete().eq("reported_id", userId);
-    await adminClient.from("blocks").delete().or(`blocker_id.eq.${userId},blocked_id.eq.${userId}`);
-    await adminClient.from("likes").delete().or(`liker_id.eq.${userId},liked_id.eq.${userId}`);
-    await adminClient.from("matches").delete().or(`user_a_id.eq.${userId},user_b_id.eq.${userId}`);
-    await adminClient.from("messaging_time").delete().eq("user_id", userId);
-    await adminClient.from("moderation_logs").delete().eq("sender_id", userId);
-    await adminClient.from("notification_preferences").delete().eq("user_id", userId);
-    await adminClient.from("push_subscriptions").delete().eq("user_id", userId);
-    await adminClient.from("user_roles").delete().eq("user_id", userId);
-    await adminClient.from("profiles").delete().eq("user_id", userId);
+    // Each delete is wrapped to continue even if one fails
+    const tables = [
+      { table: "virtual_gifts_sent", filter: `sender_id.eq.${userId},receiver_id.eq.${userId}`, type: "or" },
+      { table: "messages", filter: userId, column: "sender_id", type: "eq" },
+      { table: "reports", filter: userId, column: "reporter_id", type: "eq" },
+      { table: "reports", filter: userId, column: "reported_id", type: "eq" },
+      { table: "blocks", filter: `blocker_id.eq.${userId},blocked_id.eq.${userId}`, type: "or" },
+      { table: "likes", filter: `liker_id.eq.${userId},liked_id.eq.${userId}`, type: "or" },
+      { table: "matches", filter: `user_a_id.eq.${userId},user_b_id.eq.${userId}`, type: "or" },
+      { table: "messaging_time", filter: userId, column: "user_id", type: "eq" },
+      { table: "moderation_logs", filter: userId, column: "sender_id", type: "eq" },
+      { table: "notification_preferences", filter: userId, column: "user_id", type: "eq" },
+      { table: "push_subscriptions", filter: userId, column: "user_id", type: "eq" },
+      { table: "user_roles", filter: userId, column: "user_id", type: "eq" },
+      { table: "profiles", filter: userId, column: "user_id", type: "eq" },
+    ];
+
+    for (const t of tables) {
+      try {
+        if (t.type === "or") {
+          await adminClient.from(t.table).delete().or(t.filter as string);
+        } else {
+          await adminClient.from(t.table).delete().eq(t.column!, t.filter);
+        }
+      } catch (e) {
+        console.error(`Failed to delete from ${t.table} (non-fatal):`, e);
+      }
+    }
 
     // Delete the auth user
     const { error: deleteError } = await adminClient.auth.admin.deleteUser(userId);
