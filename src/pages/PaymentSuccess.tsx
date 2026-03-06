@@ -1,15 +1,17 @@
 import { useEffect, useState } from "react";
-import { useSearchParams, Link } from "react-router-dom";
+import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, Loader2, ArrowRight, MessageCircle, Clock } from "lucide-react";
+import { CheckCircle, Loader2, ArrowRight, MessageCircle, Clock, Gift } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 
 const PaymentSuccess = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { user, refreshSubscription } = useAuth();
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [timeDetails, setTimeDetails] = useState<{ unlimited?: boolean; seconds_added?: number } | null>(null);
+  const [isGiftPurchase, setIsGiftPurchase] = useState(false);
 
   useEffect(() => {
     const sessionId = searchParams.get("session_id");
