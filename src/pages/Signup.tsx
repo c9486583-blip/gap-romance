@@ -225,6 +225,44 @@ const Signup = () => {
     await sendOtp();
   };
 
+  const handleDevSkip = async () => {
+    if (!window.location.hostname.includes("preview")) return;
+    if (!email.trim() || !password) {
+      toast({ title: "Please fill in email and password", variant: "destructive" });
+      return;
+    }
+    setLoading(true);
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { emailRedirectTo: window.location.origin },
+    });
+    if (error) {
+      toast({ title: "Signup failed", description: error.message, variant: "destructive" });
+      setLoading(false);
+      return;
+    }
+    if (data.user) {
+      const updateData: any = {
+        first_name: firstName || "TestUser",
+        last_initial: lastInitial || "T",
+        phone: phone || "+15555550000",
+        gender: gender || "Man",
+        date_of_birth: dob || "1990-01-01",
+        is_verified: true,
+        verification_status: "verified",
+      };
+      if (location) {
+        updateData.latitude = location.lat;
+        updateData.longitude = location.lng;
+        updateData.city = location.city;
+      }
+      await supabase.from("profiles").update(updateData).eq("user_id", data.user.id);
+    }
+    setLoading(false);
+    navigate("/onboarding");
+  };
+
   const inputClass = "w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary";
 
   return (
@@ -317,6 +355,22 @@ const Signup = () => {
                       "Verify Phone & Create Account"
                     )}
                   </Button>
+
+                  {window.location.hostname.includes("preview") && (
+                    <Button
+                      variant="outline"
+                      className="w-full mt-2 border-dashed border-yellow-500 text-yellow-500 hover:bg-yellow-500/10"
+                      size="lg"
+                      onClick={handleDevSkip}
+                      disabled={loading}
+                    >
+                      {loading ? (
+                        <><Loader2 className="mr-2 w-4 h-4 animate-spin" /> Creating Test Account...</>
+                      ) : (
+                        "⚡ Skip Verification (Dev Only)"
+                      )}
+                    </Button>
+                  )}
                 </div>
               </motion.div>
             ) : (
@@ -386,6 +440,22 @@ const Signup = () => {
                       {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend Code"}
                     </button>
                   </div>
+
+                  {window.location.hostname.includes("preview") && (
+                    <Button
+                      variant="outline"
+                      className="w-full border-dashed border-yellow-500 text-yellow-500 hover:bg-yellow-500/10"
+                      size="lg"
+                      onClick={handleDevSkip}
+                      disabled={loading}
+                    >
+                      {loading ? (
+                        <><Loader2 className="mr-2 w-4 h-4 animate-spin" /> Creating Test Account...</>
+                      ) : (
+                        "⚡ Skip Verification (Dev Only)"
+                      )}
+                    </Button>
+                  )}
                 </div>
               </motion.div>
             )}
