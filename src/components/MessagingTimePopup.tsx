@@ -34,14 +34,30 @@ const MessagingTimePopup = ({ open, onClose }: MessagingTimePopupProps) => {
       return;
     }
     try {
-      const { data, error } = await supabase.functions.invoke("create-checkout", {
-        body: { priceId, mode: "payment", successUrl: "/credit-success" },
-      });
-      if (error) {
-        const errMsg = typeof data === "object" && data?.error ? data.error : error.message;
-        toast({ title: "Checkout failed", description: errMsg, variant: "destructive" });
-      } else if (data?.url) {
-        window.location.href = data.url;
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      if (!accessToken) {
+        toast({ title: "Please log in again", description: "Your session has expired.", variant: "destructive" });
+        setPurchasing(null);
+        return;
+      }
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${accessToken}`,
+            "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({ priceId, mode: "payment", successUrl: "/credit-success" }),
+        }
+      );
+      const result = await response.json();
+      if (!response.ok) {
+        toast({ title: "Checkout failed", description: result?.error || "Unknown error", variant: "destructive" });
+      } else if (result?.url) {
+        window.location.href = result.url;
       } else {
         toast({ title: "Checkout failed", description: "No checkout URL returned", variant: "destructive" });
       }
