@@ -128,7 +128,7 @@ const Safety = () => {
               <section>
                 <h2 className="text-xl font-heading font-bold text-primary mb-3">6. Reporting & Blocking</h2>
                 <h3 className="font-bold text-primary/80 mb-2">6.1 How to Report</h3>
-                <p className="text-muted-foreground">Every profile, message, and piece of content includes a report option. Tap the three-dot menu or flag icon, select "Report," choose the reason, and submit. You can also email <a href="mailto:support@gapromance.com" className="text-primary hover:underline">support@gapromance.com</a> or use our <Link to="/contact" className="text-primary hover:underline">Contact Us</Link> form.</p>
+                <p className="text-muted-foreground">Every profile, message, and piece of content includes a report option. Tap the three-dot menu or flag icon, select "Report," choose the reason, and submit. You can also email <a href="mailto:GapRomanceSupport@proton.me" className="text-primary hover:underline">GapRomanceSupport@proton.me</a> or use our <Link to="/contact" className="text-primary hover:underline">Contact Us</Link> form.</p>
                 <h3 className="font-bold text-primary/80 mb-2 mt-4">6.2 How to Block</h3>
                 <p className="text-muted-foreground">Blocking a user prevents them from viewing your profile, messaging you, or appearing in discovery. Blocked users are not notified.</p>
                 <h3 className="font-bold text-primary/80 mb-2 mt-4">6.3 What Happens After You Report</h3>
