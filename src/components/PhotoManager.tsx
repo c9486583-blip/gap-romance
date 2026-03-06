@@ -105,44 +105,48 @@ const PhotoManager = ({
     setError(null);
     setUploading(true);
 
-    // Validate
-    const validation = await validateImage(file);
-    if (!validation.valid) {
-      setError(validation.error!);
+    try {
+      // Validate
+      const validation = await validateImage(file);
+      if (!validation.valid) {
+        setError(validation.error!);
+        return;
+      }
+
+      // Face detection
+      const hasFace = await detectFace(file);
+      if (!hasFace) {
+        setError("We could not detect a face in this photo — please upload a clear photo of yourself.");
+        return;
+      }
+
+      // Upload to storage
+      const ext = file.name.split(".").pop() || "jpg";
+      const fileName = `${userId}/${Date.now()}.${ext}`;
+
+      const { error: uploadError } = await withTimeout(
+        supabase.storage
+          .from("profile-photos")
+          .upload(fileName, file, { contentType: file.type, upsert: false })
+      );
+
+      if (uploadError) {
+        setError(uploadError.message || "Failed to upload photo. Please try again.");
+        return;
+      }
+
+      const { data: urlData } = supabase.storage
+        .from("profile-photos")
+        .getPublicUrl(fileName);
+
+      const newPhotos = [...photos, urlData.publicUrl];
+      onPhotosChange(newPhotos);
+      toast({ title: "Photo uploaded!" });
+    } catch (err: any) {
+      setError(err?.message || "Failed to upload photo. Please try again.");
+    } finally {
       setUploading(false);
-      return;
     }
-
-    // Face detection
-    const hasFace = await detectFace(file);
-    if (!hasFace) {
-      setError("We could not detect a face in this photo — please upload a clear photo of yourself.");
-      setUploading(false);
-      return;
-    }
-
-    // Upload to storage
-    const ext = file.name.split(".").pop() || "jpg";
-    const fileName = `${userId}/${Date.now()}.${ext}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from("profile-photos")
-      .upload(fileName, file, { contentType: file.type, upsert: false });
-
-    if (uploadError) {
-      setError("Failed to upload photo. Please try again.");
-      setUploading(false);
-      return;
-    }
-
-    const { data: urlData } = supabase.storage
-      .from("profile-photos")
-      .getPublicUrl(fileName);
-
-    const newPhotos = [...photos, urlData.publicUrl];
-    onPhotosChange(newPhotos);
-    setUploading(false);
-    toast({ title: "Photo uploaded!" });
   }, [userId, photos, onPhotosChange, toast]);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
