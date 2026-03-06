@@ -14,7 +14,7 @@ interface GiftPickerProps {
   matchId?: string | null;
 }
 
-const GiftPicker = ({ open, onClose, onSend, recipientId }: GiftPickerProps) => {
+const GiftPicker = ({ open, onClose, onSend, recipientId, matchId }: GiftPickerProps) => {
   const [purchasing, setPurchasing] = useState<string | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
