@@ -71,22 +71,37 @@ const Pricing = () => {
 
   const handleCheckout = async (priceId: string, mode: "subscription" | "payment" = "subscription", successUrl?: string) => {
     if (!user) {
-      // Store intended purchase so we can resume after login
       sessionStorage.setItem("pending_checkout", JSON.stringify({ priceId, mode, successUrl }));
       navigate("/signup?redirect=/pricing");
       return;
     }
     try {
-      const { data, error } = await supabase.functions.invoke("create-checkout", {
+      console.log("[Checkout] Invoking create-checkout", { priceId, mode, successUrl });
+      const response = await supabase.functions.invoke("create-checkout", {
         body: { priceId, mode, successUrl },
       });
-      if (error || !data?.url) {
-        toast({ title: "Checkout failed", description: error?.message || "Please try again", variant: "destructive" });
+      console.log("[Checkout] Response:", JSON.stringify(response));
+      
+      // supabase.functions.invoke returns { data, error }
+      // On non-2xx, error is a FunctionsHttpError and data may contain the error body
+      if (response.error) {
+        const errorMsg = response.data?.error || response.error?.message || "Please try again";
+        console.error("[Checkout] Error:", errorMsg);
+        toast({ title: "Checkout failed", description: String(errorMsg), variant: "destructive" });
         return;
       }
-      window.location.href = data.url;
+      
+      const url = response.data?.url;
+      if (!url) {
+        console.error("[Checkout] No URL in response:", response.data);
+        toast({ title: "Checkout failed", description: "No checkout URL returned", variant: "destructive" });
+        return;
+      }
+      
+      console.log("[Checkout] Redirecting to:", url);
+      window.location.href = url;
     } catch (err: any) {
-      console.error("Checkout error:", err);
+      console.error("[Checkout] Exception:", err);
       toast({ title: "Checkout failed", description: err?.message || "Please try again", variant: "destructive" });
     }
   };
