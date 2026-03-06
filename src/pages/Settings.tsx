@@ -14,6 +14,8 @@ import {
 } from "@/lib/profile-constants";
 import { calculateProfileCompleteness } from "@/lib/profile-completeness";
 import PhotoManager from "@/components/PhotoManager";
+import TopNav from "@/components/TopNav";
+import DeleteAccountDialog from "@/components/DeleteAccountDialog";
 
 const NOTE_PLACEHOLDERS = [
   "Just got back from hiking...",
