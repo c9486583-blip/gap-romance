@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Heart, Shield, Sparkles, Users, Star, ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import Footer from "@/components/Footer";
 import gapromanceLogo from "@/assets/gapromance_logo.png";
 
@@ -15,6 +16,8 @@ const features = [
 
 
 const Landing = () => {
+  const { user } = useAuth();
+
   return (
     <div className="min-h-screen bg-background">
       {/* Nav */}
@@ -25,12 +28,18 @@ const Landing = () => {
             GapRomance
           </Link>
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" asChild>
-              <Link to="/login">Log In</Link>
-            </Button>
-            <Button variant="hero" size="sm" asChild>
-              <Link to="/signup">Join Free</Link>
-            </Button>
+            {user ? (
+              <>
+                <Button variant="ghost" size="sm" asChild><Link to="/discover">Discover</Link></Button>
+                <Button variant="ghost" size="sm" asChild><Link to="/messages">Messages</Link></Button>
+                <Button variant="hero" size="sm" asChild><Link to="/profile">Profile</Link></Button>
+              </>
+            ) : (
+              <>
+                <Button variant="ghost" size="sm" asChild><Link to="/login">Log In</Link></Button>
+                <Button variant="hero" size="sm" asChild><Link to="/signup">Join Free</Link></Button>
+              </>
+            )}
           </div>
         </div>
       </nav>

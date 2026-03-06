@@ -28,6 +28,12 @@ const Settings = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Account fields
+  const [displayName, setDisplayName] = useState("");
+  const [bio, setBio] = useState("");
+  const [datingMode, setDatingMode] = useState("Both");
+  const [savingAccount, setSavingAccount] = useState(false);
+
   const handleLogout = async () => {
     await signOut();
     navigate("/");
@@ -94,6 +100,10 @@ const Settings = () => {
       if (profile.personality_badges) setPersonalityBadges(profile.personality_badges as string[]);
       if (profile.love_language) setLoveLanguage(profile.love_language as string);
       if (profile.photos) setUserPhotos(profile.photos as string[]);
+      // Account fields
+      setDisplayName(profile.first_name ? `${profile.first_name} ${profile.last_initial || ""}`.trim() : "");
+      setBio(profile.bio || "");
+      setDatingMode(profile.dating_mode || "Both");
     }
   }, [profile]);
 
@@ -275,11 +285,28 @@ const Settings = () => {
                 <div className="space-y-4">
                   <div>
                     <label className="text-sm text-muted-foreground block mb-1">Display Name</label>
-                    <input defaultValue={profile?.first_name ? `${profile.first_name} ${profile.last_initial || ""}` : ""} className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-primary" />
+                    <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-primary" />
                   </div>
                   <div>
                     <label className="text-sm text-muted-foreground block mb-1">Email</label>
                     <input defaultValue={user.email || ""} disabled className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground opacity-60" />
+                  </div>
+                  <div>
+                    <label className="text-sm text-muted-foreground block mb-1">Bio</label>
+                    <textarea value={bio} onChange={(e) => setBio(e.target.value)} rows={3} maxLength={500}
+                      placeholder="Tell people about yourself..."
+                      className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-primary resize-none" />
+                  </div>
+                  <div>
+                    <label className="text-sm text-muted-foreground block mb-1">Dating Mode</label>
+                    <div className="flex flex-wrap gap-2">
+                      {["Serious Dating", "Casual Dating", "Both"].map((m) => (
+                        <button key={m} type="button" onClick={() => setDatingMode(m)}
+                          className={`px-4 py-2 rounded-full text-sm border transition-all ${datingMode === m ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:border-primary/50"}`}>
+                          {m === "Both" ? "Open to Both" : m}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                   <div>
                     <label className="text-sm text-muted-foreground block mb-1">Location</label>
@@ -318,7 +345,27 @@ const Settings = () => {
                     </Button>
                   </div>
 
-                  <Button variant="hero">Save Changes</Button>
+                  <Button variant="hero" disabled={savingAccount} onClick={async () => {
+                    if (!user) return;
+                    setSavingAccount(true);
+                    const nameParts = displayName.trim().split(" ");
+                    const firstName = nameParts[0] || null;
+                    const lastInitial = nameParts.length > 1 ? nameParts[nameParts.length - 1].charAt(0) : null;
+                    const { error } = await supabase
+                      .from("profiles")
+                      .update({
+                        first_name: firstName,
+                        last_initial: lastInitial,
+                        bio: bio.trim() || null,
+                        dating_mode: datingMode,
+                      } as any)
+                      .eq("user_id", user.id);
+                    setSavingAccount(false);
+                    toast({ title: error ? "Failed to save" : "Account saved!", variant: error ? "destructive" : "default" });
+                    if (!error) refreshProfile();
+                  }}>
+                    {savingAccount ? "Saving..." : "Save Changes"}
+                  </Button>
                 </div>
               </div>
             )}
@@ -577,15 +624,76 @@ const Settings = () => {
                   <div className="pt-4">
                     <Button variant="outline">Block List</Button>
                   </div>
-                  <div className="pt-2">
-                    <Button variant="destructive">Delete Account</Button>
-                  </div>
+                  <DeleteAccountButton user={user} signOut={signOut} />
                 </div>
               </div>
             )}
           </div>
         </div>
       </div>
+    </div>
+  );
+};
+
+// Delete Account Button with confirmation
+const DeleteAccountButton = ({ user, signOut }: { user: any; signOut: () => Promise<void> }) => {
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const { toast } = useToast();
+  const navigate = useNavigate();
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      if (!accessToken) {
+        toast({ title: "Session expired", variant: "destructive" });
+        setDeleting(false);
+        return;
+      }
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-account`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${accessToken}`,
+            "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+        }
+      );
+      const result = await response.json();
+      if (!response.ok) {
+        toast({ title: "Failed to delete account", description: result?.error, variant: "destructive" });
+        setDeleting(false);
+        return;
+      }
+      await signOut();
+      navigate("/");
+      toast({ title: "Account deleted", description: "Your account has been permanently deleted." });
+    } catch (err: any) {
+      toast({ title: "Failed to delete account", description: err?.message, variant: "destructive" });
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <div className="pt-2">
+      {!confirmOpen ? (
+        <Button variant="destructive" onClick={() => setConfirmOpen(true)}>Delete Account</Button>
+      ) : (
+        <div className="glass rounded-xl p-4 border border-destructive/30 space-y-3">
+          <p className="text-sm font-bold text-destructive">Are you sure you want to delete your account? This cannot be undone.</p>
+          <p className="text-xs text-muted-foreground">All your data, photos, matches, and messages will be permanently deleted.</p>
+          <div className="flex gap-2">
+            <Button variant="destructive" size="sm" onClick={handleDelete} disabled={deleting}>
+              {deleting ? "Deleting..." : "Yes, Delete My Account"}
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setConfirmOpen(false)} disabled={deleting}>Cancel</Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
