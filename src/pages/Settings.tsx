@@ -623,7 +623,7 @@ const Settings = () => {
                   <div className="pt-4">
                     <Button variant="outline">Block List</Button>
                   </div>
-                  <DeleteAccountButton user={user} signOut={signOut} />
+                  <DeleteAccountDialog user={user} signOut={signOut} />
                 </div>
               </div>
             )}
