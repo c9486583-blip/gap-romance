@@ -11,10 +11,6 @@ const features = [
 { icon: Users, title: "Your Age, Your Rules", desc: "Search any age range you want. No forced defaults." }];
 
 
-const stats = [
-{ value: "500K+", label: "Active Members" },
-{ value: "89%", label: "Match Rate" },
-{ value: "4.8★", label: "App Rating" }];
 
 
 const Landing = () => {
@@ -70,20 +66,6 @@ const Landing = () => {
             </div>
           </motion.div>
 
-          {/* Stats */}
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
-            className="mt-20 flex justify-center gap-12 md:gap-20">
-            
-            {stats.map((s) =>
-            <div key={s.label} className="text-center">
-                <div className="text-3xl md:text-4xl font-heading font-bold text-gradient">{s.value}</div>
-                <div className="text-muted-foreground text-sm mt-1">{s.label}</div>
-              </div>
-            )}
-          </motion.div>
         </div>
       </section>
 
