@@ -24,6 +24,17 @@ const NOTE_PLACEHOLDERS = [
   "Working from a coffee shop today",
 ];
 
+const REQUEST_TIMEOUT_MS = 15000;
+
+const withTimeout = async <T,>(promiseLike: PromiseLike<T>, timeoutMs = REQUEST_TIMEOUT_MS): Promise<T> => {
+  return await Promise.race([
+    Promise.resolve(promiseLike),
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error("Request timed out. Please try again.")), timeoutMs)
+    ),
+  ]);
+};
+
 const Settings = () => {
   const [activeTab, setActiveTab] = useState("account");
   const { user, profile, subscriptionTier, subscriptionEnd, signOut, refreshSubscription, refreshProfile } = useAuth();
@@ -112,19 +123,28 @@ const Settings = () => {
   const handleSaveNote = async () => {
     if (!user) return;
     setSavingNote(true);
-    const { error } = await supabase
-      .from("profiles")
-      .update({
-        todays_note: todaysNote.trim() || null,
-        todays_note_updated_at: todaysNote.trim() ? new Date().toISOString() : null,
-      } as any)
-      .eq("user_id", user.id);
-    setSavingNote(false);
-    if (!error) {
+    try {
+      const { error } = await withTimeout(
+        supabase
+          .from("profiles")
+          .update({
+            todays_note: todaysNote.trim() || null,
+            todays_note_updated_at: todaysNote.trim() ? new Date().toISOString() : null,
+          } as any)
+          .eq("user_id", user.id)
+      );
+
+      if (error) {
+        toast({ title: "Failed to save note", variant: "destructive" });
+        return;
+      }
+
       toast({ title: todaysNote.trim() ? "Today's Note updated!" : "Today's Note cleared" });
-      refreshProfile();
-    } else {
-      toast({ title: "Failed to save note", variant: "destructive" });
+      await refreshProfile();
+    } catch (err: any) {
+      toast({ title: err?.message || "Failed to save note", variant: "destructive" });
+    } finally {
+      setSavingNote(false);
     }
   };
 
@@ -137,21 +157,31 @@ const Settings = () => {
   const handleSaveMusic = async () => {
     if (!user) return;
     setSavingMusic(true);
-    const cleanArtists = favoriteArtists.map((a) => a.trim()).filter(Boolean);
-    const { error } = await supabase
-      .from("profiles")
-      .update({
-        favorite_artists: cleanArtists,
-        favorite_genres: favoriteGenres,
-        favorite_song: favoriteSong.trim() || null,
-      } as any)
-      .eq("user_id", user.id);
-    setSavingMusic(false);
-    toast({
-      title: error ? "Failed to save" : "Music saved!",
-      variant: error ? "destructive" : "default",
-    });
-    if (!error) refreshProfile();
+    try {
+      const cleanArtists = favoriteArtists.map((a) => a.trim()).filter(Boolean);
+      const { error } = await withTimeout(
+        supabase
+          .from("profiles")
+          .update({
+            favorite_artists: cleanArtists,
+            favorite_genres: favoriteGenres,
+            favorite_song: favoriteSong.trim() || null,
+          } as any)
+          .eq("user_id", user.id)
+      );
+
+      if (error) {
+        toast({ title: "Failed to save", variant: "destructive" });
+        return;
+      }
+
+      toast({ title: "Music saved!" });
+      await refreshProfile();
+    } catch (err: any) {
+      toast({ title: err?.message || "Failed to save", variant: "destructive" });
+    } finally {
+      setSavingMusic(false);
+    }
   };
 
   const toggleHobby = (h: string) => {
@@ -175,33 +205,90 @@ const Settings = () => {
   const handleSaveProfileBadges = async () => {
     if (!user) return;
     setSavingProfile(true);
-    const { error } = await supabase
-      .from("profiles")
-      .update({
-        hobbies,
-        lifestyle_badges: lifestyleBadges,
-        personality_badges: personalityBadges,
-        love_language: loveLanguage || null,
-      } as any)
-      .eq("user_id", user.id);
-    setSavingProfile(false);
-    toast({
-      title: error ? "Failed to save" : "Profile updated!",
-      variant: error ? "destructive" : "default",
-    });
-    if (!error) refreshProfile();
+    try {
+      const { error } = await withTimeout(
+        supabase
+          .from("profiles")
+          .update({
+            hobbies,
+            lifestyle_badges: lifestyleBadges,
+            personality_badges: personalityBadges,
+            love_language: loveLanguage || null,
+          } as any)
+          .eq("user_id", user.id)
+      );
+
+      if (error) {
+        toast({ title: "Failed to save", variant: "destructive" });
+        return;
+      }
+
+      toast({ title: "Profile updated!" });
+      await refreshProfile();
+    } catch (err: any) {
+      toast({ title: err?.message || "Failed to save", variant: "destructive" });
+    } finally {
+      setSavingProfile(false);
+    }
   };
 
   const handleSavePhotos = async () => {
     if (!user) return;
     setSavingPhotos(true);
-    const { error } = await supabase
-      .from("profiles")
-      .update({ photos: userPhotos, avatar_url: userPhotos[0] || null } as any)
-      .eq("user_id", user.id);
-    setSavingPhotos(false);
-    toast({ title: error ? "Failed to save" : "Photos saved!", variant: error ? "destructive" : "default" });
-    if (!error) refreshProfile();
+    try {
+      const { error } = await withTimeout(
+        supabase
+          .from("profiles")
+          .update({ photos: userPhotos, avatar_url: userPhotos[0] || null } as any)
+          .eq("user_id", user.id)
+      );
+
+      if (error) {
+        toast({ title: "Failed to save", variant: "destructive" });
+        return;
+      }
+
+      toast({ title: "Photos saved!" });
+      await refreshProfile();
+    } catch (err: any) {
+      toast({ title: err?.message || "Failed to save", variant: "destructive" });
+    } finally {
+      setSavingPhotos(false);
+    }
+  };
+
+  const handleSaveAccount = async () => {
+    if (!user) return;
+    setSavingAccount(true);
+    try {
+      const nameParts = displayName.trim().split(" ");
+      const firstName = nameParts[0] || null;
+      const lastInitial = nameParts.length > 1 ? nameParts[nameParts.length - 1].charAt(0) : null;
+
+      const { error } = await withTimeout(
+        supabase
+          .from("profiles")
+          .update({
+            first_name: firstName,
+            last_initial: lastInitial,
+            bio: bio.trim() || null,
+            dating_mode: datingMode,
+          } as any)
+          .eq("user_id", user.id)
+      );
+
+      if (error) {
+        toast({ title: "Failed to save", variant: "destructive" });
+        return;
+      }
+
+      toast({ title: "Account saved!" });
+      await refreshProfile();
+    } catch (err: any) {
+      toast({ title: err?.message || "Failed to save", variant: "destructive" });
+    } finally {
+      setSavingAccount(false);
+    }
   };
 
   const completeness = calculateProfileCompleteness(profile);
@@ -344,25 +431,7 @@ const Settings = () => {
                     </Button>
                   </div>
 
-                  <Button variant="hero" disabled={savingAccount} onClick={async () => {
-                    if (!user) return;
-                    setSavingAccount(true);
-                    const nameParts = displayName.trim().split(" ");
-                    const firstName = nameParts[0] || null;
-                    const lastInitial = nameParts.length > 1 ? nameParts[nameParts.length - 1].charAt(0) : null;
-                    const { error } = await supabase
-                      .from("profiles")
-                      .update({
-                        first_name: firstName,
-                        last_initial: lastInitial,
-                        bio: bio.trim() || null,
-                        dating_mode: datingMode,
-                      } as any)
-                      .eq("user_id", user.id);
-                    setSavingAccount(false);
-                    toast({ title: error ? "Failed to save" : "Account saved!", variant: error ? "destructive" : "default" });
-                    if (!error) refreshProfile();
-                  }}>
+                  <Button variant="hero" disabled={savingAccount} onClick={handleSaveAccount}>
                     {savingAccount ? "Saving..." : "Save Changes"}
                   </Button>
                 </div>
@@ -659,12 +728,24 @@ const NotificationSettings = ({ user }: { user: any }) => {
   useEffect(() => {
     if (!user) return;
     const load = async () => {
-      const { data } = await supabase
-        .from("notification_preferences")
-        .select("*")
-        .eq("user_id", user.id)
-        .single();
-      if (data) setPrefs(data);
+      try {
+        const { data, error } = await withTimeout(
+          supabase
+            .from("notification_preferences")
+            .select("*")
+            .eq("user_id", user.id)
+            .maybeSingle()
+        );
+
+        if (error) {
+          console.error("Failed to load notification preferences:", error);
+          return;
+        }
+
+        if (data) setPrefs(data);
+      } catch (err) {
+        console.error("Failed to load notification preferences:", err);
+      }
     };
     load();
   }, [user]);
@@ -676,24 +757,37 @@ const NotificationSettings = ({ user }: { user: any }) => {
   const savePrefs = async () => {
     if (!user) return;
     setSaving(true);
-    const { error } = await supabase
-      .from("notification_preferences")
-      .upsert({
-        user_id: user.id,
-        new_matches: prefs.new_matches,
-        new_messages: prefs.new_messages,
-        virtual_gifts: prefs.virtual_gifts,
-        super_likes: prefs.super_likes,
-        profile_activity: prefs.profile_activity,
-        subscription_reminders: prefs.subscription_reminders,
-        daily_reminders: prefs.daily_reminders,
-        dnd_enabled: prefs.dnd_enabled,
-        dnd_start: prefs.dnd_start,
-        dnd_end: prefs.dnd_end,
-        updated_at: new Date().toISOString(),
-      } as any, { onConflict: "user_id" });
-    setSaving(false);
-    toast({ title: error ? "Failed to save" : "Notification preferences saved!", variant: error ? "destructive" : "default" });
+    try {
+      const { error } = await withTimeout(
+        supabase
+          .from("notification_preferences")
+          .upsert({
+            user_id: user.id,
+            new_matches: prefs.new_matches,
+            new_messages: prefs.new_messages,
+            virtual_gifts: prefs.virtual_gifts,
+            super_likes: prefs.super_likes,
+            profile_activity: prefs.profile_activity,
+            subscription_reminders: prefs.subscription_reminders,
+            daily_reminders: prefs.daily_reminders,
+            dnd_enabled: prefs.dnd_enabled,
+            dnd_start: prefs.dnd_start,
+            dnd_end: prefs.dnd_end,
+            updated_at: new Date().toISOString(),
+          } as any, { onConflict: "user_id" })
+      );
+
+      if (error) {
+        toast({ title: "Failed to save", variant: "destructive" });
+        return;
+      }
+
+      toast({ title: "Notification preferences saved!" });
+    } catch (err: any) {
+      toast({ title: err?.message || "Failed to save", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
