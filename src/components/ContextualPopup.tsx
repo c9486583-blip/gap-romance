@@ -97,6 +97,12 @@ const ContextualPopup = ({ open, onClose, type }: ContextualPopupProps) => {
       return;
     }
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      if (!accessToken) {
+        toast({ title: "Please log in again", description: "Your session has expired.", variant: "destructive" });
+        return;
+      }
       const body: any = {
         priceId: config.priceId,
         mode: config.mode || "subscription",
@@ -104,17 +110,28 @@ const ContextualPopup = ({ open, onClose, type }: ContextualPopupProps) => {
       if (config.discount) {
         body.coupon = STRIPE_COUPON_WELCOME;
       }
-      const { data, error } = await supabase.functions.invoke("create-checkout", { body });
-      if (error) {
-        const errMsg = typeof data === "object" && data?.error ? data.error : error.message;
-        toast({ title: "Checkout failed", description: errMsg, variant: "destructive" });
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${accessToken}`,
+            "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify(body),
+        }
+      );
+      const result = await response.json();
+      if (!response.ok) {
+        toast({ title: "Checkout failed", description: result?.error || "Unknown error", variant: "destructive" });
         return;
       }
-      if (!data?.url) {
+      if (!result?.url) {
         toast({ title: "Checkout failed", description: "No checkout URL returned", variant: "destructive" });
         return;
       }
-      window.location.href = data.url;
+      window.location.href = result.url;
       onClose();
     } catch {
       toast({ title: "Something went wrong", variant: "destructive" });
