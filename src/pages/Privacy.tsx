@@ -114,7 +114,7 @@ const Privacy = () => {
 
               <section>
                 <h2 className="text-xl font-heading font-bold text-primary mb-3">11. California Privacy Rights (CCPA)</h2>
-                <p className="text-muted-foreground">California residents have additional rights under CCPA. GapRomance does not sell personal information. Submit CCPA requests to support@gapromance.com with subject line "CCPA Request."</p>
+                <p className="text-muted-foreground">California residents have additional rights under CCPA. GapRomance does not sell personal information. Submit CCPA requests to GapRomanceSupport@proton.me with subject line "CCPA Request."</p>
               </section>
 
               <section>
