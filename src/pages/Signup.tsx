@@ -265,7 +265,7 @@ const Signup = () => {
         }
         await supabase.from("profiles").update(updateData).eq("user_id", data.user.id);
       }
-      navigate("/onboarding");
+      navigate("/upload-photos");
     } finally {
       setLoading(false);
     }
