@@ -638,7 +638,7 @@ const Messages = () => {
                 </div>
               )}
 
-              <GiftPicker open={giftOpen} onClose={() => setGiftOpen(false)} onSend={handleSendGift} />
+              <GiftPicker open={giftOpen} onClose={() => setGiftOpen(false)} onSend={handleSendGift} recipientId={activeMatch?.partnerId} />
               <div className="flex items-center gap-2">
                 <Button variant="ghost" size="icon" onClick={() => setGiftOpen((v) => !v)}>
                   <Gift className="w-5 h-5 text-primary" />

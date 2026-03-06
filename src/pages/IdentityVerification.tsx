@@ -117,24 +117,6 @@ const IdentityVerification = () => {
           Your data is securely processed and never shared. We use industry-standard encryption to protect your information.
         </p>
 
-        {window.location.hostname.includes("preview") && (
-          <Button
-            variant="outline"
-            className="w-full max-w-sm mx-auto mt-4 border-dashed border-yellow-500 text-yellow-500 hover:bg-yellow-500/10"
-            size="lg"
-            onClick={async () => {
-              if (!user) return;
-              await supabase.from("profiles").update({
-                is_verified: true,
-                verification_status: "verified",
-              }).eq("user_id", user.id);
-              toast({ title: "Dev: Verification skipped" });
-              navigate("/discover");
-            }}
-          >
-            ⚡ Skip ID Verification (Dev Only)
-          </Button>
-        )}
       </motion.div>
     </div>
   );
