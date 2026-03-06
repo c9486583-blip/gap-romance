@@ -6,6 +6,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import OnboardingProgress from "@/components/OnboardingProgress";
 
 const ProfilePreview = () => {
   const navigate = useNavigate();
