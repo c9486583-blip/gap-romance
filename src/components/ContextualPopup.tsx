@@ -105,8 +105,13 @@ const ContextualPopup = ({ open, onClose, type }: ContextualPopupProps) => {
         body.coupon = STRIPE_COUPON_WELCOME;
       }
       const { data, error } = await supabase.functions.invoke("create-checkout", { body });
-      if (error || !data?.url) {
-        toast({ title: "Checkout failed", variant: "destructive" });
+      if (error) {
+        const errMsg = typeof data === "object" && data?.error ? data.error : error.message;
+        toast({ title: "Checkout failed", description: errMsg, variant: "destructive" });
+        return;
+      }
+      if (!data?.url) {
+        toast({ title: "Checkout failed", description: "No checkout URL returned", variant: "destructive" });
         return;
       }
       window.location.href = data.url;
