@@ -121,19 +121,28 @@ const withTimeout = async <T,>(promise: Promise<T>, timeoutMs = REQUEST_TIMEOUT_
   const handleSaveNote = async () => {
     if (!user) return;
     setSavingNote(true);
-    const { error } = await supabase
-      .from("profiles")
-      .update({
-        todays_note: todaysNote.trim() || null,
-        todays_note_updated_at: todaysNote.trim() ? new Date().toISOString() : null,
-      } as any)
-      .eq("user_id", user.id);
-    setSavingNote(false);
-    if (!error) {
+    try {
+      const { error } = await withTimeout(
+        supabase
+          .from("profiles")
+          .update({
+            todays_note: todaysNote.trim() || null,
+            todays_note_updated_at: todaysNote.trim() ? new Date().toISOString() : null,
+          } as any)
+          .eq("user_id", user.id)
+      );
+
+      if (error) {
+        toast({ title: "Failed to save note", variant: "destructive" });
+        return;
+      }
+
       toast({ title: todaysNote.trim() ? "Today's Note updated!" : "Today's Note cleared" });
-      refreshProfile();
-    } else {
-      toast({ title: "Failed to save note", variant: "destructive" });
+      await refreshProfile();
+    } catch (err: any) {
+      toast({ title: err?.message || "Failed to save note", variant: "destructive" });
+    } finally {
+      setSavingNote(false);
     }
   };
 
@@ -146,21 +155,31 @@ const withTimeout = async <T,>(promise: Promise<T>, timeoutMs = REQUEST_TIMEOUT_
   const handleSaveMusic = async () => {
     if (!user) return;
     setSavingMusic(true);
-    const cleanArtists = favoriteArtists.map((a) => a.trim()).filter(Boolean);
-    const { error } = await supabase
-      .from("profiles")
-      .update({
-        favorite_artists: cleanArtists,
-        favorite_genres: favoriteGenres,
-        favorite_song: favoriteSong.trim() || null,
-      } as any)
-      .eq("user_id", user.id);
-    setSavingMusic(false);
-    toast({
-      title: error ? "Failed to save" : "Music saved!",
-      variant: error ? "destructive" : "default",
-    });
-    if (!error) refreshProfile();
+    try {
+      const cleanArtists = favoriteArtists.map((a) => a.trim()).filter(Boolean);
+      const { error } = await withTimeout(
+        supabase
+          .from("profiles")
+          .update({
+            favorite_artists: cleanArtists,
+            favorite_genres: favoriteGenres,
+            favorite_song: favoriteSong.trim() || null,
+          } as any)
+          .eq("user_id", user.id)
+      );
+
+      if (error) {
+        toast({ title: "Failed to save", variant: "destructive" });
+        return;
+      }
+
+      toast({ title: "Music saved!" });
+      await refreshProfile();
+    } catch (err: any) {
+      toast({ title: err?.message || "Failed to save", variant: "destructive" });
+    } finally {
+      setSavingMusic(false);
+    }
   };
 
   const toggleHobby = (h: string) => {
@@ -184,33 +203,90 @@ const withTimeout = async <T,>(promise: Promise<T>, timeoutMs = REQUEST_TIMEOUT_
   const handleSaveProfileBadges = async () => {
     if (!user) return;
     setSavingProfile(true);
-    const { error } = await supabase
-      .from("profiles")
-      .update({
-        hobbies,
-        lifestyle_badges: lifestyleBadges,
-        personality_badges: personalityBadges,
-        love_language: loveLanguage || null,
-      } as any)
-      .eq("user_id", user.id);
-    setSavingProfile(false);
-    toast({
-      title: error ? "Failed to save" : "Profile updated!",
-      variant: error ? "destructive" : "default",
-    });
-    if (!error) refreshProfile();
+    try {
+      const { error } = await withTimeout(
+        supabase
+          .from("profiles")
+          .update({
+            hobbies,
+            lifestyle_badges: lifestyleBadges,
+            personality_badges: personalityBadges,
+            love_language: loveLanguage || null,
+          } as any)
+          .eq("user_id", user.id)
+      );
+
+      if (error) {
+        toast({ title: "Failed to save", variant: "destructive" });
+        return;
+      }
+
+      toast({ title: "Profile updated!" });
+      await refreshProfile();
+    } catch (err: any) {
+      toast({ title: err?.message || "Failed to save", variant: "destructive" });
+    } finally {
+      setSavingProfile(false);
+    }
   };
 
   const handleSavePhotos = async () => {
     if (!user) return;
     setSavingPhotos(true);
-    const { error } = await supabase
-      .from("profiles")
-      .update({ photos: userPhotos, avatar_url: userPhotos[0] || null } as any)
-      .eq("user_id", user.id);
-    setSavingPhotos(false);
-    toast({ title: error ? "Failed to save" : "Photos saved!", variant: error ? "destructive" : "default" });
-    if (!error) refreshProfile();
+    try {
+      const { error } = await withTimeout(
+        supabase
+          .from("profiles")
+          .update({ photos: userPhotos, avatar_url: userPhotos[0] || null } as any)
+          .eq("user_id", user.id)
+      );
+
+      if (error) {
+        toast({ title: "Failed to save", variant: "destructive" });
+        return;
+      }
+
+      toast({ title: "Photos saved!" });
+      await refreshProfile();
+    } catch (err: any) {
+      toast({ title: err?.message || "Failed to save", variant: "destructive" });
+    } finally {
+      setSavingPhotos(false);
+    }
+  };
+
+  const handleSaveAccount = async () => {
+    if (!user) return;
+    setSavingAccount(true);
+    try {
+      const nameParts = displayName.trim().split(" ");
+      const firstName = nameParts[0] || null;
+      const lastInitial = nameParts.length > 1 ? nameParts[nameParts.length - 1].charAt(0) : null;
+
+      const { error } = await withTimeout(
+        supabase
+          .from("profiles")
+          .update({
+            first_name: firstName,
+            last_initial: lastInitial,
+            bio: bio.trim() || null,
+            dating_mode: datingMode,
+          } as any)
+          .eq("user_id", user.id)
+      );
+
+      if (error) {
+        toast({ title: "Failed to save", variant: "destructive" });
+        return;
+      }
+
+      toast({ title: "Account saved!" });
+      await refreshProfile();
+    } catch (err: any) {
+      toast({ title: err?.message || "Failed to save", variant: "destructive" });
+    } finally {
+      setSavingAccount(false);
+    }
   };
 
   const completeness = calculateProfileCompleteness(profile);
