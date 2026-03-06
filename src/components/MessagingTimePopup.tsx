@@ -4,8 +4,9 @@ import { Clock, Crown, X, Zap } from "lucide-react";
 import { STRIPE_TIME_CREDITS, STRIPE_PRODUCTS } from "@/lib/stripe-products";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 interface MessagingTimePopupProps {
   open: boolean;
@@ -20,10 +21,18 @@ const timeOptions = [
 
 const MessagingTimePopup = ({ open, onClose }: MessagingTimePopupProps) => {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [purchasing, setPurchasing] = useState<string | null>(null);
 
   const handlePurchase = async (priceId: string) => {
     setPurchasing(priceId);
+    if (!user) {
+      sessionStorage.setItem("pending_checkout", JSON.stringify({ priceId, mode: "payment", successUrl: "/credit-success" }));
+      navigate("/signup?redirect=/pricing");
+      onClose();
+      return;
+    }
     try {
       const { data, error } = await supabase.functions.invoke("create-checkout", {
         body: { priceId, mode: "payment", successUrl: "/credit-success" },

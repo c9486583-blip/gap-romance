@@ -1,9 +1,10 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { X, Crown, Zap, Heart, Rocket, Star } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import { STRIPE_PRODUCTS, STRIPE_ADDONS, STRIPE_COUPON_WELCOME } from "@/lib/stripe-products";
 import { ReactNode } from "react";
 
@@ -84,10 +85,17 @@ const popupConfigs: Record<ContextualPopupProps["type"], {
 
 const ContextualPopup = ({ open, onClose, type }: ContextualPopupProps) => {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const config = popupConfigs[type];
 
   const handleCta = async () => {
     if (!config.priceId) return;
+    if (!user) {
+      navigate("/signup?redirect=/pricing");
+      onClose();
+      return;
+    }
     try {
       const body: any = {
         priceId: config.priceId,

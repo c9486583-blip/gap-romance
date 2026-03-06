@@ -1,7 +1,8 @@
+import { useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Check, Zap, Crown, Sparkles, Shield, Clock } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { STRIPE_PRODUCTS, STRIPE_ADDONS, STRIPE_TIME_CREDITS } from "@/lib/stripe-products";
@@ -53,10 +54,26 @@ const virtualGifts = [
 const Pricing = () => {
   const { user, subscriptionTier } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
+
+  // Resume pending checkout after login
+  useEffect(() => {
+    if (!user) return;
+    const pending = sessionStorage.getItem("pending_checkout");
+    if (pending) {
+      sessionStorage.removeItem("pending_checkout");
+      try {
+        const { priceId, mode, successUrl } = JSON.parse(pending);
+        if (priceId) handleCheckout(priceId, mode, successUrl);
+      } catch {}
+    }
+  }, [user]);
 
   const handleCheckout = async (priceId: string, mode: "subscription" | "payment" = "subscription", successUrl?: string) => {
     if (!user) {
-      toast({ title: "Please log in first", variant: "destructive" });
+      // Store intended purchase so we can resume after login
+      sessionStorage.setItem("pending_checkout", JSON.stringify({ priceId, mode, successUrl }));
+      navigate("/signup?redirect=/pricing");
       return;
     }
     try {
