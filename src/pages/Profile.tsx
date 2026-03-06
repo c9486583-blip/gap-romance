@@ -351,17 +351,17 @@ const Profile = () => {
 
         {/* Actions */}
         <div className="flex justify-center gap-4 pb-10">
-          <Button variant="hero-outline" size="lg">
-            <MessageCircle className="mr-2" /> Message
-          </Button>
-          <Button variant="hero" size="lg">
-            <Heart className="mr-2" /> Like
+          <Button variant="hero-outline" size="lg" asChild>
+            <Link to="/settings"><Edit3 className="mr-2 w-4 h-4" /> Edit Profile</Link>
           </Button>
         </div>
       </div>
 
-      <ReportModal open={reportOpen} onOpenChange={setReportOpen} reportedUserId="mock-user-id" source="profile" />
-      <BlockConfirmDialog open={blockOpen} onOpenChange={setBlockOpen} blockedUserId="mock-user-id" blockedUserName={mockProfile.name} />
+      <AnimatePresence>
+        {showPreview && profile && (
+          <ProfilePreviewCard profile={profile} onClose={() => setShowPreview(false)} />
+        )}
+      </AnimatePresence>
     </div>
   );
 };
