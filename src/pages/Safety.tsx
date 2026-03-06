@@ -169,7 +169,7 @@ const Safety = () => {
                 <h2 className="text-xl font-heading font-bold text-primary mb-3">11. Contact Our Safety Team</h2>
                 <ul className="list-disc pl-6 space-y-1 text-muted-foreground">
                   <li>In-app report feature: available on every profile and message.</li>
-                  <li>Email: <a href="mailto:support@gapromance.com" className="text-primary hover:underline">support@gapromance.com</a></li>
+                  <li>Email: <a href="mailto:GapRomanceSupport@proton.me" className="text-primary hover:underline">GapRomanceSupport@proton.me</a></li>
                   <li>Contact form: available on our <Link to="/contact" className="text-primary hover:underline">Contact Us</Link> page.</li>
                 </ul>
                 <p className="text-muted-foreground mt-3">We aim to respond to all safety-related reports within 24 hours. For urgent concerns, contact your local emergency services.</p>
