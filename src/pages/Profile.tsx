@@ -67,9 +67,8 @@ const isNoteActive = (updatedAt: string | null) => {
 const Profile = () => {
   const { user, profile, refreshProfile } = useAuth();
   const { toast } = useToast();
-  const [reportOpen, setReportOpen] = useState(false);
-  const [blockOpen, setBlockOpen] = useState(false);
   const [editingNote, setEditingNote] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const [noteText, setNoteText] = useState("");
   const [savingNote, setSavingNote] = useState(false);
 
