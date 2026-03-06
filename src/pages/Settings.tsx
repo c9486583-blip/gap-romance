@@ -34,6 +34,8 @@ const withTimeout = async <T,>(promise: Promise<T>, timeoutMs = REQUEST_TIMEOUT_
     ),
   ]);
 };
+
+const Settings = () => {
   const [activeTab, setActiveTab] = useState("account");
   const { user, profile, subscriptionTier, subscriptionEnd, signOut, refreshSubscription, refreshProfile } = useAuth();
   const navigate = useNavigate();
