@@ -48,7 +48,8 @@ const IdentityVerification = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+      <OnboardingProgress currentStep={4} totalSteps={5} stepLabel="Identity Verification" />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
