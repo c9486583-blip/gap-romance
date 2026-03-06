@@ -37,15 +37,19 @@ const MessagingTimePopup = ({ open, onClose }: MessagingTimePopupProps) => {
       const { data, error } = await supabase.functions.invoke("create-checkout", {
         body: { priceId, mode: "payment", successUrl: "/credit-success" },
       });
-      if (error || !data?.url) {
-        toast({ title: "Checkout failed", variant: "destructive" });
-      } else {
+      if (error) {
+        const errMsg = typeof data === "object" && data?.error ? data.error : error.message;
+        toast({ title: "Checkout failed", description: errMsg, variant: "destructive" });
+      } else if (data?.url) {
         window.location.href = data.url;
+      } else {
+        toast({ title: "Checkout failed", description: "No checkout URL returned", variant: "destructive" });
       }
     } catch {
       toast({ title: "Something went wrong", variant: "destructive" });
+    } finally {
+      setPurchasing(null);
     }
-    setPurchasing(null);
   };
 
   return (

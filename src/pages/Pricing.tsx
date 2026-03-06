@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Check, Zap, Crown, Sparkles, Shield, Clock } from "lucide-react";
@@ -69,40 +69,37 @@ const Pricing = () => {
     }
   }, [user]);
 
+  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
+
   const handleCheckout = async (priceId: string, mode: "subscription" | "payment" = "subscription", successUrl?: string) => {
     if (!user) {
       sessionStorage.setItem("pending_checkout", JSON.stringify({ priceId, mode, successUrl }));
       navigate("/signup?redirect=/pricing");
       return;
     }
+
+    setCheckoutLoading(priceId);
     try {
-      console.log("[Checkout] Invoking create-checkout", { priceId, mode, successUrl });
-      const response = await supabase.functions.invoke("create-checkout", {
+      const { data, error } = await supabase.functions.invoke("create-checkout", {
         body: { priceId, mode, successUrl },
       });
-      console.log("[Checkout] Response:", JSON.stringify(response));
-      
-      // supabase.functions.invoke returns { data, error }
-      // On non-2xx, error is a FunctionsHttpError and data may contain the error body
-      if (response.error) {
-        const errorMsg = response.data?.error || response.error?.message || "Please try again";
-        console.error("[Checkout] Error:", errorMsg);
-        toast({ title: "Checkout failed", description: String(errorMsg), variant: "destructive" });
+
+      if (error) {
+        // When edge function returns non-2xx, error is set but data may contain the parsed body
+        const errMsg = typeof data === "object" && data?.error ? data.error : error.message;
+        toast({ title: "Checkout failed", description: errMsg, variant: "destructive" });
         return;
       }
-      
-      const url = response.data?.url;
-      if (!url) {
-        console.error("[Checkout] No URL in response:", response.data);
+
+      if (data?.url) {
+        window.location.href = data.url;
+      } else {
         toast({ title: "Checkout failed", description: "No checkout URL returned", variant: "destructive" });
-        return;
       }
-      
-      console.log("[Checkout] Redirecting to:", url);
-      window.location.href = url;
     } catch (err: any) {
-      console.error("[Checkout] Exception:", err);
-      toast({ title: "Checkout failed", description: err?.message || "Please try again", variant: "destructive" });
+      toast({ title: "Checkout failed", description: err?.message || "Something went wrong", variant: "destructive" });
+    } finally {
+      setCheckoutLoading(null);
     }
   };
 
@@ -161,8 +158,8 @@ const Pricing = () => {
               {isCurrentPlan(plan.name) ? (
                 <Button variant="outline" className="w-full" size="lg" disabled>Current Plan</Button>
               ) : plan.priceId ? (
-                <Button variant={plan.variant} className="w-full" size="lg" onClick={() => handleCheckout(plan.priceId!)}>
-                  {plan.cta}
+                <Button variant={plan.variant} className="w-full" size="lg" onClick={() => handleCheckout(plan.priceId!)} disabled={checkoutLoading === plan.priceId}>
+                  {checkoutLoading === plan.priceId ? "Loading..." : plan.cta}
                 </Button>
               ) : (
                 <Button variant={plan.variant} className="w-full" size="lg" asChild>
@@ -187,7 +184,9 @@ const Pricing = () => {
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="font-heading font-bold text-primary">{a.price}</span>
-                  <Button variant="outline" size="sm" onClick={() => handleCheckout(a.priceId, "payment")}>Buy</Button>
+                  <Button variant="outline" size="sm" onClick={() => handleCheckout(a.priceId, "payment")} disabled={checkoutLoading === a.priceId}>
+                    {checkoutLoading === a.priceId ? "..." : "Buy"}
+                  </Button>
                 </div>
               </motion.div>
             ))}
@@ -210,8 +209,8 @@ const Pricing = () => {
                 <div className="text-xl font-heading font-bold mb-1">{pack.label}</div>
                 <div className="text-2xl font-heading font-bold text-primary mb-2">${pack.price.toFixed(2)}</div>
                 <p className="text-xs text-muted-foreground mb-4">{pack.desc}</p>
-                <Button variant="outline" className="w-full" onClick={() => handleCheckout(pack.price_id, "payment", "/credit-success")}>
-                  Buy Time
+                <Button variant="outline" className="w-full" onClick={() => handleCheckout(pack.price_id, "payment", "/credit-success")} disabled={checkoutLoading === pack.price_id}>
+                  {checkoutLoading === pack.price_id ? "Loading..." : "Buy Time"}
                 </Button>
               </motion.div>
             ))}
