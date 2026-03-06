@@ -111,7 +111,7 @@ const Terms = () => {
                   <li>Spotlight Badge — $7.00 per week</li>
                   <li>Virtual Gifts — $1.00–$5.00 each</li>
                 </ul>
-                <p className="text-muted-foreground mt-3">All payments are processed through Stripe. Subscriptions renew automatically. All purchases are generally non-refundable. Refund requests can be sent to support@gapromance.com within 7 days.</p>
+                <p className="text-muted-foreground mt-3">All payments are processed through Stripe. Subscriptions renew automatically. All purchases are generally non-refundable. Refund requests can be sent to GapRomanceSupport@proton.me within 7 days.</p>
               </section>
 
               <section>
