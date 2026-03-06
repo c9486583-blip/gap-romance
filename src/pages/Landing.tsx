@@ -28,18 +28,8 @@ const Landing = () => {
             <span className="text-xl font-heading font-bold text-gradient whitespace-nowrap">GapRomance</span>
           </Link>
           <div className="flex items-center gap-3">
-            {user ? (
-              <>
-                <Button variant="ghost" size="sm" asChild><Link to="/discover">Discover</Link></Button>
-                <Button variant="ghost" size="sm" asChild><Link to="/messages">Messages</Link></Button>
-                <Button variant="hero" size="sm" asChild><Link to="/profile">Profile</Link></Button>
-              </>
-            ) : (
-              <>
-                <Button variant="ghost" size="sm" asChild><Link to="/login">Log In</Link></Button>
-                <Button variant="hero" size="sm" asChild><Link to="/signup">Join Free</Link></Button>
-              </>
-            )}
+            <Button variant="ghost" size="sm" asChild><Link to="/login">Log In</Link></Button>
+            <Button variant="hero" size="sm" asChild><Link to="/signup">Join Free</Link></Button>
           </div>
         </div>
       </nav>
