@@ -11,6 +11,7 @@ interface GiftPickerProps {
   onClose: () => void;
   onSend: (gift: VirtualGift) => void;
   recipientId?: string;
+  matchId?: string | null;
 }
 
 const GiftPicker = ({ open, onClose, onSend, recipientId }: GiftPickerProps) => {
