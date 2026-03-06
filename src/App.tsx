@@ -24,6 +24,7 @@ import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import Safety from "./pages/Safety";
 import CreditSuccess from "./pages/CreditSuccess";
+import PaymentSuccess from "./pages/PaymentSuccess";
 import NotFound from "./pages/NotFound";
 import Admin from "./pages/Admin";
 import PhotoUpload from "./pages/PhotoUpload";
