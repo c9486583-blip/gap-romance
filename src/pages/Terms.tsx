@@ -57,7 +57,7 @@ const Terms = () => {
                 <h3 className="font-bold text-primary/80 mb-2 mt-4">2.3 One Account Per Person</h3>
                 <p className="text-muted-foreground">Each user is permitted one account only. Creating multiple accounts to circumvent a suspension, ban, or verification requirement is strictly prohibited.</p>
                 <h3 className="font-bold text-primary/80 mb-2 mt-4">2.4 Account Security</h3>
-                <p className="text-muted-foreground">You are responsible for maintaining the confidentiality of your login credentials. Notify GapRomance immediately at support@gapromance.com if you suspect unauthorized use of your account.</p>
+                <p className="text-muted-foreground">You are responsible for maintaining the confidentiality of your login credentials. Notify GapRomance immediately at GapRomanceSupport@proton.me if you suspect unauthorized use of your account.</p>
               </section>
 
               <section>
