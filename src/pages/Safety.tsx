@@ -146,7 +146,7 @@ const Safety = () => {
               <section>
                 <h2 className="text-xl font-heading font-bold text-primary mb-3">8. Protection of Minors</h2>
                 <p className="text-muted-foreground">GapRomance has an absolute zero tolerance policy for any content, behavior, or activity that exploits, harms, or endangers minors. Women must be at least 18 and men must be at least 25 to use the platform. Mandatory verification enforces these requirements. Any account found to belong to a minor will be immediately and permanently terminated.</p>
-                <p className="text-muted-foreground mt-3">If you believe a minor is using GapRomance, report it immediately to <a href="mailto:support@gapromance.com" className="text-primary hover:underline">support@gapromance.com</a>.</p>
+                <p className="text-muted-foreground mt-3">If you believe a minor is using GapRomance, report it immediately to <a href="mailto:GapRomanceSupport@proton.me" className="text-primary hover:underline">GapRomanceSupport@proton.me</a>.</p>
               </section>
 
               <section>
