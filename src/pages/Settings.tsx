@@ -429,25 +429,7 @@ const withTimeout = async <T,>(promise: Promise<T>, timeoutMs = REQUEST_TIMEOUT_
                     </Button>
                   </div>
 
-                  <Button variant="hero" disabled={savingAccount} onClick={async () => {
-                    if (!user) return;
-                    setSavingAccount(true);
-                    const nameParts = displayName.trim().split(" ");
-                    const firstName = nameParts[0] || null;
-                    const lastInitial = nameParts.length > 1 ? nameParts[nameParts.length - 1].charAt(0) : null;
-                    const { error } = await supabase
-                      .from("profiles")
-                      .update({
-                        first_name: firstName,
-                        last_initial: lastInitial,
-                        bio: bio.trim() || null,
-                        dating_mode: datingMode,
-                      } as any)
-                      .eq("user_id", user.id);
-                    setSavingAccount(false);
-                    toast({ title: error ? "Failed to save" : "Account saved!", variant: error ? "destructive" : "default" });
-                    if (!error) refreshProfile();
-                  }}>
+                  <Button variant="hero" disabled={savingAccount} onClick={handleSaveAccount}>
                     {savingAccount ? "Saving..." : "Save Changes"}
                   </Button>
                 </div>
