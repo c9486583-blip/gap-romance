@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ChevronRight, ChevronLeft, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import OnboardingProgress from "@/components/OnboardingProgress";
 
 const hobbyOptions = [
   "Hiking", "Running", "Cycling", "Swimming", "Yoga", "Pilates", "Gym & Fitness",
