@@ -9,6 +9,8 @@ import { calculateDistance } from "@/hooks/useGeolocation";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { HOBBY_OPTIONS, GENRE_OPTIONS, LIFESTYLE_ICONS } from "@/lib/profile-constants";
 import { calculateProfileCompleteness, COMPLETENESS_THRESHOLD } from "@/lib/profile-completeness";
+import ContextualPopup from "@/components/ContextualPopup";
+import { useContextualPopups } from "@/hooks/useContextualPopups";
 
 const TagFilter = ({
   options, selected, onToggle,
@@ -29,11 +31,14 @@ const TagFilter = ({
 );
 
 const Discover = () => {
-  const { user, profile } = useAuth();
+  const { user, profile, subscriptionTier } = useAuth();
   const { location, requestLocation } = useGeolocation();
   const [showFilters, setShowFilters] = useState(false);
   const [profiles, setProfiles] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [filtersPopup, setFiltersPopup] = useState(false);
+  const isFreeTier = subscriptionTier === "free";
+  const { showSevenDayPopup, showWelcomeBackPopup, dismissSevenDay, dismissWelcomeBack } = useContextualPopups();
 
   const [modeFilter, setModeFilter] = useState("All");
   const [verifiedOnly, setVerifiedOnly] = useState(false);
@@ -336,7 +341,14 @@ const Discover = () => {
                   <Button variant="ghost" size="sm" onClick={resetFilters}>
                     <RotateCcw className="w-4 h-4 mr-2" /> Reset Filters
                   </Button>
-                  <Button variant="hero" size="sm" onClick={applyFilters}>Apply Filters</Button>
+                  <Button variant="hero" size="sm" onClick={() => {
+                    const hasAdvanced = selectedHobbies.length > 0 || selectedGenres.length > 0 || verifiedOnly || distanceRadius > 0;
+                    if (isFreeTier && hasAdvanced) {
+                      setFiltersPopup(true);
+                    } else {
+                      applyFilters();
+                    }
+                  }}>Apply Filters</Button>
                 </div>
               </div>
             </motion.div>
@@ -473,6 +485,11 @@ const Discover = () => {
           </>
         )}
       </div>
+
+      {/* Contextual Popups */}
+      <ContextualPopup open={filtersPopup} onClose={() => setFiltersPopup(false)} type="filters" />
+      <ContextualPopup open={showSevenDayPopup} onClose={dismissSevenDay} type="sevenDay" />
+      <ContextualPopup open={showWelcomeBackPopup} onClose={dismissWelcomeBack} type="welcomeBack" />
     </div>
   );
 };

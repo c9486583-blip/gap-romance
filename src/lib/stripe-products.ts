@@ -36,6 +36,33 @@ export const STRIPE_ADDONS = {
   },
 } as const;
 
+export const STRIPE_TIME_CREDITS = {
+  thirtyMin: {
+    product_id: "prod_U5zq04PHrIkLY9",
+    price_id: "price_1T7nqT30RgnjoIxNAYkcHxwq",
+    name: "30 Minutes Extra",
+    seconds: 1800,
+    price: 0.99,
+  },
+  twoHours: {
+    product_id: "prod_U5zqXPmEXJEODu",
+    price_id: "price_1T7nqq30RgnjoIxNKmciHQaY",
+    name: "2 Hours Extra",
+    seconds: 7200,
+    price: 2.99,
+  },
+  unlimitedDay: {
+    product_id: "prod_U5zq0I05x3tFuj",
+    price_id: "price_1T7nr530RgnjoIxN8sAVrQ0Y",
+    name: "Unlimited Today",
+    seconds: -1, // -1 means unlimited
+    price: 4.99,
+  },
+} as const;
+
+export const STRIPE_COUPON_WELCOME = "WDc9sQwp";
+
+// Legacy credit packs - kept for reference, no longer sold
 export const STRIPE_CREDIT_PACKS = {
   credits20: {
     product_id: "prod_U5hXkLER7CXGJn",
@@ -59,6 +86,15 @@ export const STRIPE_CREDIT_PACKS = {
     price: 9.99,
   },
 } as const;
+
+export function getTimeSecondsFromProductId(productId: string): { seconds: number; unlimited: boolean } | null {
+  for (const pack of Object.values(STRIPE_TIME_CREDITS)) {
+    if (pack.product_id === productId) {
+      return { seconds: pack.seconds, unlimited: pack.seconds === -1 };
+    }
+  }
+  return null;
+}
 
 export function getCreditsFromProductId(productId: string): number | null {
   for (const pack of Object.values(STRIPE_CREDIT_PACKS)) {

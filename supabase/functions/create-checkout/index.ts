@@ -24,7 +24,7 @@ serve(async (req) => {
     const user = data.user;
     if (!user?.email) throw new Error("User not authenticated");
 
-    const { priceId, mode, successUrl } = await req.json();
+    const { priceId, mode, successUrl, coupon } = await req.json();
     if (!priceId) throw new Error("priceId is required");
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", { apiVersion: "2025-08-27.basil" });
@@ -38,7 +38,7 @@ serve(async (req) => {
     const origin = req.headers.get("origin");
     const defaultSuccessUrl = `${origin}/settings?checkout=success`;
 
-    const session = await stripe.checkout.sessions.create({
+    const sessionParams: any = {
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
       line_items: [{ price: priceId, quantity: 1 }],
@@ -47,7 +47,14 @@ serve(async (req) => {
         ? `${origin}${successUrl}?session_id={CHECKOUT_SESSION_ID}`
         : defaultSuccessUrl,
       cancel_url: `${origin}/pricing`,
-    });
+    };
+
+    // Apply coupon/discount if provided
+    if (coupon) {
+      sessionParams.discounts = [{ coupon }];
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionParams);
 
     return new Response(JSON.stringify({ url: session.url }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
