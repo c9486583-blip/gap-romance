@@ -13,13 +13,23 @@ const Login = () => {
   const { toast } = useToast();
 
   const handleLogin = async () => {
+    if (!email.trim() || !password.trim()) {
+      toast({ title: "Please enter your email and password", variant: "destructive" });
+      return;
+    }
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
-    if (error) {
-      toast({ title: "Login failed", description: error.message, variant: "destructive" });
-    } else {
-      navigate("/discover");
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+      if (error) {
+        toast({ title: "Login failed", description: error.message, variant: "destructive" });
+      } else {
+        navigate("/discover");
+      }
+    } catch (err: any) {
+      console.error("Login error:", err);
+      toast({ title: "Login failed", description: "Something went wrong. Please try again.", variant: "destructive" });
+    } finally {
+      setLoading(false);
     }
   };
 
