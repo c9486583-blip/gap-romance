@@ -28,7 +28,7 @@ const Safety = () => {
               <section>
                 <h2 className="text-xl font-heading font-bold text-primary mb-3">Our Commitment to Your Safety</h2>
                 <p className="text-muted-foreground">At GapRomance, your safety is our highest priority. We have built safety into every layer of the platform — from mandatory identity verification before any profile goes live, to automated content moderation, to a robust reporting and blocking system. These Safety Guidelines are designed to help you understand the protections we have in place and how you can stay safe while using GapRomance.</p>
-                <p className="text-muted-foreground mt-3">We ask all users to read these guidelines carefully and take personal responsibility for their own safety when interacting with others online and in person. If you ever feel unsafe or encounter behavior that violates these guidelines, please report it immediately using our in-app tools or by contacting us at <a href="mailto:support@gapromance.com" className="text-primary hover:underline">support@gapromance.com</a>.</p>
+                <p className="text-muted-foreground mt-3">We ask all users to read these guidelines carefully and take personal responsibility for their own safety when interacting with others online and in person. If you ever feel unsafe or encounter behavior that violates these guidelines, please report it immediately using our in-app tools or by contacting us at <a href="mailto:GapRomanceSupport@proton.me" className="text-primary hover:underline">GapRomanceSupport@proton.me</a>.</p>
               </section>
 
               <section>
