@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { Phone, ArrowLeft, Loader2, MapPinOff } from "lucide-react";
+import PasswordStrengthIndicator, { isPasswordStrong, getPasswordRequirements } from "@/components/PasswordStrengthIndicator";
 
 const Signup = () => {
   const [step, setStep] = useState<"form" | "verify">("form");
@@ -72,6 +73,17 @@ const Signup = () => {
     }
     if (!email.trim() || !password) {
       toast({ title: "Please fill in email and password", variant: "destructive" });
+      return false;
+    }
+    if (!isPasswordStrong(password)) {
+      const req = getPasswordRequirements(password);
+      const missing: string[] = [];
+      if (!req.minLength) missing.push("at least 8 characters");
+      if (!req.hasUppercase) missing.push("one uppercase letter");
+      if (!req.hasLowercase) missing.push("one lowercase letter");
+      if (!req.hasNumber) missing.push("one number");
+      if (!req.hasSpecial) missing.push("one special character (!@#$%&)");
+      toast({ title: "Password too weak", description: `Missing: ${missing.join(", ")}`, variant: "destructive" });
       return false;
     }
 
@@ -244,6 +256,7 @@ const Signup = () => {
                   </div>
                   <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" type="email" className={inputClass} />
                   <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" type="password" className={inputClass} />
+                  <PasswordStrengthIndicator password={password} />
                   <div className="relative">
                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <input
