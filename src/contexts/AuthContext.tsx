@@ -27,24 +27,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [subscriptionEnd, setSubscriptionEnd] = useState<string | null>(null);
 
   const fetchProfile = async (userId: string) => {
-    const { data } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("user_id", userId)
-      .single();
-    if (data) {
-      setProfile(data);
-      return data;
+    try {
+      const { data } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("user_id", userId)
+        .single();
+      if (data) {
+        setProfile(data);
+        return data;
+      }
+      // Profile missing — create one (trigger may have been absent)
+      const { data: authData } = await supabase.auth.getUser();
+      const { data: newProfile } = await supabase
+        .from("profiles")
+        .insert({ user_id: userId, email: authData?.user?.email || null })
+        .select()
+        .single();
+      setProfile(newProfile);
+      return newProfile;
+    } catch (err) {
+      console.error("fetchProfile error:", err);
+      setProfile(null);
+      return null;
     }
-    // Profile missing — create one (trigger may have been absent)
-    const { data: user } = await supabase.auth.getUser();
-    const { data: newProfile } = await supabase
-      .from("profiles")
-      .insert({ user_id: userId, email: user?.user?.email || null })
-      .select()
-      .single();
-    setProfile(newProfile);
-    return newProfile;
   };
 
   const refreshSubscription = async () => {
@@ -95,11 +101,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(false);
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchProfile(session.user.id);
+        await fetchProfile(session.user.id);
         setTimeout(() => refreshSubscription(), 500);
       }
       setLoading(false);
