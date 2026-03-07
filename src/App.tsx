@@ -33,21 +33,12 @@ import Admin from "./pages/Admin";
 
 const queryClient = new QueryClient();
 
-const OnboardingAwareRedirect = () => {
-  const { user, profile, loading } = useAuth();
-  if (loading) return null;
-  if (!user) return null;
-  const step = profile?.onboarding_step ?? 0;
-  if (step >= ONBOARDING_STEPS.FULLY_VERIFIED) {
-    return <Navigate to="/discover" replace />;
-  }
-  if (step === 0) return null;
-  return <Navigate to={getOnboardingRoute(step)} replace />;
-};
-
 const HomeRedirect = () => {
   const { user, profile, loading } = useAuth();
-  if (loading) return null;
+
+  // Always show Landing while loading — never show blank
+  if (loading) return <Landing />;
+
   if (user) {
     const step = profile?.onboarding_step ?? 0;
     if (step >= ONBOARDING_STEPS.FULLY_VERIFIED) {
@@ -57,6 +48,7 @@ const HomeRedirect = () => {
       return <Navigate to={getOnboardingRoute(step)} replace />;
     }
   }
+
   return <Landing />;
 };
 
