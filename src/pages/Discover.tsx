@@ -191,10 +191,13 @@ const Discover = () => {
     await handleLike();
   };
 
-  if (!user || !profile) {
+  if (!user) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center pb-20">
-        <div className="text-muted-foreground">Loading...</div>
+        <div className="text-center">
+          <p className="text-muted-foreground mb-4">Please log in to discover people</p>
+          <Button variant="hero" asChild><Link to="/login">Log In</Link></Button>
+        </div>
       </div>
     );
   }
