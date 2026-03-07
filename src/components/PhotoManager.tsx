@@ -101,6 +101,9 @@ const PhotoManager = ({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const photosRef = useRef(photos);
+  photosRef.current = photos;
+
   const uploadPhoto = useCallback(async (file: File) => {
     setError(null);
     setUploading(true);
@@ -110,44 +113,75 @@ const PhotoManager = ({
       const validation = await validateImage(file);
       if (!validation.valid) {
         setError(validation.error!);
+        setUploading(false);
         return;
       }
 
-      // Face detection
-      const hasFace = await detectFace(file);
-      if (!hasFace) {
-        setError("We could not detect a face in this photo — please upload a clear photo of yourself.");
-        return;
+      // Face detection (skip on failure to avoid blocking upload)
+      try {
+        const hasFace = await detectFace(file);
+        if (!hasFace) {
+          setError("We could not detect a face in this photo — please upload a clear photo of yourself.");
+          setUploading(false);
+          return;
+        }
+      } catch {
+        // Skip face detection if it errors
+        console.warn("Face detection skipped due to error");
       }
 
       // Upload to storage
-      const ext = file.name.split(".").pop() || "jpg";
-      const fileName = `${userId}/${Date.now()}.${ext}`;
+      const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const fileName = `${userId}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
 
-      const { error: uploadError } = await withTimeout(
+      console.log("Starting photo upload:", fileName, "size:", file.size, "type:", file.type);
+
+      const { error: uploadError, data: uploadData } = await withTimeout(
         supabase.storage
           .from("profile-photos")
-          .upload(fileName, file, { contentType: file.type, upsert: false })
+          .upload(fileName, file, { contentType: file.type, upsert: false }),
+        45000
       );
 
       if (uploadError) {
-        setError(uploadError.message || "Failed to upload photo. Please try again.");
+        console.error("Upload error:", uploadError);
+        const msg = uploadError.message?.includes("Payload too large")
+          ? "Photo is too large. Please use a photo under 10MB."
+          : uploadError.message?.includes("mime")
+          ? "Unsupported file format. Please use JPG, PNG, or HEIC."
+          : uploadError.message?.includes("row-level security")
+          ? "Permission denied. Please log out and log back in, then try again."
+          : uploadError.message || "Failed to upload photo. Please try again.";
+        setError(msg);
+        setUploading(false);
         return;
       }
+
+      console.log("Upload successful:", uploadData);
 
       const { data: urlData } = supabase.storage
         .from("profile-photos")
         .getPublicUrl(fileName);
 
-      const newPhotos = [...photos, urlData.publicUrl];
+      if (!urlData?.publicUrl) {
+        setError("Upload succeeded but could not get photo URL. Please try again.");
+        setUploading(false);
+        return;
+      }
+
+      const newPhotos = [...photosRef.current, urlData.publicUrl];
       onPhotosChange(newPhotos);
       toast({ title: "Photo uploaded!" });
     } catch (err: any) {
-      setError(err?.message || "Failed to upload photo. Please try again.");
+      console.error("Photo upload exception:", err);
+      const msg = err?.message?.includes("timed out")
+        ? "Upload timed out. Please check your internet connection and try a smaller photo."
+        : err?.message || "Failed to upload photo. Please try again.";
+      setError(msg);
     } finally {
       setUploading(false);
     }
-  }, [userId, photos, onPhotosChange, toast]);
+  }, [userId, onPhotosChange, toast]);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
