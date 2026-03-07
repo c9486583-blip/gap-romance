@@ -28,7 +28,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const fetchProfile = async (userId: string) => {
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("profiles")
         .select("*")
         .eq("user_id", userId)
@@ -37,19 +37,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setProfile(data);
         return data;
       }
-      // Profile missing — create one (trigger may have been absent)
-      const { data: authData } = await supabase.auth.getUser();
-      const { data: newProfile } = await supabase
-        .from("profiles")
-        .insert({ user_id: userId, email: authData?.user?.email || null })
-        .select()
-        .single();
-      setProfile(newProfile);
-      return newProfile;
+      if (error && error.code === "PGRST116") {
+        // No profile found — create one
+        try {
+          const { data: sessionData } = await supabase.auth.getUser();
+          const email = sessionData?.user?.email || null;
+          const { data: newProfile } = await supabase
+            .from("profiles")
+            .insert({ user_id: userId, email })
+            .select()
+            .single();
+          if (newProfile) {
+            setProfile(newProfile);
+            return newProfile;
+          }
+        } catch (insertErr) {
+          console.error("Failed to create profile:", insertErr);
+        }
+      }
+      // Set an empty profile object so pages don't hang
+      const fallback = { user_id: userId, first_name: null, photos: [], hobbies: [], bio: null };
+      setProfile(fallback);
+      return fallback;
     } catch (err) {
       console.error("fetchProfile error:", err);
-      setProfile(null);
-      return null;
+      const fallback = { user_id: userId, first_name: null, photos: [], hobbies: [], bio: null };
+      setProfile(fallback);
+      return fallback;
     }
   };
 
@@ -87,31 +101,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        await fetchProfile(session.user.id);
-        // Don't call refreshSubscription here to avoid deadlock, use setTimeout
+    let isMounted = true;
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+      if (!isMounted) return;
+      setSession(newSession);
+      setUser(newSession?.user ?? null);
+      if (newSession?.user) {
+        await fetchProfile(newSession.user.id);
         setTimeout(() => refreshSubscription(), 500);
       } else {
         setProfile(null);
         setSubscriptionTier("free");
       }
-      setLoading(false);
+      if (isMounted) setLoading(false);
     });
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        await fetchProfile(session.user.id);
+    supabase.auth.getSession().then(async ({ data: { session: existingSession } }) => {
+      if (!isMounted) return;
+      setSession(existingSession);
+      setUser(existingSession?.user ?? null);
+      if (existingSession?.user) {
+        await fetchProfile(existingSession.user.id);
         setTimeout(() => refreshSubscription(), 500);
       }
-      setLoading(false);
+      if (isMounted) setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   // Refresh subscription every 60 seconds

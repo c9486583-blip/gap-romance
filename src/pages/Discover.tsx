@@ -191,10 +191,13 @@ const Discover = () => {
     await handleLike();
   };
 
-  if (!user || !profile) {
+  if (!user) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center pb-20">
-        <div className="text-muted-foreground">Loading...</div>
+        <div className="text-center">
+          <p className="text-muted-foreground mb-4">Please log in to discover people</p>
+          <Button variant="hero" asChild><Link to="/login">Log In</Link></Button>
+        </div>
       </div>
     );
   }
@@ -287,11 +290,11 @@ const Discover = () => {
             </div>
           ) : !currentProfile ? (
             <div className="flex flex-col items-center justify-center h-full text-center">
-              <Search className="w-12 h-12 text-muted-foreground mb-4" />
-              <h2 className="font-heading text-xl font-bold mb-2">No more profiles</h2>
-              <p className="text-muted-foreground text-sm mb-4">Check back later for new people!</p>
-              <Button variant="outline" size="sm" onClick={() => { setCurrentIndex(0); }}>
-                <RotateCcw className="w-4 h-4 mr-2" /> Start Over
+              <img alt="GapRomance logo" className="h-16 w-auto object-contain mb-6" src="/lovable-uploads/35979146-566e-4b78-97a6-4d67f2473574.png" />
+              <h2 className="font-heading text-xl font-bold mb-2">No one here yet</h2>
+              <p className="text-muted-foreground text-sm mb-6">Check back soon! New members are joining every day.</p>
+              <Button variant="hero" size="sm" onClick={() => setShowFilters(true)}>
+                Update Your Preferences
               </Button>
             </div>
           ) : (

@@ -117,10 +117,10 @@ const Matches = () => {
           <p className="text-muted-foreground text-center py-12">Loading matches...</p>
         ) : matches.length === 0 ? (
           <div className="text-center py-16">
-            <Heart className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <Heart className="w-12 h-12 text-primary mx-auto mb-4" />
             <h2 className="font-heading text-xl font-bold mb-2">No matches yet</h2>
-            <p className="text-muted-foreground mb-6">Keep swiping to find your match!</p>
-            <Button variant="hero" asChild><Link to="/discover">Discover People</Link></Button>
+            <p className="text-muted-foreground mb-6">Keep swiping to find your perfect match!</p>
+            <Button variant="hero" asChild><Link to="/discover">Go Discover</Link></Button>
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
