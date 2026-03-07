@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Check, Zap, Crown, Sparkles, Shield } from "lucide-react";
@@ -61,7 +61,8 @@ const Pricing = () => {
 
   const handleCheckout = async (priceId: string, mode: "subscription" | "payment" = "subscription", successUrl?: string) => {
     if (!user) {
-      navigate("/signup");
+      sessionStorage.setItem("pending_checkout", JSON.stringify({ priceId, mode, successUrl }));
+      navigate("/signup?redirect=/pricing");
       return;
     }
 
@@ -114,11 +115,22 @@ const Pricing = () => {
     }
   };
 
+  useEffect(() => {
+    if (!user) return;
+    const pending = sessionStorage.getItem("pending_checkout");
+    if (pending) {
+      sessionStorage.removeItem("pending_checkout");
+      try {
+        const { priceId, mode, successUrl } = JSON.parse(pending);
+        if (priceId) handleCheckout(priceId, mode, successUrl);
+      } catch {}
+    }
+  }, [user]);
+
   const isCurrentPlan = (planName: string) => subscriptionTier === planName.toLowerCase();
 
   return (
     <div className="min-h-screen bg-background">
-
       <nav className="sticky top-0 z-50 glass border-b border-border/30">
         <div className="container mx-auto flex items-center justify-between h-16 px-4">
           <Link to="/" className="text-2xl font-heading font-bold text-gradient">GapRomance</Link>
@@ -129,10 +141,7 @@ const Pricing = () => {
                 <Button variant="hero" size="sm" asChild><Link to="/profile">Profile</Link></Button>
               </>
             ) : (
-              <>
-                <Button variant="ghost" size="sm" asChild><Link to="/login">Log In</Link></Button>
-                <Button variant="hero" size="sm" asChild><Link to="/signup">Join Free</Link></Button>
-              </>
+              <Button variant="hero" size="sm" asChild><Link to="/signup">Join Free</Link></Button>
             )}
           </div>
         </div>
@@ -148,7 +157,6 @@ const Pricing = () => {
           </p>
         </motion.div>
 
-        {/* Plans */}
         <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto mb-20">
           {plans.map((plan, i) => (
             <motion.div key={plan.name} initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
@@ -195,7 +203,6 @@ const Pricing = () => {
           ))}
         </div>
 
-        {/* Add-ons */}
         <div className="max-w-3xl mx-auto">
           <h2 className="text-3xl font-heading font-bold text-center mb-8">
             À La Carte <span className="text-gradient">Extras</span>
@@ -221,7 +228,6 @@ const Pricing = () => {
           </div>
         </div>
 
-        {/* Messaging Time Credits */}
         <div className="max-w-3xl mx-auto mt-16">
           <h2 className="text-3xl font-heading font-bold text-center mb-3">
             Messaging Time <span className="text-gradient">Credits</span>
@@ -247,7 +253,6 @@ const Pricing = () => {
           </div>
         </div>
 
-        {/* Virtual Gifts */}
         <div className="max-w-3xl mx-auto mt-16">
           <h2 className="text-3xl font-heading font-bold text-center mb-3">
             Virtual <span className="text-gradient">Gifts</span>
@@ -264,7 +269,6 @@ const Pricing = () => {
           </div>
         </div>
 
-        {/* Verified Badge */}
         <div className="max-w-3xl mx-auto mt-16 mb-8">
           <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}
             className="glass rounded-2xl p-8 text-center glow-border">
@@ -278,7 +282,6 @@ const Pricing = () => {
             </Button>
           </motion.div>
         </div>
-
       </div>
     </div>
   );
