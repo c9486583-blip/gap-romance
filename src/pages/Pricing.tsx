@@ -8,54 +8,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { STRIPE_PRODUCTS, STRIPE_ADDONS, STRIPE_TIME_CREDITS } from "@/lib/stripe-products";
 import { useToast } from "@/hooks/use-toast";
 
-const plans = [
-  {
-    name: "Free", price: "$0", period: "forever", icon: Sparkles,
-    features: ["Browse profiles","Limited likes per day","Basic filters","1 hour messaging time/day"],
-    cta: "Get Started", variant: "outline" as const, popular: false, priceId: null,
-  },
-  {
-    name: "Premium", price: "$19.99", period: "/month", icon: Zap,
-    features: ["Everything in Free","Unlimited messaging time","See who liked you","Advanced filters","Read receipts","No ads"],
-    cta: "Go Premium", variant: "hero" as const, popular: true, priceId: STRIPE_PRODUCTS.premium.price_id,
-  },
-  {
-    name: "Elite", price: "$34.99", period: "/month", icon: Crown,
-    features: ["Everything in Premium","Weekly profile boost","Priority in search","Spotlight badge","Elite support","Exclusive events access"],
-    cta: "Go Elite", variant: "gold" as const, popular: false, priceId: STRIPE_PRODUCTS.elite.price_id,
-  },
-];
-
-const addons = [
-  { name: "Profile Boost", price: "$5", desc: "Be seen by 10x more people for 30 minutes", priceId: STRIPE_ADDONS.boost.price_id },
-  { name: "Super Like", price: "$2", desc: "Stand out and let them know you're serious", priceId: STRIPE_ADDONS.superLike.price_id },
-  { name: "Spotlight Badge", price: "$7/week", desc: "Gold ring around your profile in discovery", priceId: STRIPE_ADDONS.spotlight.price_id },
-];
-
-const timePacks = [
-  { ...STRIPE_TIME_CREDITS.thirtyMin, label: "30 Minutes", desc: "Quick burst to finish a conversation", icon: "⏱️" },
-  { ...STRIPE_TIME_CREDITS.twoHours, label: "2 Hours", desc: "Keep the conversations flowing all evening", icon: "⏰" },
-  { ...STRIPE_TIME_CREDITS.unlimitedDay, label: "Unlimited Today", desc: "Message as much as you want — all day, all chats", icon: "♾️" },
-];
-
-const virtualGifts = [
-  { emoji: "🌹", name: "Red Rose", price: "$1" },
-  { emoji: "❤️", name: "Heart", price: "$1" },
-  { emoji: "🔥", name: "Flame", price: "$1" },
-  { emoji: "🍫", name: "Chocolate Box", price: "$2" },
-  { emoji: "🥂", name: "Champagne", price: "$2" },
-  { emoji: "🎁", name: "Mystery Box", price: "$2" },
-  { emoji: "💍", name: "Diamond Ring", price: "$3" },
-  { emoji: "👑", name: "Gold Crown", price: "$3" },
-  { emoji: "🛥️", name: "Yacht", price: "$5" },
-  { emoji: "✈️", name: "Private Jet", price: "$5" },
-];
-
 const Pricing = () => {
   const { user, subscriptionTier } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const checkoutInProgress = useRef(false);
 
@@ -64,22 +20,16 @@ const Pricing = () => {
       navigate("/signup");
       return;
     }
-
     if (checkoutInProgress.current) return;
     checkoutInProgress.current = true;
     setCheckoutLoading(priceId);
-
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData?.session?.access_token;
-
       if (!accessToken) {
-        toast({ title: "Please log in again", description: "Your session has expired.", variant: "destructive" });
-        checkoutInProgress.current = false;
-        setCheckoutLoading(null);
+        toast({ title: "Please log in again", variant: "destructive" });
         return;
       }
-
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout`,
         {
@@ -92,33 +42,67 @@ const Pricing = () => {
           body: JSON.stringify({ priceId, mode, successUrl }),
         }
       );
-
       const result = await response.json();
-
-      if (!response.ok) {
-        toast({ title: "Checkout failed", description: result?.error || "Unknown error", variant: "destructive" });
-        return;
-      }
-
       if (result?.url) {
         window.location.href = result.url;
-        return;
       } else {
-        toast({ title: "Checkout failed", description: "No checkout URL returned", variant: "destructive" });
+        toast({ title: "Checkout failed", description: result?.error || "No URL returned", variant: "destructive" });
       }
     } catch (err: any) {
-      toast({ title: "Checkout failed", description: err?.message || "Something went wrong", variant: "destructive" });
+      toast({ title: "Checkout failed", description: err?.message, variant: "destructive" });
     } finally {
       checkoutInProgress.current = false;
       setCheckoutLoading(null);
     }
   };
 
-  const isCurrentPlan = (planName: string) => subscriptionTier === planName.toLowerCase();
+  const plans = [
+    {
+      name: "Free", price: "$0", period: "forever", icon: Sparkles,
+      features: ["Browse profiles", "Limited likes per day", "Basic filters", "1 hour messaging time/day"],
+      cta: "Get Started", popular: false, priceId: null,
+    },
+    {
+      name: "Premium", price: "$19.99", period: "/month", icon: Zap,
+      features: ["Everything in Free", "Unlimited messaging time", "See who liked you", "Advanced filters", "Read receipts", "No ads"],
+      cta: "Go Premium", popular: true, priceId: STRIPE_PRODUCTS.premium.price_id,
+    },
+    {
+      name: "Elite", price: "$34.99", period: "/month", icon: Crown,
+      features: ["Everything in Premium", "Weekly profile boost", "Priority in search", "Spotlight badge", "Elite support", "Exclusive events access"],
+      cta: "Go Elite", popular: false, priceId: STRIPE_PRODUCTS.elite.price_id,
+    },
+  ];
+
+  const addons = [
+    { name: "Profile Boost", price: "$5", desc: "Be seen by 10x more people for 30 minutes", priceId: STRIPE_ADDONS.boost.price_id },
+    { name: "Super Like", price: "$2", desc: "Stand out and let them know you're serious", priceId: STRIPE_ADDONS.superLike.price_id },
+    { name: "Spotlight Badge", price: "$7/week", desc: "Gold ring around your profile in discovery", priceId: STRIPE_ADDONS.spotlight.price_id },
+  ];
+
+  const timePacks = [
+    { ...STRIPE_TIME_CREDITS.thirtyMin, label: "30 Minutes", desc: "Quick burst to finish a conversation", icon: "⏱️" },
+    { ...STRIPE_TIME_CREDITS.twoHours, label: "2 Hours", desc: "Keep the conversations flowing all evening", icon: "⏰" },
+    { ...STRIPE_TIME_CREDITS.unlimitedDay, label: "Unlimited Today", desc: "Message as much as you want all day", icon: "♾️" },
+  ];
+
+  const virtualGifts = [
+    { emoji: "🌹", name: "Red Rose", price: "$1" },
+    { emoji: "❤️", name: "Heart", price: "$1" },
+    { emoji: "🔥", name: "Flame", price: "$1" },
+    { emoji: "🍫", name: "Chocolate Box", price: "$2" },
+    { emoji: "🥂", name: "Champagne", price: "$2" },
+    { emoji: "🎁", name: "Mystery Box", price: "$2" },
+    { emoji: "💍", name: "Diamond Ring", price: "$3" },
+    { emoji: "👑", name: "Gold Crown", price: "$3" },
+    { emoji: "🛥️", name: "Yacht", price: "$5" },
+    { emoji: "✈️", name: "Private Jet", price: "$5" },
+  ];
 
   return (
     <div className="min-h-screen bg-background">
 
+      {/* Nav */}
       <nav className="sticky top-0 z-50 glass border-b border-border/30">
         <div className="container mx-auto flex items-center justify-between h-16 px-4">
           <Link to="/" className="text-2xl font-heading font-bold text-gradient">GapRomance</Link>
@@ -139,6 +123,8 @@ const Pricing = () => {
       </nav>
 
       <div className="container mx-auto px-4 py-16">
+
+        {/* Header */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-16">
           <h1 className="text-4xl md:text-6xl font-heading font-bold mb-4">
             Find Your <span className="text-gradient">Perfect Plan</span>
@@ -152,13 +138,13 @@ const Pricing = () => {
         <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto mb-20">
           {plans.map((plan, i) => (
             <motion.div key={plan.name} initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
-              className={`glass rounded-2xl p-8 relative hover-lift ${plan.popular ? "glow-border" : ""} ${isCurrentPlan(plan.name) ? "ring-2 ring-primary" : ""}`}>
-              {isCurrentPlan(plan.name) && (
+              className={`glass rounded-2xl p-8 relative hover-lift ${plan.popular ? "glow-border" : ""} ${subscriptionTier === plan.name.toLowerCase() ? "ring-2 ring-primary" : ""}`}>
+              {subscriptionTier === plan.name.toLowerCase() && (
                 <div className="absolute -top-3 right-4">
                   <span className="bg-accent text-accent-foreground text-xs font-bold px-3 py-1 rounded-full">YOUR PLAN</span>
                 </div>
               )}
-              {plan.popular && !isCurrentPlan(plan.name) && (
+              {plan.popular && subscriptionTier !== plan.name.toLowerCase() && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                   <span className="bg-primary text-primary-foreground text-xs font-bold px-4 py-1 rounded-full">MOST POPULAR</span>
                 </div>
@@ -178,16 +164,16 @@ const Pricing = () => {
                   </li>
                 ))}
               </ul>
-              {isCurrentPlan(plan.name) ? (
+              {subscriptionTier === plan.name.toLowerCase() ? (
                 <Button variant="outline" className="w-full" size="lg" disabled>Current Plan</Button>
               ) : plan.priceId ? (
-                <Button variant={plan.variant} className="w-full" size="lg"
+                <Button variant="hero" className="w-full" size="lg"
                   onClick={() => handleCheckout(plan.priceId!)}
                   disabled={checkoutLoading === plan.priceId}>
                   {checkoutLoading === plan.priceId ? "Loading..." : plan.cta}
                 </Button>
               ) : (
-                <Button variant={plan.variant} className="w-full" size="lg" asChild>
+                <Button variant="outline" className="w-full" size="lg" asChild>
                   <Link to="/signup">{plan.cta}</Link>
                 </Button>
               )}
@@ -196,7 +182,7 @@ const Pricing = () => {
         </div>
 
         {/* Add-ons */}
-        <div className="max-w-3xl mx-auto">
+        <div className="max-w-3xl mx-auto mb-16">
           <h2 className="text-3xl font-heading font-bold text-center mb-8">
             À La Carte <span className="text-gradient">Extras</span>
           </h2>
@@ -221,13 +207,13 @@ const Pricing = () => {
           </div>
         </div>
 
-        {/* Messaging Time Credits */}
-        <div className="max-w-3xl mx-auto mt-16">
+        {/* Time Credits */}
+        <div className="max-w-3xl mx-auto mb-16">
           <h2 className="text-3xl font-heading font-bold text-center mb-3">
             Messaging Time <span className="text-gradient">Credits</span>
           </h2>
           <p className="text-muted-foreground text-center mb-8">
-            Free users get 1 hour of active messaging time per day. Need more? Buy extra time — no subscription required.
+            Free users get 1 hour per day. Need more? Buy extra time — no subscription required.
           </p>
           <div className="grid md:grid-cols-3 gap-4">
             {timePacks.map((pack, i) => (
@@ -248,7 +234,7 @@ const Pricing = () => {
         </div>
 
         {/* Virtual Gifts */}
-        <div className="max-w-3xl mx-auto mt-16">
+        <div className="max-w-3xl mx-auto mb-16">
           <h2 className="text-3xl font-heading font-bold text-center mb-3">
             Virtual <span className="text-gradient">Gifts</span>
           </h2>
@@ -265,13 +251,13 @@ const Pricing = () => {
         </div>
 
         {/* Verified Badge */}
-        <div className="max-w-3xl mx-auto mt-16 mb-8">
+        <div className="max-w-3xl mx-auto mb-8">
           <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}
             className="glass rounded-2xl p-8 text-center glow-border">
             <Shield className="w-8 h-8 mx-auto mb-3 text-primary" />
             <h3 className="font-heading text-xl font-bold mb-2">Verified Badge</h3>
             <p className="text-muted-foreground text-sm mb-4">
-              Identity verification is <span className="text-primary font-bold">free</span> for all users. Verify with a government ID to earn your Verified badge.
+              Identity verification is <span className="text-primary font-bold">free</span> for all users.
             </p>
             <Button variant="hero" size="lg" asChild>
               <Link to="/signup">Get Verified Free</Link>
