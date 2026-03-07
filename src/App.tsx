@@ -30,16 +30,24 @@ import CreditSuccess from "./pages/CreditSuccess";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import NotFound from "./pages/NotFound";
 import Admin from "./pages/Admin";
-import PhotoUpload from "./pages/PhotoUpload";
 
 const queryClient = new QueryClient();
 
+const OnboardingAwareRedirect = () => {
+  const { user, profile, loading } = useAuth();
+  if (loading) return null;
+  if (!user) return null;
+  const step = profile?.onboarding_step ?? 0;
+  if (step >= ONBOARDING_STEPS.FULLY_VERIFIED) {
+    return <Navigate to="/discover" replace />;
+  }
+  if (step === 0) return null;
+  return <Navigate to={getOnboardingRoute(step)} replace />;
+};
+
 const HomeRedirect = () => {
   const { user, profile, loading } = useAuth();
-
-  // Always show Landing while loading — never show blank screen
-  if (loading) return <Landing />;
-
+  if (loading) return null;
   if (user) {
     const step = profile?.onboarding_step ?? 0;
     if (step >= ONBOARDING_STEPS.FULLY_VERIFIED) {
@@ -49,7 +57,6 @@ const HomeRedirect = () => {
       return <Navigate to={getOnboardingRoute(step)} replace />;
     }
   }
-
   return <Landing />;
 };
 
@@ -65,7 +72,6 @@ const App = () => (
             <Route path="/" element={<HomeRedirect />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
-            <Route path="/upload-photos" element={<ProtectedRoute requireVerified={false}><PhotoUpload /></ProtectedRoute>} />
             <Route path="/onboarding" element={<ProtectedRoute requireVerified={false}><OnboardingQuiz /></ProtectedRoute>} />
             <Route path="/profile-preview" element={<ProtectedRoute requireVerified={false}><ProfilePreview /></ProtectedRoute>} />
             <Route path="/profile-setup" element={<ProtectedRoute requireVerified={false}><ProfileSetup /></ProtectedRoute>} />
