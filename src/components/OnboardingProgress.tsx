@@ -1,19 +1,5 @@
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { useNavigate, useLocation } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
+import { motion } from "framer-motion";
 import { Progress } from "@/components/ui/progress";
-import { Camera, Brain, FileText, Sparkles, Shield, MessageSquare } from "lucide-react";
-
-// Steps configuration
-const ONBOARDING_STEPS = [
-  { id: "photos", label: "Photos", icon: Camera, path: "/upload-photos" },
-  { id: "quiz", label: "Personality Quiz", icon: Brain, path: "/onboarding" },
-  { id: "bio", label: "Review Bio", icon: FileText, path: "/profile-preview" },
-  { id: "badges", label: "Badges & Tags", icon: Sparkles, path: "/onboarding" }, // handled within quiz
-  { id: "verify", label: "Verify Identity", icon: Shield, path: "/verify-identity" },
-  { id: "note", label: "Today's Note", icon: MessageSquare, path: "/onboarding" }, // optional last step
-];
 
 interface OnboardingProgressProps {
   currentStep: number;
@@ -21,9 +7,19 @@ interface OnboardingProgressProps {
   stepLabel: string;
 }
 
+const STEP_NAMES = [
+  "Account",
+  "Email Verification",
+  "Upload Photos",
+  "Personality Quiz",
+  "Profile Setup",
+  "Identity Verification",
+  "Complete",
+];
+
 const OnboardingProgress = ({ currentStep, totalSteps, stepLabel }: OnboardingProgressProps) => {
-  const progress = ((currentStep) / totalSteps) * 100;
-  
+  const progress = (currentStep / totalSteps) * 100;
+
   return (
     <div className="w-full px-4 py-3">
       <div className="max-w-lg mx-auto">
@@ -34,10 +30,15 @@ const OnboardingProgress = ({ currentStep, totalSteps, stepLabel }: OnboardingPr
           <span className="text-xs text-primary font-bold">{stepLabel}</span>
         </div>
         <Progress value={progress} className="h-1.5" />
+        {/* Step dots */}
+        <div className="flex justify-between mt-2">
+          {Array.from({ length: totalSteps }).map((_, i) => (
+            <div key={i} className={`w-2 h-2 rounded-full transition-colors ${i + 1 <= currentStep ? "bg-primary" : "bg-border"}`} />
+          ))}
+        </div>
       </div>
     </div>
   );
 };
 
 export default OnboardingProgress;
-export { ONBOARDING_STEPS };

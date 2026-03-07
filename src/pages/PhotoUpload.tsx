@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import PhotoManager from "@/components/PhotoManager";
 import OnboardingProgress from "@/components/OnboardingProgress";
+import { ONBOARDING_STEPS } from "@/lib/onboarding-steps";
 
 const PhotoUpload = () => {
   const navigate = useNavigate();
@@ -31,7 +32,7 @@ const PhotoUpload = () => {
     setSaving(true);
     const { error } = await supabase
       .from("profiles")
-      .update({ photos, avatar_url: photos[0] } as any)
+      .update({ photos, avatar_url: photos[0], onboarding_step: ONBOARDING_STEPS.PHOTOS_UPLOADED } as any)
       .eq("user_id", user.id);
 
     if (error) {
@@ -52,7 +53,7 @@ const PhotoUpload = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
-      <OnboardingProgress currentStep={1} totalSteps={5} stepLabel="Upload Photos" />
+      <OnboardingProgress currentStep={2} totalSteps={6} stepLabel="Upload Photos" />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -64,7 +65,7 @@ const PhotoUpload = () => {
           </div>
           <h1 className="text-3xl font-heading font-bold mb-2">Add Your Photos</h1>
           <p className="text-muted-foreground">
-            Upload at least 2 photos of yourself. Your first photo will be your main profile photo shown across the platform.
+            Photos help others get to know you. Real, recent photos get the most matches. Upload at least 2 photos — your first photo will be your main profile photo.
           </p>
         </div>
 
@@ -88,13 +89,13 @@ const PhotoUpload = () => {
           {saving ? (
             <><Loader2 className="mr-2 w-4 h-4 animate-spin" /> Saving...</>
           ) : (
-            <>Continue to Verification <ArrowRight className="ml-2 w-4 h-4" /></>
+            <>Next <ArrowRight className="ml-2 w-4 h-4" /></>
           )}
         </Button>
 
         {photos.length < 2 && (
           <p className="text-xs text-destructive text-center mt-3">
-            You need at least 2 photos to proceed to identity verification.
+            You need at least 2 photos to proceed.
           </p>
         )}
       </motion.div>
