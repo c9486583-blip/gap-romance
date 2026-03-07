@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { getOnboardingRoute, ONBOARDING_STEPS } from "@/lib/onboarding-steps";
 import NotificationPrompt from "@/components/NotificationPrompt";
 import BottomNav from "@/components/BottomNav";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -33,18 +34,32 @@ import PhotoUpload from "./pages/PhotoUpload";
 
 const queryClient = new QueryClient();
 
-const HomeRedirect = () => {
-  const { user, loading } = useAuth();
+const OnboardingAwareRedirect = () => {
+  const { user, profile, loading } = useAuth();
   if (loading) return null;
-  if (user) return <Navigate to="/discover" replace />;
-  return <Landing />;
+  if (!user) return null;
+  const step = profile?.onboarding_step ?? 0;
+  if (step >= ONBOARDING_STEPS.FULLY_VERIFIED) {
+    return <Navigate to="/discover" replace />;
+  }
+  // Email not yet verified — stay on signup to show "check your email" screen
+  if (step === 0) return null;
+  return <Navigate to={getOnboardingRoute(step)} replace />;
 };
 
-const AuthRedirect = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading } = useAuth();
+const HomeRedirect = () => {
+  const { user, profile, loading } = useAuth();
   if (loading) return null;
-  if (user) return <Navigate to="/discover" replace />;
-  return <>{children}</>;
+  if (user) {
+    const step = profile?.onboarding_step ?? 0;
+    if (step >= ONBOARDING_STEPS.FULLY_VERIFIED) {
+      return <Navigate to="/discover" replace />;
+    }
+    if (step >= 1) {
+      return <Navigate to={getOnboardingRoute(step)} replace />;
+    }
+  }
+  return <Landing />;
 };
 
 const App = () => (
