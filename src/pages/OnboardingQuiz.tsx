@@ -8,95 +8,61 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import OnboardingProgress from "@/components/OnboardingProgress";
 
-// ─── HOBBIES BY CATEGORY ───────────────────────────────────────────────────
 const hobbiesByCategory: { category: string; emoji: string; options: string[] }[] = [
   {
-    category: "Fitness & Sports",
-    emoji: "🏃",
-    options: ["Hiking", "Running", "Cycling", "Swimming", "Yoga", "Pilates", "Gym & Fitness", "Martial Arts", "Rock Climbing", "Skiing & Snowboarding", "Surfing", "Dancing", "Golf", "Tennis", "Basketball", "Football", "Soccer", "Baseball", "Volleyball", "Bowling", "Kayaking", "Skydiving", "Horseback Riding"],
+    category: "Fitness & Sports", emoji: "🏃",
+    options: ["Hiking","Running","Cycling","Swimming","Yoga","Pilates","Gym & Fitness","Martial Arts","Rock Climbing","Skiing & Snowboarding","Surfing","Dancing","Golf","Tennis","Basketball","Football","Soccer","Baseball","Volleyball","Bowling","Kayaking","Skydiving","Horseback Riding"],
   },
   {
-    category: "Food & Drink",
-    emoji: "🍳",
-    options: ["Cooking", "Baking", "Meal Prepping", "Wine Tasting", "Cocktail Making", "Coffee Culture", "Foodie"],
+    category: "Food & Drink", emoji: "🍳",
+    options: ["Cooking","Baking","Meal Prepping","Wine Tasting","Cocktail Making","Coffee Culture","Foodie"],
   },
   {
-    category: "Travel & Adventure",
-    emoji: "✈️",
-    options: ["Traveling", "Road Trips", "Backpacking", "Camping", "Fishing", "Hunting"],
+    category: "Travel & Adventure", emoji: "✈️",
+    options: ["Traveling","Road Trips","Backpacking","Camping","Fishing","Hunting"],
   },
   {
-    category: "Arts & Creativity",
-    emoji: "🎨",
-    options: ["Photography", "Videography", "Painting", "Drawing", "Sculpting", "Pottery", "Knitting & Crocheting", "Jewelry Making", "DIY & Home Projects", "Gardening", "Interior Design", "Fashion & Style", "Thrifting"],
+    category: "Arts & Creativity", emoji: "🎨",
+    options: ["Photography","Videography","Painting","Drawing","Sculpting","Pottery","Knitting & Crocheting","Jewelry Making","DIY & Home Projects","Gardening","Interior Design","Fashion & Style","Thrifting"],
   },
   {
-    category: "Mind & Learning",
-    emoji: "📚",
-    options: ["Reading", "Writing", "Poetry", "Journaling", "Blogging", "Chess", "Board Games", "Trivia", "Puzzles", "History", "Science", "Politics", "Activism", "Volunteering"],
+    category: "Mind & Learning", emoji: "📚",
+    options: ["Reading","Writing","Poetry","Journaling","Blogging","Chess","Board Games","Trivia","Puzzles","History","Science","Politics","Activism","Volunteering"],
   },
   {
-    category: "Tech & Gaming",
-    emoji: "💻",
-    options: ["Video Games", "Technology", "Comics", "Cosplay"],
+    category: "Tech & Gaming", emoji: "💻",
+    options: ["Video Games","Technology","Comics","Cosplay"],
   },
   {
-    category: "Music & Entertainment",
-    emoji: "🎵",
-    options: ["Singing", "Playing an Instrument", "Music Production", "DJing", "Concerts & Live Music", "Nightlife", "Clubbing", "Festivals", "Movies", "Binge Watching", "Stand-Up Comedy", "Podcasts", "Theater & Performing Arts", "Anime"],
+    category: "Music & Entertainment", emoji: "🎵",
+    options: ["Singing","Playing an Instrument","Music Production","DJing","Concerts & Live Music","Nightlife","Clubbing","Festivals","Movies","Binge Watching","Stand-Up Comedy","Podcasts","Theater & Performing Arts","Anime"],
   },
   {
-    category: "Wellness & Spirituality",
-    emoji: "🙏",
-    options: ["Meditation", "Spirituality", "Astrology", "Holistic Living", "Health & Wellness"],
+    category: "Wellness & Spirituality", emoji: "🙏",
+    options: ["Meditation","Spirituality","Astrology","Holistic Living","Health & Wellness"],
   },
   {
-    category: "Cars & Motorsports",
-    emoji: "🚗",
-    options: ["Cars & Motorsports", "Motorcycles"],
+    category: "Cars & Motorsports", emoji: "🚗",
+    options: ["Cars & Motorsports","Motorcycles"],
   },
   {
-    category: "Pets",
-    emoji: "🐾",
-    options: ["Dogs", "Cats", "Birds", "Reptiles", "Fish & Aquariums", "Small Animals", "Multiple Pets"],
+    category: "Pets", emoji: "🐾",
+    options: ["Dogs","Cats","Birds","Reptiles","Fish & Aquariums","Small Animals","Multiple Pets"],
   },
   {
-    category: "Business & Finance",
-    emoji: "💰",
-    options: ["Entrepreneurship", "Real Estate", "Investing & Finance"],
+    category: "Business & Finance", emoji: "💰",
+    options: ["Entrepreneurship","Real Estate","Investing & Finance"],
   },
 ];
 
-// ─── LIFESTYLE BY CATEGORY ─────────────────────────────────────────────────
 const lifestyleByCategory: { category: string; emoji: string; options: string[] }[] = [
-  {
-    category: "Daily Rhythm",
-    emoji: "🌅",
-    options: ["Night Owl", "Early Bird", "Laid Back", "Free Spirit", "Adventurer"],
-  },
-  {
-    category: "Ambition & Drive",
-    emoji: "💼",
-    options: ["Career Driven", "Work Hard Play Hard", "Intellectual"],
-  },
-  {
-    category: "Relationship & Social",
-    emoji: "❤️",
-    options: ["Hopeless Romantic", "Family Oriented", "Social Butterfly", "Introvert", "Extrovert", "Ambivert", "Old Soul", "Pet Parent", "Plant Parent"],
-  },
-  {
-    category: "Wellness & Beliefs",
-    emoji: "🙏",
-    options: ["Spiritual", "Minimalist", "Maximalist", "Health Conscious", "Sober Lifestyle"],
-  },
-  {
-    category: "Vibe & Personality",
-    emoji: "🎉",
-    options: ["Gym Rat", "Creative Soul", "Party Lover", "Thrill Seeker", "Fashionista", "Music Lover", "Bookworm", "Gamer", "Wine Lover", "Coffee Addict", "Tea Lover", "Traveler", "Beach Lover", "City Dweller", "Country Living"],
-  },
+  { category: "Daily Rhythm", emoji: "🌅", options: ["Night Owl","Early Bird","Laid Back","Free Spirit","Adventurer"] },
+  { category: "Ambition & Drive", emoji: "💼", options: ["Career Driven","Work Hard Play Hard","Intellectual"] },
+  { category: "Relationship & Social", emoji: "❤️", options: ["Hopeless Romantic","Family Oriented","Social Butterfly","Introvert","Extrovert","Ambivert","Old Soul","Pet Parent","Plant Parent"] },
+  { category: "Wellness & Beliefs", emoji: "🙏", options: ["Spiritual","Minimalist","Maximalist","Health Conscious","Sober Lifestyle"] },
+  { category: "Vibe & Personality", emoji: "🎉", options: ["Gym Rat","Creative Soul","Party Lover","Thrill Seeker","Fashionista","Music Lover","Bookworm","Gamer","Wine Lover","Coffee Addict","Tea Lover","Traveler","Beach Lover","City Dweller","Country Living"] },
 ];
 
-// ─── OTHER OPTIONS ──────────────────────────────────────────────────────────
 const personalityOptions = [
   { value: "Introvert", desc: "You recharge alone and prefer smaller, deeper connections." },
   { value: "Extrovert", desc: "You thrive around people and get energy from social interactions." },
@@ -112,29 +78,14 @@ const loveLanguageOptions = [
 ];
 
 const datingIntentOptions = [
-  {
-    value: "Serious Dating",
-    desc: "You're looking for a committed, long-term relationship — someone to build a future with.",
-  },
-  {
-    value: "Casual Dating",
-    desc: "You're open to meeting people and seeing where things go, without pressure for commitment right away.",
-  },
-  {
-    value: "Both",
-    desc: "You're keeping an open mind — the right person and connection will guide where things lead.",
-  },
+  { value: "Serious Dating", desc: "You're looking for a committed, long-term relationship — someone to build a future with." },
+  { value: "Casual Dating", desc: "You're open to meeting people and seeing where things go, without pressure for commitment right away." },
+  { value: "Both", desc: "You're keeping an open mind — the right person and connection will guide where things lead." },
 ];
 
-const musicGenres = [
-  "Pop", "R&B", "Hip-Hop", "Rock", "Jazz", "Electronic",
-  "Country", "Latin", "Classical", "Indie", "Reggaeton", "Soul",
-];
+const musicGenres = ["Pop","R&B","Hip-Hop","Rock","Jazz","Electronic","Country","Latin","Classical","Indie","Reggaeton","Soul"];
 
-const dealbreakers = [
-  "Smoking", "Heavy Drinking", "No Kids", "Wants Kids", "Long Distance",
-  "Different Religion", "No Ambition", "Poor Communication",
-];
+const dealbreakers = ["Smoking","Heavy Drinking","No Kids","Wants Kids","Long Distance","Different Religion","No Ambition","Poor Communication"];
 
 const promptOptions = [
   "A perfect Sunday looks like...",
@@ -147,12 +98,8 @@ const promptOptions = [
   "The key to my heart is...",
 ];
 
-// ─── CATEGORIZED TAG SELECT ─────────────────────────────────────────────────
 const CategoryTagSelect = ({
-  categories,
-  selected,
-  onToggle,
-  max,
+  categories, selected, onToggle, max,
 }: {
   categories: { category: string; emoji: string; options: string[] }[];
   selected: string[];
@@ -162,25 +109,18 @@ const CategoryTagSelect = ({
   <div className="space-y-6">
     {categories.map((cat) => (
       <div key={cat.category}>
-        <h3 className="text-sm font-bold text-muted-foreground mb-2">
-          {cat.emoji} {cat.category}
-        </h3>
+        <h3 className="text-sm font-bold text-muted-foreground mb-2">{cat.emoji} {cat.category}</h3>
         <div className="flex flex-wrap gap-2">
           {cat.options.map((opt) => {
             const isSelected = selected.includes(opt);
             const disabled = !isSelected && max !== undefined && selected.length >= max;
             return (
-              <button
-                key={opt}
-                onClick={() => !disabled && onToggle(opt)}
+              <button key={opt} onClick={() => !disabled && onToggle(opt)}
                 className={`px-4 py-2 rounded-full text-sm font-body transition-all duration-200 border ${
-                  isSelected
-                    ? "bg-primary/20 border-primary text-primary"
-                    : disabled
-                    ? "border-border text-muted-foreground opacity-40 cursor-not-allowed"
-                    : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
-                }`}
-              >
+                  isSelected ? "bg-primary/20 border-primary text-primary"
+                  : disabled ? "border-border text-muted-foreground opacity-40 cursor-not-allowed"
+                  : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                }`}>
                 {opt}
               </button>
             );
@@ -191,7 +131,6 @@ const CategoryTagSelect = ({
   </div>
 );
 
-// ─── FLAT TAG SELECT ────────────────────────────────────────────────────────
 const TagSelect = ({
   options, selected, onToggle, max,
 }: { options: string[]; selected: string[]; onToggle: (v: string) => void; max?: number }) => (
@@ -200,17 +139,12 @@ const TagSelect = ({
       const isSelected = selected.includes(opt);
       const disabled = !isSelected && max !== undefined && selected.length >= max;
       return (
-        <button
-          key={opt}
-          onClick={() => !disabled && onToggle(opt)}
+        <button key={opt} onClick={() => !disabled && onToggle(opt)}
           className={`px-4 py-2 rounded-full text-sm font-body transition-all duration-200 border ${
-            isSelected
-              ? "bg-primary/20 border-primary text-primary"
-              : disabled
-              ? "border-border text-muted-foreground opacity-40 cursor-not-allowed"
-              : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
-          }`}
-        >
+            isSelected ? "bg-primary/20 border-primary text-primary"
+            : disabled ? "border-border text-muted-foreground opacity-40 cursor-not-allowed"
+            : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+          }`}>
           {opt}
         </button>
       );
@@ -218,13 +152,7 @@ const TagSelect = ({
   </div>
 );
 
-// ─── STEPS ──────────────────────────────────────────────────────────────────
-interface QuizStep {
-  title: string;
-  subtitle: string;
-}
-
-const steps: QuizStep[] = [
+const steps = [
   { title: "What's your vibe?", subtitle: "Select your personality type" },
   { title: "What do you love?", subtitle: "Pick your hobbies — choose at least 3" },
   { title: "Your lifestyle", subtitle: "Select badges that describe you" },
@@ -241,7 +169,6 @@ const steps: QuizStep[] = [
   { title: "Prompts", subtitle: "Answer up to 3 prompts to show your personality" },
 ];
 
-// ─── MAIN COMPONENT ─────────────────────────────────────────────────────────
 const OnboardingQuiz = () => {
   const navigate = useNavigate();
   const { user, profile, refreshProfile } = useAuth();
@@ -273,8 +200,6 @@ const OnboardingQuiz = () => {
   };
 
   const progress = ((step + 1) / steps.length) * 100;
-
-  // Age range min based on gender
   const ageMin = profile?.gender === "Woman" ? 25 : 18;
 
   const inputClass = "w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary";
@@ -307,7 +232,8 @@ const OnboardingQuiz = () => {
         favorite_song: favoriteSong.trim() || null,
         bio: selfDescription.trim() || null,
         music_taste: chronotype,
-        onboarding_step: 3,
+        occupation: occupation.trim() || null,
+        onboarding_step: 2,
       } as any).eq("user_id", user.id);
 
       if (error) {
@@ -343,11 +269,7 @@ const OnboardingQuiz = () => {
         return (
           <div>
             <p className="text-xs text-muted-foreground mb-4">Selected: {hobbies.length} — pick at least 3</p>
-            <CategoryTagSelect
-              categories={hobbiesByCategory}
-              selected={hobbies}
-              onToggle={(v) => toggle(hobbies, setHobbies, v)}
-            />
+            <CategoryTagSelect categories={hobbiesByCategory} selected={hobbies} onToggle={(v) => toggle(hobbies, setHobbies, v)} />
           </div>
         );
 
@@ -355,11 +277,7 @@ const OnboardingQuiz = () => {
         return (
           <div>
             <p className="text-xs text-muted-foreground mb-4">Selected: {lifestyle.length}</p>
-            <CategoryTagSelect
-              categories={lifestyleByCategory}
-              selected={lifestyle}
-              onToggle={(v) => toggle(lifestyle, setLifestyle, v)}
-            />
+            <CategoryTagSelect categories={lifestyleByCategory} selected={lifestyle} onToggle={(v) => toggle(lifestyle, setLifestyle, v)} />
           </div>
         );
 
@@ -441,8 +359,7 @@ const OnboardingQuiz = () => {
       case 10:
         return (
           <textarea value={selfDescription} onChange={(e) => setSelfDescription(e.target.value)}
-            placeholder="I'm someone who..."
-            maxLength={300}
+            placeholder="I'm someone who..." maxLength={300}
             className="w-full bg-secondary border border-border rounded-lg p-4 text-foreground placeholder:text-muted-foreground resize-none h-28 focus:outline-none focus:border-primary" />
         );
 
@@ -469,13 +386,9 @@ const OnboardingQuiz = () => {
             <div className="p-3 rounded-xl bg-primary/5 border border-primary/20">
               <p className="text-xs text-muted-foreground">This is completely optional. Share your job title, industry, or just leave it blank — it's up to you.</p>
             </div>
-            <input
-              value={occupation}
-              onChange={(e) => setOccupation(e.target.value)}
+            <input value={occupation} onChange={(e) => setOccupation(e.target.value)}
               placeholder="e.g. Nurse, Software Engineer, Business Owner..."
-              maxLength={60}
-              className={inputClass}
-            />
+              maxLength={60} className={inputClass} />
           </div>
         );
 
@@ -488,8 +401,7 @@ const OnboardingQuiz = () => {
               <div key={p} className="mt-3">
                 <label className="text-sm text-primary mb-1 block">{p}</label>
                 <textarea value={promptAnswers[p] || ""} onChange={(e) => setPromptAnswers({ ...promptAnswers, [p]: e.target.value })}
-                  placeholder="Your answer..."
-                  maxLength={200}
+                  placeholder="Your answer..." maxLength={200}
                   className="w-full bg-secondary border border-border rounded-lg p-3 text-foreground placeholder:text-muted-foreground resize-none h-20 focus:outline-none focus:border-primary" />
               </div>
             ))}
