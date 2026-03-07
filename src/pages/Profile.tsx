@@ -1,20 +1,16 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import {
-  Heart, Shield, MapPin, Music, Edit3, Camera, MessageSquare, Clock,
-  Eye, EyeOff, X, Check, ChevronDown, ChevronUp, Circle, AtSign, Loader2,
-} from "lucide-react";
+import { Shield, MapPin, Music, Edit3, Camera, MessageSquare, Clock, Eye, Save, X, Heart, Plus } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { LIFESTYLE_ICONS, PERSONALITY_ICONS } from "@/lib/profile-constants";
 import TopNav from "@/components/TopNav";
-import PhotoManager from "@/components/PhotoManager";
 import ProfilePreviewCard from "@/components/ProfilePreviewCard";
+import PhotoManager from "@/components/PhotoManager";
 
-// ─── CONSTANTS ──────────────────────────────────────────────────────────────
 const NOTE_PLACEHOLDERS = [
   "Just got back from hiking...",
   "Free tonight, let's grab drinks",
@@ -22,30 +18,20 @@ const NOTE_PLACEHOLDERS = [
   "Working from a coffee shop today",
 ];
 
-const HOBBIES_BY_CATEGORY = [
-  { category: "Fitness & Sports", emoji: "🏃", options: ["Hiking", "Running", "Cycling", "Swimming", "Yoga", "Pilates", "Gym & Fitness", "Martial Arts", "Rock Climbing", "Skiing & Snowboarding", "Surfing", "Dancing", "Golf", "Tennis", "Basketball", "Football", "Soccer", "Baseball", "Volleyball", "Bowling", "Kayaking", "Skydiving", "Horseback Riding"] },
-  { category: "Food & Drink", emoji: "🍳", options: ["Cooking", "Baking", "Meal Prepping", "Wine Tasting", "Cocktail Making", "Coffee Culture", "Foodie"] },
-  { category: "Travel & Adventure", emoji: "✈️", options: ["Traveling", "Road Trips", "Backpacking", "Camping", "Fishing", "Hunting"] },
-  { category: "Arts & Creativity", emoji: "🎨", options: ["Photography", "Videography", "Painting", "Drawing", "Sculpting", "Pottery", "Knitting & Crocheting", "Jewelry Making", "DIY & Home Projects", "Gardening", "Interior Design", "Fashion & Style", "Thrifting"] },
-  { category: "Mind & Learning", emoji: "📚", options: ["Reading", "Writing", "Poetry", "Journaling", "Blogging", "Chess", "Board Games", "Trivia", "Puzzles", "History", "Science", "Politics", "Activism", "Volunteering"] },
-  { category: "Tech & Gaming", emoji: "💻", options: ["Video Games", "Technology", "Comics", "Cosplay"] },
-  { category: "Music & Entertainment", emoji: "🎵", options: ["Singing", "Playing an Instrument", "Music Production", "DJing", "Concerts & Live Music", "Nightlife", "Clubbing", "Festivals", "Movies", "Binge Watching", "Stand-Up Comedy", "Podcasts", "Theater & Performing Arts", "Anime"] },
-  { category: "Wellness & Spirituality", emoji: "🙏", options: ["Meditation", "Spirituality", "Astrology", "Holistic Living", "Health & Wellness"] },
-  { category: "Cars & Motorsports", emoji: "🚗", options: ["Cars & Motorsports", "Motorcycles"] },
-  { category: "Pets", emoji: "🐾", options: ["Dogs", "Cats", "Birds", "Reptiles", "Fish & Aquariums", "Small Animals", "Multiple Pets"] },
-  { category: "Business & Finance", emoji: "💰", options: ["Entrepreneurship", "Real Estate", "Investing & Finance"] },
+const HOBBY_CATEGORIES: { category: string; emoji: string; options: string[] }[] = [
+  { category: "Fitness & Sports", emoji: "🏃", options: ["Hiking","Running","Cycling","Swimming","Yoga","Pilates","Gym & Fitness","Martial Arts","Rock Climbing","Dancing","Golf","Tennis","Basketball","Soccer","Volleyball","Bowling","Kayaking","Surfing"] },
+  { category: "Food & Drink", emoji: "🍳", options: ["Cooking","Baking","Wine Tasting","Cocktail Making","Coffee Culture","Foodie"] },
+  { category: "Travel & Adventure", emoji: "✈️", options: ["Traveling","Road Trips","Backpacking","Camping","Fishing","Hunting"] },
+  { category: "Arts & Creativity", emoji: "🎨", options: ["Photography","Painting","Drawing","Pottery","Gardening","Interior Design","Fashion & Style","Thrifting"] },
+  { category: "Mind & Learning", emoji: "📚", options: ["Reading","Writing","Chess","Board Games","Trivia","History","Science","Volunteering"] },
+  { category: "Tech & Gaming", emoji: "💻", options: ["Video Games","Technology","Comics","Cosplay"] },
+  { category: "Music & Entertainment", emoji: "🎵", options: ["Singing","Playing an Instrument","Concerts & Live Music","Movies","Anime","Podcasts","Theater"] },
+  { category: "Pets", emoji: "🐾", options: ["Dogs","Cats","Birds","Reptiles","Multiple Pets"] },
+  { category: "Business & Finance", emoji: "💰", options: ["Entrepreneurship","Real Estate","Investing & Finance"] },
 ];
 
-const LIFESTYLE_BY_CATEGORY = [
-  { category: "Daily Rhythm", emoji: "🌅", options: ["Night Owl", "Early Bird", "Laid Back", "Free Spirit", "Adventurer"] },
-  { category: "Ambition & Drive", emoji: "💼", options: ["Career Driven", "Work Hard Play Hard", "Intellectual"] },
-  { category: "Relationship & Social", emoji: "❤️", options: ["Hopeless Romantic", "Family Oriented", "Social Butterfly", "Introvert", "Extrovert", "Ambivert", "Old Soul", "Pet Parent", "Plant Parent"] },
-  { category: "Wellness & Beliefs", emoji: "🙏", options: ["Spiritual", "Minimalist", "Maximalist", "Health Conscious", "Sober Lifestyle"] },
-  { category: "Vibe & Personality", emoji: "🎉", options: ["Gym Rat", "Creative Soul", "Party Lover", "Thrill Seeker", "Fashionista", "Music Lover", "Bookworm", "Gamer", "Wine Lover", "Coffee Addict", "Tea Lover", "Traveler", "Beach Lover", "City Dweller", "Country Living"] },
-];
-
-const MUSIC_GENRES = ["Pop", "R&B", "Hip-Hop", "Rock", "Jazz", "Electronic", "Country", "Latin", "Classical", "Indie", "Reggaeton", "Soul"];
-
+const LIFESTYLE_OPTIONS = ["Night Owl","Early Bird","Laid Back","Free Spirit","Adventurer","Career Driven","Hopeless Romantic","Family Oriented","Social Butterfly","Introvert","Extrovert","Ambivert","Spiritual","Minimalist","Health Conscious","Gym Rat","Creative Soul","Bookworm","Gamer","Traveler","Beach Lover","City Dweller","Country Living"];
+const MUSIC_GENRES = ["Pop","R&B","Hip-Hop","Rock","Jazz","Electronic","Country","Latin","Classical","Indie","Reggaeton","Soul"];
 const PROMPT_OPTIONS = [
   "A perfect Sunday looks like...",
   "My biggest green flag is...",
@@ -57,15 +43,9 @@ const PROMPT_OPTIONS = [
   "The key to my heart is...",
 ];
 
-// ─── HELPERS ────────────────────────────────────────────────────────────────
-const getAge = (dob: string | null | undefined): number | null => {
-  if (!dob) return null;
-  const b = new Date(dob);
-  const t = new Date();
-  let age = t.getFullYear() - b.getFullYear();
-  const m = t.getMonth() - b.getMonth();
-  if (m < 0 || (m === 0 && t.getDate() < b.getDate())) age--;
-  return age;
+const ProfileBadge = ({ children, variant = "default" }: { children: React.ReactNode; variant?: "default" | "primary" | "gold" }) => {
+  const styles = { default: "bg-secondary text-secondary-foreground", primary: "bg-primary/15 text-primary border border-primary/30", gold: "bg-gold/15 text-gold border border-gold/30" };
+  return <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-body font-bold ${styles[variant]}`}>{children}</span>;
 };
 
 const getTimeAgo = (dateStr: string) => {
@@ -78,182 +58,184 @@ const getTimeAgo = (dateStr: string) => {
   return "Expired";
 };
 
-const isNoteActive = (updatedAt: string | null | undefined) => {
+const isNoteActive = (updatedAt: string | null) => {
   if (!updatedAt) return false;
   return Date.now() - new Date(updatedAt).getTime() < 24 * 60 * 60 * 1000;
 };
 
-// ─── SECTION EDIT WRAPPER ───────────────────────────────────────────────────
-const EditSection = ({ title, children, onSave, onCancel, saving }: {
-  title: string;
-  children: React.ReactNode;
-  onSave: () => void;
-  onCancel: () => void;
-  saving?: boolean;
+const getAge = (dob: string | null) => {
+  if (!dob) return null;
+  const b = new Date(dob);
+  const t = new Date();
+  let a = t.getFullYear() - b.getFullYear();
+  const m = t.getMonth() - b.getMonth();
+  if (m < 0 || (m === 0 && t.getDate() < b.getDate())) a--;
+  return a;
+};
+
+// ── EDIT PANEL WRAPPER ────────────────────────────────────────────────────────
+const EditPanel = ({ title, onSave, onCancel, saving, children }: {
+  title: string; onSave: () => void; onCancel: () => void; saving: boolean; children: React.ReactNode;
 }) => (
-  <div className="glass rounded-xl p-5 border border-primary/30 mb-6">
-    <h4 className="font-heading font-bold mb-4 text-primary">{title}</h4>
-    {children}
-    <div className="flex gap-2 mt-4">
-      <Button variant="hero" size="sm" onClick={onSave} disabled={saving}>
-        {saving ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Saving...</> : <><Check className="w-3 h-3 mr-1" /> Save</>}
-      </Button>
-      <Button variant="ghost" size="sm" onClick={onCancel}>Cancel</Button>
+  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+    className="glass rounded-xl p-5 mb-4 glow-border">
+    <div className="flex items-center justify-between mb-4">
+      <h4 className="font-heading font-bold text-sm text-primary">{title}</h4>
+      <div className="flex gap-2">
+        <Button variant="hero" size="sm" onClick={onSave} disabled={saving}>
+          <Save className="w-3 h-3 mr-1" />{saving ? "Saving..." : "Save"}
+        </Button>
+        <Button variant="ghost" size="sm" onClick={onCancel}><X className="w-3 h-3" /></Button>
+      </div>
     </div>
-  </div>
+    {children}
+  </motion.div>
 );
 
-// ─── MAIN COMPONENT ─────────────────────────────────────────────────────────
+// ── MAIN COMPONENT ────────────────────────────────────────────────────────────
 const Profile = () => {
   const { user, profile, refreshProfile } = useAuth();
   const { toast } = useToast();
 
   const [showPreview, setShowPreview] = useState(false);
 
-  // Online status
-  const [isOnline, setIsOnline] = useState(true);
-  const [togglingOnline, setTogglingOnline] = useState(false);
+  // Edit states
+  const [editingBio, setEditingBio]         = useState(false);
+  const [editingHobbies, setEditingHobbies] = useState(false);
+  const [editingLifestyle, setEditingLifestyle] = useState(false);
+  const [editingMusic, setEditingMusic]     = useState(false);
+  const [editingPhotos, setEditingPhotos]   = useState(false);
+  const [editingPrompts, setEditingPrompts] = useState(false);
+  const [editingNote, setEditingNote]       = useState(false);
+  const [editingOnline, setEditingOnline]   = useState(false);
 
-  // Edit mode states
-  const [editingSection, setEditingSection] = useState<string | null>(null);
+  // Field values
+  const [bioVal, setBioVal]                 = useState("");
+  const [datingModeVal, setDatingModeVal]   = useState("Both");
+  const [hobbiesVal, setHobbiesVal]         = useState<string[]>([]);
+  const [lifestyleVal, setLifestyleVal]     = useState<string[]>([]);
+  const [musicArtists, setMusicArtists]     = useState(["","",""]);
+  const [musicGenres, setMusicGenres]       = useState<string[]>([]);
+  const [musicSong, setMusicSong]           = useState("");
+  const [photosVal, setPhotosVal]           = useState<string[]>([]);
+  const [promptsSelected, setPromptsSelected] = useState<string[]>([]);
+  const [promptAnswers, setPromptAnswers]   = useState<Record<string, string>>({});
+  const [noteText, setNoteText]             = useState("");
+  const [isOnline, setIsOnline]             = useState(false);
 
-  // Editable fields
-  const [bio, setBio] = useState("");
-  const [hobbies, setHobbies] = useState<string[]>([]);
-  const [lifestyle, setLifestyle] = useState<string[]>([]);
-  const [loveLanguage, setLoveLanguage] = useState("");
-  const [favoriteArtists, setFavoriteArtists] = useState(["", "", ""]);
-  const [favoriteGenres, setFavoriteGenres] = useState<string[]>([]);
-  const [favoriteSong, setFavoriteSong] = useState("");
-  const [photos, setPhotos] = useState<string[]>([]);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [prompts, setPrompts] = useState<string[]>([]);
-  const [promptAnswers, setPromptAnswers] = useState<Record<string, string>>({});
-  const [datingMode, setDatingMode] = useState("Both");
+  const [saving, setSaving] = useState(false);
 
-  // Today's Note
-  const [editingNote, setEditingNote] = useState(false);
-  const [noteText, setNoteText] = useState("");
-  const [savingNote, setSavingNote] = useState(false);
-
-  // Saving per section
-  const [savingSection, setSavingSection] = useState(false);
-
-  // Load profile into local state
+  // Populate from profile
   useEffect(() => {
     if (!profile) return;
-    setBio(profile.bio || "");
-    setHobbies((profile.hobbies as string[] | null) || []);
-    setLifestyle((profile.lifestyle_badges as string[] | null) || []);
-    setLoveLanguage((profile.love_language as string | null) || "");
-    const artists = (profile.favorite_artists as string[] | null) || [];
-    setFavoriteArtists([...artists, "", "", ""].slice(0, 3));
-    setFavoriteGenres((profile.favorite_genres as string[] | null) || []);
-    setFavoriteSong((profile.favorite_song as string | null) || "");
-    setPhotos((profile.photos as string[] | null) || []);
-    setAvatarUrl(profile.avatar_url || null);
-    setDatingMode((profile.dating_mode as string | null) || "Both");
-    const pa = (profile as any).prompt_answers as Record<string, string> | null || {};
+    setBioVal(profile.bio || "");
+    setDatingModeVal(profile.dating_mode || "Both");
+    setHobbiesVal(profile.hobbies || []);
+    setLifestyleVal(profile.lifestyle_badges || []);
+    const artists = profile.favorite_artists || [];
+    setMusicArtists([artists[0]||"", artists[1]||"", artists[2]||""]);
+    setMusicGenres(profile.favorite_genres || []);
+    setMusicSong(profile.favorite_song || "");
+    setPhotosVal(profile.photos || []);
+    const pa = profile.prompt_answers || {};
+    const keys = Object.keys(pa);
+    setPromptsSelected(keys);
     setPromptAnswers(pa);
-    setPrompts(Object.keys(pa));
-    setIsOnline((profile as any).is_online ?? true);
-    if (profile.todays_note && isNoteActive(profile.todays_note_updated_at)) {
-      setNoteText(profile.todays_note);
+    setIsOnline(profile.is_online || false);
+    if ((profile as any).todays_note && isNoteActive((profile as any).todays_note_updated_at)) {
+      setNoteText((profile as any).todays_note);
     }
   }, [profile]);
 
-  const save = async (fields: Record<string, any>) => {
+  const save = async (data: Record<string, any>) => {
     if (!user) return false;
-    setSavingSection(true);
+    setSaving(true);
     try {
-      const { error } = await supabase.from("profiles").update(fields as any).eq("user_id", user.id);
-      if (error) {
-        toast({ title: "Failed to save", description: error.message, variant: "destructive" });
-        return false;
-      }
+      const { error } = await supabase.from("profiles").update(data as any).eq("user_id", user.id);
+      if (error) { toast({ title: "Failed to save", variant: "destructive" }); return false; }
       await refreshProfile();
-      toast({ title: "Saved!" });
       return true;
-    } catch (err: any) {
-      toast({ title: err?.message || "Something went wrong", variant: "destructive" });
-      return false;
-    } finally {
-      setSavingSection(false);
-    }
-  };
-
-  const handleToggleOnline = async () => {
-    setTogglingOnline(true);
-    const newVal = !isOnline;
-    setIsOnline(newVal);
-    await save({ is_online: newVal });
-    setTogglingOnline(false);
-  };
-
-  const handleSaveNote = async () => {
-    setSavingNote(true);
-    const ok = await save({
-      todays_note: noteText.trim() || null,
-      todays_note_updated_at: noteText.trim() ? new Date().toISOString() : null,
-    });
-    setSavingNote(false);
-    if (ok) setEditingNote(false);
+    } catch { toast({ title: "Failed to save", variant: "destructive" }); return false; }
+    finally { setSaving(false); }
   };
 
   const handleSaveBio = async () => {
-    const ok = await save({ bio: bio.trim() || null, dating_mode: datingMode });
-    if (ok) setEditingSection(null);
+    const ok = await save({ bio: bioVal.trim() || null, dating_mode: datingModeVal });
+    if (ok) { toast({ title: "Bio updated!" }); setEditingBio(false); }
   };
 
   const handleSaveHobbies = async () => {
-    const ok = await save({ hobbies });
-    if (ok) setEditingSection(null);
+    const ok = await save({ hobbies: hobbiesVal });
+    if (ok) { toast({ title: "Hobbies updated!" }); setEditingHobbies(false); }
   };
 
   const handleSaveLifestyle = async () => {
-    const ok = await save({ lifestyle_badges: lifestyle, love_language: loveLanguage || null });
-    if (ok) setEditingSection(null);
+    const ok = await save({ lifestyle_badges: lifestyleVal });
+    if (ok) { toast({ title: "Lifestyle updated!" }); setEditingLifestyle(false); }
   };
 
   const handleSaveMusic = async () => {
     const ok = await save({
-      favorite_artists: favoriteArtists.map((a) => a.trim()).filter(Boolean),
-      favorite_genres: favoriteGenres,
-      favorite_song: favoriteSong.trim() || null,
+      favorite_artists: musicArtists.filter((a) => a.trim()),
+      favorite_genres: musicGenres,
+      favorite_song: musicSong.trim() || null,
     });
-    if (ok) setEditingSection(null);
+    if (ok) { toast({ title: "Music updated!" }); setEditingMusic(false); }
   };
 
   const handleSavePhotos = async () => {
-    const ok = await save({
-      photos,
-      avatar_url: photos[0] || null,
-    });
-    if (ok) setEditingSection(null);
+    if (photosVal.length < 2) { toast({ title: "Please add at least 2 photos", variant: "destructive" }); return; }
+    const ok = await save({ photos: photosVal, avatar_url: photosVal[0] || null });
+    if (ok) { toast({ title: "Photos updated!" }); setEditingPhotos(false); }
   };
 
   const handleSavePrompts = async () => {
-    const filteredAnswers: Record<string, string> = {};
-    prompts.forEach((p) => { if (promptAnswers[p]?.trim()) filteredAnswers[p] = promptAnswers[p].trim(); });
-    const ok = await save({ prompt_answers: filteredAnswers });
-    if (ok) setEditingSection(null);
+    const filtered: Record<string, string> = {};
+    promptsSelected.forEach((p) => { if (promptAnswers[p]?.trim()) filtered[p] = promptAnswers[p].trim(); });
+    const ok = await save({ prompt_answers: filtered });
+    if (ok) { toast({ title: "Prompts updated!" }); setEditingPrompts(false); }
   };
 
-  const age = getAge(profile?.date_of_birth);
-  const username = (profile as any)?.username;
-  const activeNote = profile?.todays_note && isNoteActive(profile?.todays_note_updated_at) ? profile.todays_note : null;
-  const hasMusicData = favoriteArtists.some((a) => a.trim()) || favoriteGenres.length > 0 || favoriteSong;
-  const profilePhotos = (profile?.photos as string[] | null) || [];
-  const displayPrompts = Object.entries((profile as any)?.prompt_answers || {}).filter(([, v]) => v);
+  const handleSaveNote = async () => {
+    const ok = await save({
+      todays_note: noteText.trim() || null,
+      todays_note_updated_at: noteText.trim() ? new Date().toISOString() : null,
+    });
+    if (ok) { toast({ title: noteText.trim() ? "Note updated!" : "Note cleared" }); setEditingNote(false); }
+  };
+
+  const handleToggleOnline = async () => {
+    const next = !isOnline;
+    setIsOnline(next);
+    await save({ is_online: next });
+  };
+
+  const toggleHobby = (h: string) => setHobbiesVal((p) => p.includes(h) ? p.filter((x) => x !== h) : [...p, h]);
+  const toggleLifestyle = (l: string) => setLifestyleVal((p) => p.includes(l) ? p.filter((x) => x !== l) : [...p, l]);
+  const toggleGenre = (g: string) => setMusicGenres((p) => p.includes(g) ? p.filter((x) => x !== g) : [...p, g]);
+  const togglePrompt = (p: string) => {
+    if (promptsSelected.includes(p)) { setPromptsSelected((prev) => prev.filter((x) => x !== p)); }
+    else if (promptsSelected.length < 3) { setPromptsSelected((prev) => [...prev, p]); }
+  };
 
   const inputClass = "w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary";
+
+  const activeNote = (profile as any)?.todays_note && isNoteActive((profile as any)?.todays_note_updated_at) ? (profile as any).todays_note : null;
+  const photos = profile?.photos || [];
+  const hobbies = profile?.hobbies || [];
+  const lifestyleBadges = profile?.lifestyle_badges || [];
+  const favoriteArtists = profile?.favorite_artists || [];
+  const favoriteGenres = profile?.favorite_genres || [];
+  const favoriteSong = profile?.favorite_song || "";
+  const promptAnswersStored = profile?.prompt_answers || {};
+  const age = getAge(profile?.date_of_birth || null);
 
   return (
     <div className="min-h-screen bg-background pb-20">
       <TopNav rightContent={
         <>
           <Button variant="outline" size="sm" onClick={() => setShowPreview(true)}>
-            <Eye className="w-4 h-4 mr-1" /> Preview
+            <Eye className="w-4 h-4 mr-1" /> Preview My Profile
           </Button>
           <Button variant="ghost" size="sm" asChild><Link to="/settings">Settings</Link></Button>
         </>
@@ -261,398 +243,341 @@ const Profile = () => {
 
       <div className="container mx-auto px-4 py-8 max-w-3xl">
 
-        {/* ── PHOTOS SECTION ── */}
-        {editingSection === "photos" ? (
-          <EditSection title="Edit Photos" onSave={handleSavePhotos} onCancel={() => setEditingSection(null)} saving={savingSection}>
-            <p className="text-xs text-muted-foreground mb-4">Min 2 photos, max 6. Drag to reorder — your first photo is your main profile photo.</p>
-            {user && (
-              <PhotoManager
-                userId={user.id}
-                photos={photos}
-                onPhotosChange={setPhotos}
-                minPhotos={2}
-                maxPhotos={6}
-                showGuidelines={false}
-              />
-            )}
-          </EditSection>
-        ) : (
-          <div className="relative mb-6">
-            <div className="grid grid-cols-3 gap-2 rounded-2xl overflow-hidden">
-              {profilePhotos.length > 0
-                ? profilePhotos.slice(0, 3).map((p, i) => (
-                    <motion.div key={i} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.1 }}
-                      className={`relative aspect-[4/5] ${i === 0 ? "col-span-2" : ""}`}>
+        {/* ── PHOTOS ── */}
+        <div className="mb-6">
+          {!editingPhotos ? (
+            <div className="relative">
+              {photos.length > 0 ? (
+                <div className="grid grid-cols-3 gap-2 rounded-2xl overflow-hidden">
+                  {photos.slice(0, 3).map((p, i) => (
+                    <div key={i} className={`relative aspect-[4/5] ${i === 0 ? "col-span-2 row-span-2" : ""}`}>
                       <img src={p} alt="" className="w-full h-full object-cover" />
-                      {/* Avatar overlay on main photo */}
-                      {i === 0 && avatarUrl && (
-                        <div className="absolute bottom-3 left-3">
-                          <div className="relative">
-                            <img src={avatarUrl} alt="avatar" className="w-14 h-14 rounded-full object-cover border-2 border-background shadow-lg" />
-                            <span className={`absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-background ${isOnline ? "bg-green-400" : "bg-red-400"}`} />
-                          </div>
-                        </div>
-                      )}
-                    </motion.div>
-                  ))
-                : (
-                  <div className="col-span-3 aspect-[16/7] bg-secondary rounded-2xl flex flex-col items-center justify-center gap-2">
-                    <Camera className="w-8 h-8 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">No photos yet</p>
-                  </div>
-                )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="aspect-video rounded-2xl bg-secondary flex items-center justify-center">
+                  <p className="text-muted-foreground text-sm">No photos yet</p>
+                </div>
+              )}
+              <button onClick={() => setEditingPhotos(true)}
+                className="absolute bottom-3 right-3 p-2 glass rounded-full hover:bg-primary/20 transition-all">
+                <Camera className="w-4 h-4 text-foreground" />
+              </button>
             </div>
-            <button onClick={() => setEditingSection("photos")}
-              className="absolute top-3 right-3 p-2 glass rounded-full hover:bg-primary/20 transition-all">
-              <Camera className="w-4 h-4 text-foreground" />
-            </button>
-          </div>
-        )}
+          ) : (
+            <AnimatePresence>
+              <EditPanel title="Edit Photos" onSave={handleSavePhotos} onCancel={() => setEditingPhotos(false)} saving={saving}>
+                <p className="text-xs text-muted-foreground mb-3">Min 2, max 6 photos. First photo is your main photo.</p>
+                {user && (
+                  <PhotoManager
+                    userId={user.id}
+                    photos={photosVal}
+                    onPhotosChange={setPhotosVal}
+                    minPhotos={2}
+                    maxPhotos={6}
+                    showGuidelines={false}
+                  />
+                )}
+              </EditPanel>
+            </AnimatePresence>
+          )}
+        </div>
 
-        {/* ── HEADER: Name, Username, Online Toggle ── */}
-        <div className="flex items-start justify-between mb-4">
+        {/* ── HEADER ── */}
+        <div className="flex items-start justify-between mb-2">
           <div>
-            <div className="flex items-center gap-3 flex-wrap mb-1">
+            <div className="flex items-center gap-3 flex-wrap">
               <h1 className="text-3xl font-heading font-bold">
                 {profile?.first_name || "Your Name"}{profile?.last_initial ? ` ${profile.last_initial}.` : ""}{age ? `, ${age}` : ""}
               </h1>
-              {profile?.is_verified && (
-                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-gold/15 text-gold border border-gold/30">
-                  <Shield className="w-3 h-3" /> Verified
-                </span>
-              )}
+              {profile?.is_verified && <ProfileBadge variant="gold"><Shield className="w-3 h-3 mr-1" />Verified</ProfileBadge>}
             </div>
-            {username && (
-              <div className="flex items-center gap-1 text-muted-foreground text-sm mb-1">
-                <AtSign className="w-3.5 h-3.5" />{username}
-              </div>
-            )}
-            <div className="flex items-center gap-2 text-muted-foreground text-sm">
-              <MapPin className="w-3.5 h-3.5" /> {profile?.city || "Location not set"}
+            <p className="text-xs text-muted-foreground mt-0.5">@{profile?.username || "username"}</p>
+            <div className="flex items-center gap-2 text-muted-foreground text-sm mt-1">
+              <MapPin className="w-3.5 h-3.5" />{profile?.city || "Location not set"}
             </div>
           </div>
-
-          {/* Online Toggle */}
-          <button
-            onClick={handleToggleOnline}
-            disabled={togglingOnline}
-            className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-secondary transition-all"
-          >
-            <div className="relative">
-              <Circle className={`w-6 h-6 ${isOnline ? "text-green-400 fill-green-400" : "text-red-400 fill-red-400"}`} />
-            </div>
+          {/* Online indicator */}
+          <button onClick={handleToggleOnline} className="flex items-center gap-2 glass px-3 py-2 rounded-full hover:bg-primary/10 transition-all">
+            <span className={`w-2.5 h-2.5 rounded-full ${isOnline ? "bg-green-500" : "bg-red-500"}`} />
             <span className="text-xs text-muted-foreground">{isOnline ? "Online" : "Offline"}</span>
           </button>
         </div>
 
-        {/* ── TODAY'S NOTE ── */}
-        {editingNote ? (
-          <div className="glass rounded-xl p-4 mb-6 glow-border">
-            <div className="flex items-center gap-2 text-xs text-primary font-bold mb-2">
-              <MessageSquare className="w-3.5 h-3.5" /> TODAY'S NOTE
-            </div>
-            <div className="relative">
-              <textarea value={noteText} onChange={(e) => { if (e.target.value.length <= 150) setNoteText(e.target.value); }}
-                placeholder={NOTE_PLACEHOLDERS[0]} maxLength={150} rows={2} autoFocus
-                className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary resize-none text-sm" />
-              <span className={`absolute bottom-2 right-3 text-xs ${noteText.length > 130 ? "text-destructive" : "text-muted-foreground"}`}>
-                {150 - noteText.length}
-              </span>
-            </div>
-            <div className="flex gap-2 mt-2">
-              <Button variant="hero" size="sm" onClick={handleSaveNote} disabled={savingNote}>
-                {savingNote ? "Saving..." : "Save"}
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => setEditingNote(false)}>Cancel</Button>
-            </div>
-          </div>
-        ) : activeNote ? (
-          <div className="glass rounded-xl p-4 mb-6 glow-border">
-            <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center gap-2 text-xs text-primary font-bold">
-                <MessageSquare className="w-3.5 h-3.5" /> TODAY'S NOTE
-              </div>
-              <button onClick={() => { setNoteText(activeNote); setEditingNote(true); }} className="text-xs text-primary hover:underline flex items-center gap-1">
-                <Edit3 className="w-3 h-3" /> Update
-              </button>
-            </div>
-            <p className="text-primary/90 italic">{activeNote}</p>
-            {profile?.todays_note_updated_at && (
-              <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                <Clock className="w-3 h-3" /> Posted {getTimeAgo(profile.todays_note_updated_at)}
-              </p>
-            )}
-          </div>
-        ) : (
-          <div className="glass rounded-xl p-4 mb-6 border border-dashed border-border">
-            <button onClick={() => { setNoteText(""); setEditingNote(true); }} className="w-full text-left">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground font-bold mb-1">
-                <MessageSquare className="w-3.5 h-3.5" /> TODAY'S NOTE
-              </div>
-              <p className="text-sm text-muted-foreground italic">Tap to add a note about what you're up to today...</p>
-            </button>
-          </div>
-        )}
-
         {/* ── BIO & DATING MODE ── */}
-        {editingSection === "bio" ? (
-          <EditSection title="Edit Bio & Dating Mode" onSave={handleSaveBio} onCancel={() => setEditingSection(null)} saving={savingSection}>
-            <div className="space-y-4">
-              <textarea value={bio} onChange={(e) => setBio(e.target.value)} maxLength={500} rows={4}
-                placeholder="Tell people about yourself..."
-                className="w-full bg-secondary border border-border rounded-lg p-4 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary resize-none" />
-              <div>
-                <label className="text-sm text-muted-foreground block mb-2">Dating Mode</label>
+        <div className="mb-6">
+          {!editingBio ? (
+            <div className="glass rounded-xl p-4 relative group">
+              <div className="flex items-center justify-between mb-2">
+                <ProfileBadge variant="primary">{datingModeVal === "Both" ? "Open to Both" : datingModeVal}</ProfileBadge>
+                <button onClick={() => setEditingBio(true)} className="opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Edit3 className="w-4 h-4 text-muted-foreground hover:text-primary" />
+                </button>
+              </div>
+              <p className="text-muted-foreground leading-relaxed text-sm">
+                {profile?.bio || <span className="italic">No bio yet — tap the pencil to add one.</span>}
+              </p>
+            </div>
+          ) : (
+            <AnimatePresence>
+              <EditPanel title="Edit Bio & Dating Mode" onSave={handleSaveBio} onCancel={() => setEditingBio(false)} saving={saving}>
+                <textarea value={bioVal} onChange={(e) => setBioVal(e.target.value)} rows={4} maxLength={500}
+                  placeholder="Tell people about yourself..."
+                  className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-primary resize-none mb-3" />
                 <div className="flex flex-wrap gap-2">
-                  {["Serious Dating", "Casual Dating", "Both"].map((m) => (
-                    <button key={m} onClick={() => setDatingMode(m)}
-                      className={`px-4 py-2 rounded-full text-sm border transition-all ${datingMode === m ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:border-primary/50"}`}>
+                  {["Serious Dating","Casual Dating","Both"].map((m) => (
+                    <button key={m} onClick={() => setDatingModeVal(m)}
+                      className={`px-4 py-2 rounded-full text-sm border transition-all ${datingModeVal === m ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground"}`}>
                       {m === "Both" ? "Open to Both" : m}
                     </button>
                   ))}
                 </div>
-              </div>
-            </div>
-          </EditSection>
-        ) : (
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="font-heading text-lg font-semibold">About</h3>
-              <button onClick={() => setEditingSection("bio")} className="text-xs text-primary hover:underline flex items-center gap-1">
-                <Edit3 className="w-3 h-3" /> Edit
-              </button>
-            </div>
-            <p className="text-muted-foreground leading-relaxed mb-3">{profile?.bio || <span className="italic opacity-60">No bio yet — tap Edit to add one.</span>}</p>
-            {datingMode && (
-              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-primary/15 text-primary border border-primary/30">
-                <Heart className="w-3 h-3" /> {datingMode === "Both" ? "Open to Both" : datingMode}
-              </span>
-            )}
-          </div>
-        )}
+              </EditPanel>
+            </AnimatePresence>
+          )}
+        </div>
 
-        {/* ── HOBBIES ── */}
-        {editingSection === "hobbies" ? (
-          <EditSection title="Edit Hobbies" onSave={handleSaveHobbies} onCancel={() => setEditingSection(null)} saving={savingSection}>
-            <p className="text-xs text-muted-foreground mb-4">Selected: {hobbies.length}</p>
-            <div className="space-y-5 max-h-96 overflow-y-auto pr-1">
-              {HOBBIES_BY_CATEGORY.map((cat) => (
-                <div key={cat.category}>
-                  <h4 className="text-xs font-bold text-muted-foreground mb-2">{cat.emoji} {cat.category}</h4>
-                  <div className="flex flex-wrap gap-1.5">
-                    {cat.options.map((opt) => {
-                      const sel = hobbies.includes(opt);
-                      return (
-                        <button key={opt} onClick={() => setHobbies(sel ? hobbies.filter((h) => h !== opt) : [...hobbies, opt])}
-                          className={`px-3 py-1.5 rounded-full text-xs border transition-all ${sel ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:border-primary/50"}`}>
-                          {opt}
-                        </button>
-                      );
-                    })}
+        {/* ── TODAY'S NOTE ── */}
+        <div className="mb-6">
+          {!editingNote ? (
+            activeNote ? (
+              <div className="glass rounded-xl p-4 glow-border">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2 text-xs text-primary font-bold">
+                    <MessageSquare className="w-3.5 h-3.5" /> TODAY'S NOTE
                   </div>
+                  <button onClick={() => { setNoteText(activeNote); setEditingNote(true); }}
+                    className="text-xs text-primary hover:underline flex items-center gap-1">
+                    <Edit3 className="w-3 h-3" /> Update
+                  </button>
                 </div>
-              ))}
-            </div>
-          </EditSection>
-        ) : (
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-heading text-lg font-semibold">Hobbies</h3>
-              <button onClick={() => setEditingSection("hobbies")} className="text-xs text-primary hover:underline flex items-center gap-1">
-                <Edit3 className="w-3 h-3" /> Edit
-              </button>
-            </div>
-            {hobbies.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {hobbies.map((h) => (
-                  <span key={h} className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-secondary text-secondary-foreground">{h}</span>
-                ))}
+                <p className="text-primary/90 italic">{activeNote}</p>
+                {(profile as any)?.todays_note_updated_at && (
+                  <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                    <Clock className="w-3 h-3" /> Posted {getTimeAgo((profile as any).todays_note_updated_at)}
+                  </p>
+                )}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground italic">No hobbies added yet.</p>
-            )}
-          </div>
-        )}
-
-        {/* ── LIFESTYLE & LOVE LANGUAGE ── */}
-        {editingSection === "lifestyle" ? (
-          <EditSection title="Edit Lifestyle & Love Language" onSave={handleSaveLifestyle} onCancel={() => setEditingSection(null)} saving={savingSection}>
-            <div className="space-y-5 max-h-96 overflow-y-auto pr-1">
-              {LIFESTYLE_BY_CATEGORY.map((cat) => (
-                <div key={cat.category}>
-                  <h4 className="text-xs font-bold text-muted-foreground mb-2">{cat.emoji} {cat.category}</h4>
-                  <div className="flex flex-wrap gap-1.5">
-                    {cat.options.map((opt) => {
-                      const sel = lifestyle.includes(opt);
-                      return (
-                        <button key={opt} onClick={() => setLifestyle(sel ? lifestyle.filter((l) => l !== opt) : [...lifestyle, opt])}
-                          className={`px-3 py-1.5 rounded-full text-xs border transition-all ${sel ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:border-primary/50"}`}>
-                          {opt}
-                        </button>
-                      );
-                    })}
-                  </div>
+              <button onClick={() => { setNoteText(""); setEditingNote(true); }}
+                className="w-full glass rounded-xl p-4 border border-dashed border-border text-left hover:border-primary/40 transition-all">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground font-bold mb-1">
+                  <MessageSquare className="w-3.5 h-3.5" /> TODAY'S NOTE
                 </div>
-              ))}
-              <div>
-                <h4 className="text-xs font-bold text-muted-foreground mb-2">❤️ Love Language</h4>
-                <div className="flex flex-wrap gap-1.5">
-                  {["Words of Affirmation", "Acts of Service", "Receiving Gifts", "Quality Time", "Physical Touch"].map((ll) => (
-                    <button key={ll} onClick={() => setLoveLanguage(loveLanguage === ll ? "" : ll)}
-                      className={`px-3 py-1.5 rounded-full text-xs border transition-all ${loveLanguage === ll ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:border-primary/50"}`}>
-                      {ll}
-                    </button>
+                <p className="text-sm text-muted-foreground italic">Tap to add a note about what you're up to today...</p>
+              </button>
+            )
+          ) : (
+            <AnimatePresence>
+              <EditPanel title="Today's Note" onSave={handleSaveNote} onCancel={() => setEditingNote(false)} saving={saving}>
+                <div className="relative">
+                  <textarea value={noteText} onChange={(e) => { if (e.target.value.length <= 150) setNoteText(e.target.value); }}
+                    placeholder={NOTE_PLACEHOLDERS[0]} maxLength={150} rows={2} autoFocus
+                    className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary resize-none text-sm" />
+                  <span className={`absolute bottom-2 right-3 text-xs ${noteText.length > 130 ? "text-destructive" : "text-muted-foreground"}`}>
+                    {150 - noteText.length}
+                  </span>
+                </div>
+              </EditPanel>
+            </AnimatePresence>
+          )}
+        </div>
+
+        {/* ── HOBBIES ── */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-heading text-lg font-semibold">Hobbies</h3>
+            <button onClick={() => setEditingHobbies(!editingHobbies)} className="text-xs text-primary hover:underline flex items-center gap-1">
+              <Edit3 className="w-3 h-3" /> {editingHobbies ? "Done" : "Edit"}
+            </button>
+          </div>
+          {!editingHobbies ? (
+            hobbies.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {hobbies.map((h) => <span key={h} className="px-3 py-1 rounded-full text-xs font-bold bg-secondary text-secondary-foreground">{h}</span>)}
+              </div>
+            ) : (
+              <button onClick={() => setEditingHobbies(true)} className="text-sm text-primary hover:underline flex items-center gap-1">
+                <Plus className="w-3.5 h-3.5" /> Add hobbies
+              </button>
+            )
+          ) : (
+            <AnimatePresence>
+              <EditPanel title="Edit Hobbies" onSave={handleSaveHobbies} onCancel={() => setEditingHobbies(false)} saving={saving}>
+                <div className="space-y-4 max-h-64 overflow-y-auto pr-1">
+                  {HOBBY_CATEGORIES.map((cat) => (
+                    <div key={cat.category}>
+                      <p className="text-xs font-bold text-muted-foreground mb-2">{cat.emoji} {cat.category}</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {cat.options.map((opt) => (
+                          <button key={opt} onClick={() => toggleHobby(opt)}
+                            className={`px-3 py-1 rounded-full text-xs border transition-all ${hobbiesVal.includes(opt) ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:border-primary/50"}`}>
+                            {opt}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   ))}
                 </div>
-              </div>
-            </div>
-          </EditSection>
-        ) : (
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-heading text-lg font-semibold">Lifestyle</h3>
-              <button onClick={() => setEditingSection("lifestyle")} className="text-xs text-primary hover:underline flex items-center gap-1">
-                <Edit3 className="w-3 h-3" /> Edit
-              </button>
-            </div>
-            {lifestyle.length > 0 ? (
-              <div className="flex flex-wrap gap-2 mb-3">
-                {lifestyle.map((l) => (
+              </EditPanel>
+            </AnimatePresence>
+          )}
+        </div>
+
+        {/* ── LIFESTYLE ── */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-heading text-lg font-semibold">Lifestyle</h3>
+            <button onClick={() => setEditingLifestyle(!editingLifestyle)} className="text-xs text-primary hover:underline flex items-center gap-1">
+              <Edit3 className="w-3 h-3" /> {editingLifestyle ? "Done" : "Edit"}
+            </button>
+          </div>
+          {!editingLifestyle ? (
+            lifestyleBadges.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {lifestyleBadges.map((l) => (
                   <span key={l} className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-primary/15 text-primary border border-primary/30">
-                    <span>{LIFESTYLE_ICONS[l]}</span> {l}
+                    <span>{(LIFESTYLE_ICONS as any)[l]}</span> {l}
                   </span>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground italic mb-2">No lifestyle badges added yet.</p>
-            )}
-            {loveLanguage && (
-              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-primary/15 text-primary border border-primary/30">
-                ❤️ {loveLanguage}
-              </span>
-            )}
+              <button onClick={() => setEditingLifestyle(true)} className="text-sm text-primary hover:underline flex items-center gap-1">
+                <Plus className="w-3.5 h-3.5" /> Add lifestyle badges
+              </button>
+            )
+          ) : (
+            <AnimatePresence>
+              <EditPanel title="Edit Lifestyle" onSave={handleSaveLifestyle} onCancel={() => setEditingLifestyle(false)} saving={saving}>
+                <div className="flex flex-wrap gap-2">
+                  {LIFESTYLE_OPTIONS.map((l) => (
+                    <button key={l} onClick={() => toggleLifestyle(l)}
+                      className={`px-3 py-1 rounded-full text-xs border transition-all ${lifestyleVal.includes(l) ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:border-primary/50"}`}>
+                      {l}
+                    </button>
+                  ))}
+                </div>
+              </EditPanel>
+            </AnimatePresence>
+          )}
+        </div>
+
+        {/* ── LOVE LANGUAGE ── */}
+        {profile?.love_language && (
+          <div className="mb-6">
+            <h3 className="font-heading text-lg font-semibold mb-2">Love Language</h3>
+            <ProfileBadge variant="primary">❤️ {profile.love_language}</ProfileBadge>
           </div>
         )}
 
-        {/* ── MUSIC TASTE ── */}
-        {editingSection === "music" ? (
-          <EditSection title="Edit Music Taste" onSave={handleSaveMusic} onCancel={() => setEditingSection(null)} saving={savingSection}>
-            <div className="space-y-4">
-              <div>
-                <label className="text-xs text-muted-foreground block mb-2">Favorite Artists (up to 3)</label>
-                {[0, 1, 2].map((i) => (
-                  <input key={i} value={favoriteArtists[i]} onChange={(e) => {
-                    const updated = [...favoriteArtists];
-                    updated[i] = e.target.value;
-                    setFavoriteArtists(updated);
-                  }} placeholder={`Artist ${i + 1}`} className={`${inputClass} mb-2`} />
-                ))}
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground block mb-2">Genres</label>
-                <div className="flex flex-wrap gap-1.5">
-                  {MUSIC_GENRES.map((g) => {
-                    const sel = favoriteGenres.includes(g);
-                    return (
-                      <button key={g} onClick={() => setFavoriteGenres(sel ? favoriteGenres.filter((x) => x !== g) : [...favoriteGenres, g])}
-                        className={`px-3 py-1.5 rounded-full text-xs border transition-all ${sel ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:border-primary/50"}`}>
-                        {g}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground block mb-2">Favorite Song</label>
-                <input value={favoriteSong} onChange={(e) => setFavoriteSong(e.target.value)} placeholder="Song title — Artist" className={inputClass} />
-              </div>
-            </div>
-          </EditSection>
-        ) : (
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-heading text-lg font-semibold flex items-center gap-2">
-                <Music className="w-4 h-4 text-primary" /> Music Taste
-              </h3>
-              <button onClick={() => setEditingSection("music")} className="text-xs text-primary hover:underline flex items-center gap-1">
-                <Edit3 className="w-3 h-3" /> Edit
-              </button>
-            </div>
-            {hasMusicData ? (
+        {/* ── MUSIC ── */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-heading text-lg font-semibold flex items-center gap-2">
+              <Music className="w-4 h-4 text-primary" /> Music Taste
+            </h3>
+            <button onClick={() => setEditingMusic(!editingMusic)} className="text-xs text-primary hover:underline flex items-center gap-1">
+              <Edit3 className="w-3 h-3" /> {editingMusic ? "Done" : "Edit"}
+            </button>
+          </div>
+          {!editingMusic ? (
+            favoriteArtists.length > 0 || favoriteGenres.length > 0 || favoriteSong ? (
               <div className="space-y-3">
-                {favoriteArtists.some((a) => a.trim()) && (
-                  <div className="flex flex-wrap gap-2">
-                    {favoriteArtists.filter((a) => a.trim()).map((a) => (
-                      <span key={a} className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-primary/15 text-primary border border-primary/30">{a}</span>
-                    ))}
+                {favoriteArtists.length > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Favorite Artists</p>
+                    <div className="flex flex-wrap gap-2">{favoriteArtists.map((a) => <ProfileBadge key={a} variant="primary">{a}</ProfileBadge>)}</div>
                   </div>
                 )}
                 {favoriteGenres.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {favoriteGenres.map((g) => (
-                      <span key={g} className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-secondary text-secondary-foreground">
-                        <Music className="w-3 h-3" /> {g}
-                      </span>
-                    ))}
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Genres</p>
+                    <div className="flex flex-wrap gap-2">
+                      {favoriteGenres.map((g) => <span key={g} className="px-3 py-1 rounded-full text-xs font-bold bg-secondary text-secondary-foreground"><Music className="w-3 h-3 inline mr-1" />{g}</span>)}
+                    </div>
                   </div>
                 )}
-                {favoriteSong && <p className="text-sm text-foreground">🎵 {favoriteSong}</p>}
+                {favoriteSong && <p className="text-foreground text-sm">🎵 {favoriteSong}</p>}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground italic">No music taste added yet.</p>
-            )}
-          </div>
-        )}
+              <button onClick={() => setEditingMusic(true)} className="text-sm text-primary hover:underline flex items-center gap-1">
+                <Plus className="w-3.5 h-3.5" /> Add music taste
+              </button>
+            )
+          ) : (
+            <AnimatePresence>
+              <EditPanel title="Edit Music" onSave={handleSaveMusic} onCancel={() => setEditingMusic(false)} saving={saving}>
+                <div className="space-y-3">
+                  {[0,1,2].map((i) => (
+                    <input key={i} value={musicArtists[i]} onChange={(e) => { const u=[...musicArtists]; u[i]=e.target.value; setMusicArtists(u); }}
+                      placeholder={`Artist ${i+1}`} className={inputClass} />
+                  ))}
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-2">Genres</p>
+                    <div className="flex flex-wrap gap-2">
+                      {MUSIC_GENRES.map((g) => (
+                        <button key={g} onClick={() => toggleGenre(g)}
+                          className={`px-3 py-1 rounded-full text-xs border transition-all ${musicGenres.includes(g) ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground"}`}>
+                          {g}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <input value={musicSong} onChange={(e) => setMusicSong(e.target.value)} placeholder="Favorite song — Artist" className={inputClass} />
+                </div>
+              </EditPanel>
+            </AnimatePresence>
+          )}
+        </div>
 
         {/* ── PROMPTS ── */}
-        {editingSection === "prompts" ? (
-          <EditSection title="Edit Prompts" onSave={handleSavePrompts} onCancel={() => setEditingSection(null)} saving={savingSection}>
-            <p className="text-xs text-muted-foreground mb-3">Pick up to 3 prompts and answer them.</p>
-            <div className="flex flex-wrap gap-1.5 mb-4">
-              {PROMPT_OPTIONS.map((p) => {
-                const sel = prompts.includes(p);
-                const disabled = !sel && prompts.length >= 3;
-                return (
-                  <button key={p} disabled={disabled} onClick={() => {
-                    if (sel) setPrompts(prompts.filter((x) => x !== p));
-                    else if (!disabled) setPrompts([...prompts, p]);
-                  }} className={`px-3 py-1.5 rounded-full text-xs border transition-all ${sel ? "bg-primary/20 border-primary text-primary" : disabled ? "border-border text-muted-foreground opacity-40 cursor-not-allowed" : "border-border text-muted-foreground hover:border-primary/50"}`}>
-                    {p}
-                  </button>
-                );
-              })}
-            </div>
-            {prompts.map((p) => (
-              <div key={p} className="mb-3">
-                <label className="text-xs text-primary block mb-1">{p}</label>
-                <textarea value={promptAnswers[p] || ""} onChange={(e) => setPromptAnswers({ ...promptAnswers, [p]: e.target.value })}
-                  placeholder="Your answer..." maxLength={200} rows={2}
-                  className="w-full bg-secondary border border-border rounded-lg p-3 text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:border-primary text-sm" />
-              </div>
-            ))}
-          </EditSection>
-        ) : (
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-heading text-lg font-semibold">Prompts</h3>
-              <button onClick={() => setEditingSection("prompts")} className="text-xs text-primary hover:underline flex items-center gap-1">
-                <Edit3 className="w-3 h-3" /> Edit
-              </button>
-            </div>
-            {displayPrompts.length > 0 ? (
-              <div className="space-y-3">
-                {displayPrompts.map(([q, a]) => (
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-heading text-lg font-semibold">Prompts</h3>
+            <button onClick={() => setEditingPrompts(!editingPrompts)} className="text-xs text-primary hover:underline flex items-center gap-1">
+              <Edit3 className="w-3 h-3" /> {editingPrompts ? "Done" : "Edit"}
+            </button>
+          </div>
+          {!editingPrompts ? (
+            Object.keys(promptAnswersStored).length > 0 ? (
+              <div className="space-y-4">
+                {Object.entries(promptAnswersStored).map(([q, a]) => (
                   <div key={q} className="glass rounded-xl p-5">
                     <p className="text-primary text-sm font-bold mb-2">{q}</p>
-                    <p className="text-foreground">{a as string}</p>
+                    <p className="text-foreground">{a}</p>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground italic">No prompts answered yet.</p>
-            )}
-          </div>
-        )}
+              <button onClick={() => setEditingPrompts(true)} className="text-sm text-primary hover:underline flex items-center gap-1">
+                <Plus className="w-3.5 h-3.5" /> Add prompts
+              </button>
+            )
+          ) : (
+            <AnimatePresence>
+              <EditPanel title="Edit Prompts" onSave={handleSavePrompts} onCancel={() => setEditingPrompts(false)} saving={saving}>
+                <p className="text-xs text-muted-foreground mb-3">Pick up to 3 prompts and answer them.</p>
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {PROMPT_OPTIONS.map((p) => (
+                    <button key={p} onClick={() => togglePrompt(p)}
+                      className={`px-3 py-1.5 rounded-full text-xs border transition-all ${promptsSelected.includes(p) ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground"} ${!promptsSelected.includes(p) && promptsSelected.length >= 3 ? "opacity-40 cursor-not-allowed" : ""}`}>
+                      {p}
+                    </button>
+                  ))}
+                </div>
+                {promptsSelected.map((p) => (
+                  <div key={p} className="mb-3">
+                    <label className="text-xs text-primary font-bold block mb-1">{p}</label>
+                    <textarea value={promptAnswers[p] || ""} onChange={(e) => setPromptAnswers({ ...promptAnswers, [p]: e.target.value })}
+                      placeholder="Your answer..." maxLength={200}
+                      className="w-full bg-secondary border border-border rounded-lg p-3 text-foreground placeholder:text-muted-foreground resize-none h-16 focus:outline-none focus:border-primary text-sm" />
+                  </div>
+                ))}
+              </EditPanel>
+            </AnimatePresence>
+          )}
+        </div>
 
       </div>
 
