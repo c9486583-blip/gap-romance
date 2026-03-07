@@ -1,9 +1,11 @@
 import { useState, useRef, useCallback } from "react";
 import { motion, Reorder } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Camera, X, AlertCircle, GripVertical, Loader2, ImagePlus } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Camera, X, AlertCircle, GripVertical, ImagePlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { compressImage } from "@/lib/image-compress";
 
 interface PhotoManagerProps {
   userId: string;
@@ -24,31 +26,19 @@ const PHOTO_GUIDELINES = [
 ];
 
 const MIN_DIMENSION = 400;
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/heic", "image/heif"];
-
-const UPLOAD_TIMEOUT_MS = 30000;
-
-const withTimeout = async <T,>(promiseLike: PromiseLike<T>, timeoutMs = UPLOAD_TIMEOUT_MS): Promise<T> => {
-  return await Promise.race([
-    Promise.resolve(promiseLike),
-    new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error("Upload timed out. Please try a smaller file or better connection.")), timeoutMs)
-    ),
-  ]);
-};
+const MAX_RAW_SIZE = 25 * 1024 * 1024; // 25MB raw limit before compression
+const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/heic", "image/heif", "image/webp"];
 
 const validateImage = (file: File): Promise<{ valid: boolean; error?: string }> => {
   return new Promise((resolve) => {
     if (!ACCEPTED_TYPES.includes(file.type)) {
-      resolve({ valid: false, error: "Only JPG, PNG, and HEIC formats are accepted." });
+      resolve({ valid: false, error: "Unsupported format. Please use JPG, PNG, WEBP, or HEIC." });
       return;
     }
-    if (file.size > MAX_FILE_SIZE) {
-      resolve({ valid: false, error: "Photo must be under 10MB." });
+    if (file.size > MAX_RAW_SIZE) {
+      resolve({ valid: false, error: "Photo must be under 25MB before compression." });
       return;
     }
-    // HEIC can't be validated for dimensions in browser easily
     if (file.type === "image/heic" || file.type === "image/heif") {
       resolve({ valid: true });
       return;
@@ -57,21 +47,20 @@ const validateImage = (file: File): Promise<{ valid: boolean; error?: string }> 
     img.onload = () => {
       URL.revokeObjectURL(img.src);
       if (img.width < MIN_DIMENSION || img.height < MIN_DIMENSION) {
-        resolve({ valid: false, error: `Photo must be at least ${MIN_DIMENSION}x${MIN_DIMENSION} pixels. This photo is ${img.width}x${img.height}.` });
+        resolve({ valid: false, error: `Photo must be at least ${MIN_DIMENSION}×${MIN_DIMENSION}px. Yours is ${img.width}×${img.height}px.` });
       } else {
         resolve({ valid: true });
       }
     };
     img.onerror = () => {
       URL.revokeObjectURL(img.src);
-      resolve({ valid: false, error: "Could not read this image file." });
+      resolve({ valid: false, error: "Could not read this image file. It may be corrupted." });
     };
     img.src = URL.createObjectURL(file);
   });
 };
 
 const detectFace = async (file: File): Promise<boolean> => {
-  // Use browser FaceDetector API if available (Chrome)
   if ("FaceDetector" in window) {
     try {
       const bitmap = await createImageBitmap(file);
@@ -80,12 +69,28 @@ const detectFace = async (file: File): Promise<boolean> => {
       bitmap.close();
       return faces.length > 0;
     } catch {
-      // Fallback: assume face is present
       return true;
     }
   }
-  // Fallback: skip face detection
   return true;
+};
+
+type UploadStage = "idle" | "validating" | "compressing" | "uploading" | "done";
+
+const STAGE_LABELS: Record<UploadStage, string> = {
+  idle: "",
+  validating: "Checking photo…",
+  compressing: "Compressing…",
+  uploading: "Uploading…",
+  done: "Done!",
+};
+
+const STAGE_PROGRESS: Record<UploadStage, number> = {
+  idle: 0,
+  validating: 15,
+  compressing: 40,
+  uploading: 70,
+  done: 100,
 };
 
 const PhotoManager = ({
@@ -99,6 +104,7 @@ const PhotoManager = ({
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [stage, setStage] = useState<UploadStage>("idle");
   const [error, setError] = useState<string | null>(null);
 
   const photosRef = useRef(photos);
@@ -107,79 +113,102 @@ const PhotoManager = ({
   const uploadPhoto = useCallback(async (file: File) => {
     setError(null);
     setUploading(true);
+    setStage("validating");
 
     try {
-      // Validate
+      // 1. Validate
       const validation = await validateImage(file);
       if (!validation.valid) {
         setError(validation.error!);
         setUploading(false);
+        setStage("idle");
         return;
       }
 
-      // Face detection (skip on failure to avoid blocking upload)
+      // 2. Face detection (non-blocking)
       try {
         const hasFace = await detectFace(file);
         if (!hasFace) {
-          setError("We could not detect a face in this photo — please upload a clear photo of yourself.");
+          setError("We couldn't detect a face in this photo — please upload a clear photo of yourself.");
           setUploading(false);
+          setStage("idle");
           return;
         }
       } catch {
-        // Skip face detection if it errors
-        console.warn("Face detection skipped due to error");
+        console.warn("Face detection skipped");
       }
 
-      // Upload to storage
-      const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      // 3. Compress & resize
+      setStage("compressing");
+      let processedFile: File;
+      try {
+        processedFile = await compressImage(file);
+        console.log(`Compressed: ${(file.size / 1024).toFixed(0)}KB → ${(processedFile.size / 1024).toFixed(0)}KB`);
+      } catch (compErr) {
+        console.warn("Compression failed, using original:", compErr);
+        processedFile = file;
+      }
+
+      // 4. Upload
+      setStage("uploading");
+      const ext = processedFile.type === "image/jpeg" ? "jpg" : processedFile.name.split(".").pop()?.toLowerCase() || "jpg";
       const fileName = `${userId}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
 
-      console.log("Starting photo upload:", fileName, "size:", file.size, "type:", file.type);
+      console.log("Uploading:", fileName, "size:", processedFile.size, "type:", processedFile.type);
 
-      const { error: uploadError, data: uploadData } = await withTimeout(
-        supabase.storage
-          .from("profile-photos")
-          .upload(fileName, file, { contentType: file.type, upsert: false }),
-        45000
-      );
+      const { error: uploadError } = await supabase.storage
+        .from("profile-photos")
+        .upload(fileName, processedFile, { contentType: processedFile.type, upsert: false });
 
       if (uploadError) {
         console.error("Upload error:", uploadError);
-        const msg = uploadError.message?.includes("Payload too large")
-          ? "Photo is too large. Please use a photo under 10MB."
-          : uploadError.message?.includes("mime")
-          ? "Unsupported file format. Please use JPG, PNG, or HEIC."
-          : uploadError.message?.includes("row-level security")
-          ? "Permission denied. Please log out and log back in, then try again."
-          : uploadError.message || "Failed to upload photo. Please try again.";
+        let msg: string;
+        const m = uploadError.message || "";
+        if (m.includes("Payload too large")) {
+          msg = "Photo is still too large after compression. Try a different photo.";
+        } else if (m.includes("mime") || m.includes("not allowed")) {
+          msg = "This file type isn't supported. Please use JPG, PNG, WEBP, or HEIC.";
+        } else if (m.includes("row-level security") || m.includes("policy")) {
+          msg = "Permission denied. Please log out and log back in, then try again.";
+        } else if (m.includes("duplicate") || m.includes("already exists")) {
+          msg = "A file with this name already exists. Please try again.";
+        } else {
+          msg = `Upload failed: ${m || "Unknown error"}. Check your internet connection and try again.`;
+        }
         setError(msg);
         setUploading(false);
+        setStage("idle");
         return;
       }
 
-      console.log("Upload successful:", uploadData);
-
+      // 5. Get URL
+      setStage("done");
       const { data: urlData } = supabase.storage
         .from("profile-photos")
         .getPublicUrl(fileName);
 
       if (!urlData?.publicUrl) {
-        setError("Upload succeeded but could not get photo URL. Please try again.");
+        setError("Upload succeeded but couldn't get the photo URL. Please try again.");
         setUploading(false);
+        setStage("idle");
         return;
       }
 
       const newPhotos = [...photosRef.current, urlData.publicUrl];
       onPhotosChange(newPhotos);
       toast({ title: "Photo uploaded!" });
+
+      // Brief delay so user sees "Done!" before resetting
+      await new Promise((r) => setTimeout(r, 400));
     } catch (err: any) {
       console.error("Photo upload exception:", err);
       const msg = err?.message?.includes("timed out")
-        ? "Upload timed out. Please check your internet connection and try a smaller photo."
-        : err?.message || "Failed to upload photo. Please try again.";
+        ? "Upload timed out — your connection may be slow. Try a smaller photo or better Wi-Fi."
+        : err?.message || "Something went wrong. Please try again.";
       setError(msg);
     } finally {
       setUploading(false);
+      setStage("idle");
     }
   }, [userId, onPhotosChange, toast]);
 
@@ -187,13 +216,12 @@ const PhotoManager = ({
     const files = e.target.files;
     if (!files) return;
 
-    const remaining = maxPhotos - photos.length;
+    const remaining = maxPhotos - photosRef.current.length;
     const toUpload = Array.from(files).slice(0, remaining);
 
     for (const file of toUpload) {
       await uploadPhoto(file);
     }
-    // Reset input
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -203,7 +231,6 @@ const PhotoManager = ({
       return;
     }
     const url = photos[index];
-    // Extract path from URL
     const path = url.split("/profile-photos/")[1];
     if (path) {
       await supabase.storage.from("profile-photos").remove([path]);
@@ -228,6 +255,17 @@ const PhotoManager = ({
             ))}
           </ul>
         </div>
+      )}
+
+      {/* Upload progress bar */}
+      {uploading && stage !== "idle" && (
+        <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium text-primary">{STAGE_LABELS[stage]}</p>
+            <p className="text-xs text-muted-foreground">{STAGE_PROGRESS[stage]}%</p>
+          </div>
+          <Progress value={STAGE_PROGRESS[stage]} className="h-2" />
+        </motion.div>
       )}
 
       {error && (
@@ -270,12 +308,11 @@ const PhotoManager = ({
 
         {/* Add photo slots */}
         {Array.from({ length: maxPhotos - photos.length }).map((_, i) => (
-          <div key={`empty-${i}`} className="aspect-[4/5] rounded-xl border-2 border-dashed border-border flex items-center justify-center cursor-pointer hover:border-primary/50 transition-colors"
-            onClick={() => fileInputRef.current?.click()}>
-            {uploading && i === 0 ? (
-              <Loader2 className="w-6 h-6 text-muted-foreground animate-spin" />
-            ) : (
-              <ImagePlus className="w-6 h-6 text-muted-foreground" />
+          <div key={`empty-${i}`} className="aspect-[4/5] rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-primary/50 transition-colors"
+            onClick={() => !uploading && fileInputRef.current?.click()}>
+            <ImagePlus className="w-6 h-6 text-muted-foreground" />
+            {i === 0 && !uploading && (
+              <span className="text-[10px] text-muted-foreground">Tap to add</span>
             )}
           </div>
         ))}
@@ -284,7 +321,7 @@ const PhotoManager = ({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/jpeg,image/png,image/heic,image/heif"
+        accept="image/jpeg,image/png,image/heic,image/heif,image/webp"
         multiple
         onChange={handleFileSelect}
         className="hidden"
@@ -292,7 +329,7 @@ const PhotoManager = ({
 
       <div className="flex items-center justify-between">
         <p className="text-xs text-muted-foreground">
-          {photos.length}/{maxPhotos} photos · Drag to reorder · First photo is your main photo
+          {photos.length}/{maxPhotos} photos · Drag to reorder · First = main photo
         </p>
         {photos.length < maxPhotos && (
           <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
@@ -303,7 +340,7 @@ const PhotoManager = ({
 
       {photos.length < 4 && photos.length >= minPhotos && (
         <p className="text-xs text-primary font-medium">
-          💡 Profiles with 4 or more photos get 5x more matches.
+          💡 Profiles with 4+ photos get 5× more matches.
         </p>
       )}
     </div>
