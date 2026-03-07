@@ -14,6 +14,7 @@ import OnboardingQuiz from "./pages/OnboardingQuiz";
 import IdentityVerification from "./pages/IdentityVerification";
 import VerificationPending from "./pages/VerificationPending";
 import ProfilePreview from "./pages/ProfilePreview";
+import ProfileSetup from "./pages/ProfileSetup";
 import Profile from "./pages/Profile";
 import Discover from "./pages/Discover";
 import Matches from "./pages/Matches";
@@ -56,11 +57,12 @@ const App = () => (
           <NotificationPrompt />
           <Routes>
             <Route path="/" element={<HomeRedirect />} />
-            <Route path="/login" element={<AuthRedirect><Login /></AuthRedirect>} />
-            <Route path="/signup" element={<AuthRedirect><Signup /></AuthRedirect>} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/upload-photos" element={<ProtectedRoute requireVerified={false}><PhotoUpload /></ProtectedRoute>} />
             <Route path="/onboarding" element={<ProtectedRoute requireVerified={false}><OnboardingQuiz /></ProtectedRoute>} />
             <Route path="/profile-preview" element={<ProtectedRoute requireVerified={false}><ProfilePreview /></ProtectedRoute>} />
-            <Route path="/upload-photos" element={<ProtectedRoute requireVerified={false}><PhotoUpload /></ProtectedRoute>} />
+            <Route path="/profile-setup" element={<ProtectedRoute requireVerified={false}><ProfileSetup /></ProtectedRoute>} />
             <Route path="/verify-identity" element={<ProtectedRoute requireVerified={false}><IdentityVerification /></ProtectedRoute>} />
             <Route path="/verification-pending" element={<ProtectedRoute requireVerified={false}><VerificationPending /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />

@@ -44,9 +44,14 @@ const loveLanguages = [
   "Quality Time", "Physical Touch",
 ];
 
-const cuisines = [
-  "Italian", "Japanese", "Mexican", "Thai", "French", "Indian",
-  "Mediterranean", "Korean", "American", "Chinese",
+const musicGenres = [
+  "Pop", "R&B", "Hip-Hop", "Rock", "Jazz", "Electronic",
+  "Country", "Latin", "Classical", "Indie", "Reggaeton", "Soul",
+];
+
+const dealbreakers = [
+  "Smoking", "Heavy Drinking", "No Kids", "Wants Kids", "Long Distance",
+  "Different Religion", "No Ambition", "Poor Communication",
 ];
 
 const promptOptions = [
@@ -69,24 +74,16 @@ const steps: QuizStep[] = [
   { title: "What's your vibe?", subtitle: "Select your personality type" },
   { title: "What do you love?", subtitle: "Pick your hobbies (choose at least 3)" },
   { title: "Your lifestyle", subtitle: "Select badges that describe you" },
-  { title: "Music taste", subtitle: "What genres do you vibe with?" },
-  { title: "Favorite cuisine", subtitle: "Pick your top cuisines" },
-  { title: "Love language", subtitle: "How do you express love?" },
   { title: "What are you looking for?", subtitle: "Your dating intent" },
   { title: "Preferred age range", subtitle: "Set your ideal match age" },
+  { title: "Top 3 favorite artists", subtitle: "Who do you love listening to?" },
+  { title: "Music genres", subtitle: "What genres do you vibe with?" },
+  { title: "Favorite song", subtitle: "What's your jam right now?" },
+  { title: "Love language", subtitle: "How do you express love?" },
   { title: "Dealbreakers", subtitle: "What's a non-negotiable?" },
-  { title: "Prompts", subtitle: "Answer 3 prompts to show your personality" },
-  { title: "Vibe check", subtitle: "One last question..." },
-];
-
-const musicGenres = [
-  "Pop", "R&B", "Hip-Hop", "Rock", "Jazz", "Electronic",
-  "Country", "Latin", "Classical", "Indie", "Reggaeton", "Soul",
-];
-
-const dealbreakers = [
-  "Smoking", "Heavy Drinking", "No Kids", "Wants Kids", "Long Distance",
-  "Different Religion", "No Ambition", "Poor Communication",
+  { title: "Describe yourself", subtitle: "In one sentence, who are you?" },
+  { title: "Night owl or early bird?", subtitle: "One last question..." },
+  { title: "Prompts", subtitle: "Answer up to 3 prompts to show your personality" },
 ];
 
 const TagSelect = ({
@@ -122,14 +119,16 @@ const OnboardingQuiz = () => {
   const [hobbies, setHobbies] = useState<string[]>([]);
   const [lifestyle, setLifestyle] = useState<string[]>([]);
   const [music, setMusic] = useState<string[]>([]);
-  const [cuisine, setCuisine] = useState<string[]>([]);
   const [loveLang, setLoveLang] = useState("");
   const [intent, setIntent] = useState("");
   const [ageRange, setAgeRange] = useState<[number, number]>([18, 60]);
   const [selectedDealbreakers, setSelectedDealbreakers] = useState<string[]>([]);
   const [selectedPrompts, setSelectedPrompts] = useState<string[]>([]);
   const [promptAnswers, setPromptAnswers] = useState<Record<string, string>>({});
-  const [vibeAnswer, setVibeAnswer] = useState("");
+  const [favoriteArtists, setFavoriteArtists] = useState(["", "", ""]);
+  const [favoriteSong, setFavoriteSong] = useState("");
+  const [selfDescription, setSelfDescription] = useState("");
+  const [chronotype, setChronotype] = useState("");
 
   const toggle = (arr: string[], setArr: React.Dispatch<React.SetStateAction<string[]>>, val: string) => {
     setArr(arr.includes(val) ? arr.filter((v) => v !== val) : [...arr, val]);
@@ -137,21 +136,16 @@ const OnboardingQuiz = () => {
 
   const progress = ((step + 1) / steps.length) * 100;
 
+  const inputClass = "w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary";
+
   const renderStep = () => {
     switch (step) {
       case 0:
         return (
           <div className="flex flex-col gap-3">
             {personalityOptions.map((p) => (
-              <button
-                key={p}
-                onClick={() => setPersonality(p)}
-                className={`p-4 rounded-xl border text-left transition-all ${
-                  personality === p
-                    ? "border-primary bg-primary/10 text-foreground"
-                    : "border-border text-muted-foreground hover:border-primary/50"
-                }`}
-              >
+              <button key={p} onClick={() => setPersonality(p)}
+                className={`p-4 rounded-xl border text-left transition-all ${personality === p ? "border-primary bg-primary/10 text-foreground" : "border-border text-muted-foreground hover:border-primary/50"}`}>
                 <span className="font-bold">{p}</span>
               </button>
             ))}
@@ -162,72 +156,84 @@ const OnboardingQuiz = () => {
       case 2:
         return <TagSelect options={lifestyleOptions} selected={lifestyle} onToggle={(v) => toggle(lifestyle, setLifestyle, v)} />;
       case 3:
-        return <TagSelect options={musicGenres} selected={music} onToggle={(v) => toggle(music, setMusic, v)} />;
-      case 4:
-        return <TagSelect options={cuisines} selected={cuisine} onToggle={(v) => toggle(cuisine, setCuisine, v)} />;
-      case 5:
-        return (
-          <div className="flex flex-col gap-3">
-            {loveLanguages.map((l) => (
-              <button
-                key={l}
-                onClick={() => setLoveLang(l)}
-                className={`p-4 rounded-xl border text-left transition-all ${
-                  loveLang === l
-                    ? "border-primary bg-primary/10 text-foreground"
-                    : "border-border text-muted-foreground hover:border-primary/50"
-                }`}
-              >
-                {l}
-              </button>
-            ))}
-          </div>
-        );
-      case 6:
         return (
           <div className="flex flex-col gap-3">
             {["Serious Dating", "Casual Dating", "Both"].map((i) => (
-              <button
-                key={i}
-                onClick={() => setIntent(i)}
-                className={`p-4 rounded-xl border text-left transition-all ${
-                  intent === i
-                    ? "border-primary bg-primary/10 text-foreground"
-                    : "border-border text-muted-foreground hover:border-primary/50"
-                }`}
-              >
+              <button key={i} onClick={() => setIntent(i)}
+                className={`p-4 rounded-xl border text-left transition-all ${intent === i ? "border-primary bg-primary/10 text-foreground" : "border-border text-muted-foreground hover:border-primary/50"}`}>
                 {i}
               </button>
             ))}
           </div>
         );
-      case 7:
+      case 4:
         return (
           <div className="space-y-6">
             <div>
               <label className="text-sm text-muted-foreground mb-2 block">Minimum age: {ageRange[0]}</label>
-              <input
-                type="range" min={18} max={80} value={ageRange[0]}
+              <input type="range" min={18} max={80} value={ageRange[0]}
                 onChange={(e) => setAgeRange([+e.target.value, Math.max(+e.target.value, ageRange[1])])}
-                className="w-full accent-primary"
-              />
+                className="w-full accent-primary" />
             </div>
             <div>
               <label className="text-sm text-muted-foreground mb-2 block">Maximum age: {ageRange[1]}</label>
-              <input
-                type="range" min={18} max={80} value={ageRange[1]}
+              <input type="range" min={18} max={80} value={ageRange[1]}
                 onChange={(e) => setAgeRange([Math.min(ageRange[0], +e.target.value), +e.target.value])}
-                className="w-full accent-primary"
-              />
+                className="w-full accent-primary" />
             </div>
-            <p className="text-center text-lg font-heading">
-              {ageRange[0]} – {ageRange[1]} years old
-            </p>
+            <p className="text-center text-lg font-heading">{ageRange[0]} – {ageRange[1]} years old</p>
           </div>
         );
+      case 5:
+        return (
+          <div className="space-y-3">
+            {[0, 1, 2].map((i) => (
+              <input key={i} value={favoriteArtists[i]} onChange={(e) => {
+                const updated = [...favoriteArtists];
+                updated[i] = e.target.value;
+                setFavoriteArtists(updated);
+              }} placeholder={`Artist ${i + 1}`} className={inputClass} />
+            ))}
+          </div>
+        );
+      case 6:
+        return <TagSelect options={musicGenres} selected={music} onToggle={(v) => toggle(music, setMusic, v)} />;
+      case 7:
+        return (
+          <input value={favoriteSong} onChange={(e) => setFavoriteSong(e.target.value)}
+            placeholder="Song title — Artist" className={inputClass} />
+        );
       case 8:
-        return <TagSelect options={dealbreakers} selected={selectedDealbreakers} onToggle={(v) => toggle(selectedDealbreakers, setSelectedDealbreakers, v)} />;
+        return (
+          <div className="flex flex-col gap-3">
+            {loveLanguages.map((l) => (
+              <button key={l} onClick={() => setLoveLang(l)}
+                className={`p-4 rounded-xl border text-left transition-all ${loveLang === l ? "border-primary bg-primary/10 text-foreground" : "border-border text-muted-foreground hover:border-primary/50"}`}>
+                {l}
+              </button>
+            ))}
+          </div>
+        );
       case 9:
+        return <TagSelect options={dealbreakers} selected={selectedDealbreakers} onToggle={(v) => toggle(selectedDealbreakers, setSelectedDealbreakers, v)} />;
+      case 10:
+        return (
+          <textarea value={selfDescription} onChange={(e) => setSelfDescription(e.target.value)}
+            placeholder="I'm someone who..."
+            className="w-full bg-secondary border border-border rounded-lg p-4 text-foreground placeholder:text-muted-foreground resize-none h-24 focus:outline-none focus:border-primary" />
+        );
+      case 11:
+        return (
+          <div className="flex flex-col gap-3">
+            {["Night Owl", "Early Bird", "Depends on the day"].map((c) => (
+              <button key={c} onClick={() => setChronotype(c)}
+                className={`p-4 rounded-xl border text-left transition-all ${chronotype === c ? "border-primary bg-primary/10 text-foreground" : "border-border text-muted-foreground hover:border-primary/50"}`}>
+                {c}
+              </button>
+            ))}
+          </div>
+        );
+      case 12:
         return (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">Pick up to 3 prompts and answer them</p>
@@ -235,26 +241,11 @@ const OnboardingQuiz = () => {
             {selectedPrompts.map((p) => (
               <div key={p} className="mt-3">
                 <label className="text-sm text-primary mb-1 block">{p}</label>
-                <textarea
-                  value={promptAnswers[p] || ""}
-                  onChange={(e) => setPromptAnswers({ ...promptAnswers, [p]: e.target.value })}
+                <textarea value={promptAnswers[p] || ""} onChange={(e) => setPromptAnswers({ ...promptAnswers, [p]: e.target.value })}
                   placeholder="Your answer..."
-                  className="w-full bg-secondary border border-border rounded-lg p-3 text-foreground placeholder:text-muted-foreground resize-none h-20 focus:outline-none focus:border-primary"
-                />
+                  className="w-full bg-secondary border border-border rounded-lg p-3 text-foreground placeholder:text-muted-foreground resize-none h-20 focus:outline-none focus:border-primary" />
               </div>
             ))}
-          </div>
-        );
-      case 10:
-        return (
-          <div>
-            <p className="text-muted-foreground mb-4">If your life had a theme song right now, what would it be and why?</p>
-            <textarea
-              value={vibeAnswer}
-              onChange={(e) => setVibeAnswer(e.target.value)}
-              placeholder="Mine would be..."
-              className="w-full bg-secondary border border-border rounded-lg p-4 text-foreground placeholder:text-muted-foreground resize-none h-32 focus:outline-none focus:border-primary"
-            />
           </div>
         );
       default:
@@ -264,39 +255,27 @@ const OnboardingQuiz = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col p-4">
-      <OnboardingProgress currentStep={2} totalSteps={5} stepLabel="Personality Quiz" />
+      <OnboardingProgress currentStep={3} totalSteps={6} stepLabel="Personality Quiz" />
       <div className="flex-1 flex items-center justify-center">
         <div className="w-full max-w-lg">
-          {/* Internal progress */}
           <div className="mb-8">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm text-muted-foreground font-body">Question {step + 1} of {steps.length}</span>
               <span className="text-sm text-primary font-body">{Math.round(progress)}%</span>
             </div>
             <div className="h-1 bg-secondary rounded-full overflow-hidden">
-              <motion.div
-                className="h-full bg-primary rounded-full"
-                animate={{ width: `${progress}%` }}
-                transition={{ duration: 0.3 }}
-              />
+              <motion.div className="h-full bg-primary rounded-full" animate={{ width: `${progress}%` }} transition={{ duration: 0.3 }} />
             </div>
           </div>
 
           <AnimatePresence mode="wait">
-            <motion.div
-              key={step}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-            >
+            <motion.div key={step} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
               <h2 className="text-3xl font-heading font-bold mb-2">{steps[step].title}</h2>
               <p className="text-muted-foreground mb-8">{steps[step].subtitle}</p>
               {renderStep()}
             </motion.div>
           </AnimatePresence>
 
-          {/* Nav */}
           <div className="flex justify-between mt-10">
             <Button variant="ghost" onClick={() => setStep(Math.max(0, step - 1))} disabled={step === 0}>
               <ChevronLeft className="mr-1" /> Back
@@ -309,17 +288,10 @@ const OnboardingQuiz = () => {
               <Button variant="hero" onClick={() => navigate("/profile-preview", {
                 state: {
                   quizData: {
-                    personality,
-                    hobbies,
-                    lifestyle,
-                    music,
-                    cuisine,
-                    loveLang,
-                    intent,
-                    ageRange,
-                    dealbreakers: selectedDealbreakers,
-                    promptAnswers,
-                    vibeAnswer,
+                    personality, hobbies, lifestyle, music, loveLang, intent, ageRange,
+                    dealbreakers: selectedDealbreakers, promptAnswers,
+                    favoriteArtists: favoriteArtists.filter(a => a.trim()),
+                    favoriteSong, selfDescription, chronotype,
                   },
                 },
               })}>

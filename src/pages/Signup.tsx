@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Link, useNavigate } from "react-router-dom";
@@ -8,6 +8,7 @@ import { useGeolocation } from "@/hooks/useGeolocation";
 import { useAuth } from "@/contexts/AuthContext";
 import { Mail, Loader2, MapPinOff, CheckCircle } from "lucide-react";
 import PasswordStrengthIndicator, { isPasswordStrong, getPasswordRequirements } from "@/components/PasswordStrengthIndicator";
+import { getOnboardingRoute } from "@/lib/onboarding-steps";
 
 const Signup = () => {
   const [firstName, setFirstName] = useState("");
@@ -21,22 +22,48 @@ const Signup = () => {
   const [agreedToSafety, setAgreedToSafety] = useState(false);
   const [loading, setLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const navigate = useNavigate();
   const { toast } = useToast();
   const { location, requestLocation } = useGeolocation();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
 
   useEffect(() => {
     requestLocation();
   }, []);
 
-  // When the user clicks the magic link and gets logged in, redirect to onboarding
+  // When user is authenticated (clicked magic link), redirect to their onboarding step
   useEffect(() => {
-    if (user && emailSent) {
-      navigate("/upload-photos");
+    if (user && profile) {
+      const step = profile.onboarding_step ?? 0;
+      if (step >= 1) {
+        navigate(getOnboardingRoute(step), { replace: true });
+      }
     }
-  }, [user, emailSent, navigate]);
+  }, [user, profile, navigate]);
+
+  // Cleanup cooldown interval
+  useEffect(() => {
+    return () => {
+      if (cooldownRef.current) clearInterval(cooldownRef.current);
+    };
+  }, []);
+
+  const startCooldown = () => {
+    setResendCooldown(60);
+    if (cooldownRef.current) clearInterval(cooldownRef.current);
+    cooldownRef.current = setInterval(() => {
+      setResendCooldown((prev) => {
+        if (prev <= 1) {
+          if (cooldownRef.current) clearInterval(cooldownRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
 
   const isOutsideUS = location && location.countryCode && location.countryCode !== "US";
 
@@ -118,6 +145,7 @@ const Signup = () => {
           last_initial: lastInitial,
           gender,
           date_of_birth: dob,
+          onboarding_step: 0,
         };
         if (location) {
           updateData.latitude = location.lat;
@@ -128,6 +156,7 @@ const Signup = () => {
       }
 
       setEmailSent(true);
+      startCooldown();
       toast({ title: "Verification email sent!", description: `Check your inbox at ${email}` });
     } catch (err: any) {
       console.error("Signup error:", err);
@@ -138,6 +167,7 @@ const Signup = () => {
   };
 
   const handleResend = async () => {
+    if (resendCooldown > 0) return;
     setLoading(true);
     try {
       const { error } = await supabase.auth.resend({ type: "signup", email });
@@ -145,6 +175,7 @@ const Signup = () => {
         toast({ title: "Failed to resend", description: error.message, variant: "destructive" });
       } else {
         toast({ title: "Email resent!", description: `Check your inbox at ${email}` });
+        startCooldown();
       }
     } catch (err: any) {
       toast({ title: "Failed to resend", description: err?.message || "Please try again", variant: "destructive" });
@@ -199,10 +230,10 @@ const Signup = () => {
                 <p className="text-sm text-muted-foreground mb-1">Didn't receive it?</p>
                 <button
                   onClick={handleResend}
-                  disabled={loading}
-                  className={`text-sm font-medium transition-colors ${loading ? "text-muted-foreground cursor-not-allowed" : "text-primary hover:underline"}`}
+                  disabled={loading || resendCooldown > 0}
+                  className={`text-sm font-medium transition-colors ${loading || resendCooldown > 0 ? "text-muted-foreground cursor-not-allowed" : "text-primary hover:underline"}`}
                 >
-                  {loading ? "Sending..." : "Resend Email"}
+                  {loading ? "Sending..." : resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend Email"}
                 </button>
               </div>
             </motion.div>

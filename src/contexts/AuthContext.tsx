@@ -26,7 +26,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [subscriptionTier, setSubscriptionTier] = useState<"free" | "premium" | "elite">("free");
   const [subscriptionEnd, setSubscriptionEnd] = useState<string | null>(null);
 
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = async (userId: string, currentUser?: User | null) => {
     try {
       const { data, error } = await supabase
         .from("profiles")
@@ -34,11 +34,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .eq("user_id", userId)
         .single();
       if (data) {
+        // Auto-bump onboarding_step from 0 to 1 if email is verified
+        const theUser = currentUser || user;
+        if (data.onboarding_step === 0 && theUser?.email_confirmed_at) {
+          const { error: updateErr } = await supabase
+            .from("profiles")
+            .update({ onboarding_step: 1 } as any)
+            .eq("user_id", userId);
+          if (!updateErr) {
+            data.onboarding_step = 1;
+          }
+        }
         setProfile(data);
         return data;
       }
       if (error && error.code === "PGRST116") {
-        // No profile found — create one
         try {
           const { data: sessionData } = await supabase.auth.getUser();
           const email = sessionData?.user?.email || null;
@@ -55,13 +65,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           console.error("Failed to create profile:", insertErr);
         }
       }
-      // Set an empty profile object so pages don't hang
-      const fallback = { user_id: userId, first_name: null, photos: [], hobbies: [], bio: null };
+      const fallback = { user_id: userId, first_name: null, photos: [], hobbies: [], bio: null, onboarding_step: 0 };
       setProfile(fallback);
       return fallback;
     } catch (err) {
       console.error("fetchProfile error:", err);
-      const fallback = { user_id: userId, first_name: null, photos: [], hobbies: [], bio: null };
+      const fallback = { user_id: userId, first_name: null, photos: [], hobbies: [], bio: null, onboarding_step: 0 };
       setProfile(fallback);
       return fallback;
     }
@@ -108,7 +117,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setSession(newSession);
       setUser(newSession?.user ?? null);
       if (newSession?.user) {
-        await fetchProfile(newSession.user.id);
+        await fetchProfile(newSession.user.id, newSession.user);
         setTimeout(() => refreshSubscription(), 500);
       } else {
         setProfile(null);
@@ -122,7 +131,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setSession(existingSession);
       setUser(existingSession?.user ?? null);
       if (existingSession?.user) {
-        await fetchProfile(existingSession.user.id);
+        await fetchProfile(existingSession.user.id, existingSession.user);
         setTimeout(() => refreshSubscription(), 500);
       }
       if (isMounted) setLoading(false);
@@ -134,7 +143,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, []);
 
-  // Refresh subscription every 60 seconds
   useEffect(() => {
     if (!user) return;
     const interval = setInterval(refreshSubscription, 60000);
@@ -146,7 +154,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       session, user, profile, loading,
       subscriptionTier, subscriptionEnd,
       signOut, refreshSubscription, updateLocation,
-      refreshProfile: async () => { if (user) await fetchProfile(user.id); },
+      refreshProfile: async () => { if (user) await fetchProfile(user.id, user); },
     }}>
       {children}
     </AuthContext.Provider>
