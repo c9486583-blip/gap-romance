@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Send, Gift, ArrowLeft, MoreVertical, Shield, Check, Eye, Crown, Flag, Ban, Clock } from "lucide-react";
+import { Send, Gift, ArrowLeft, MoreVertical, Shield, Check, Eye, Crown, Flag, Ban, Clock, MessageCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 import GiftPicker from "@/components/GiftPicker";
 import GiftBubble from "@/components/GiftBubble";
