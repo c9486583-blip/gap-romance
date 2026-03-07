@@ -32,8 +32,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       .select("*")
       .eq("user_id", userId)
       .single();
-    setProfile(data);
-    return data;
+    if (data) {
+      setProfile(data);
+      return data;
+    }
+    // Profile missing — create one (trigger may have been absent)
+    const { data: user } = await supabase.auth.getUser();
+    const { data: newProfile } = await supabase
+      .from("profiles")
+      .insert({ user_id: userId, email: user?.user?.email || null })
+      .select()
+      .single();
+    setProfile(newProfile);
+    return newProfile;
   };
 
   const refreshSubscription = async () => {
