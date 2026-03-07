@@ -6,13 +6,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useAuth } from "@/contexts/AuthContext";
-import { Mail, Loader2, MapPinOff, CheckCircle } from "lucide-react";
+import { Mail, Loader2, MapPinOff, CheckCircle, Check, X } from "lucide-react";
 import PasswordStrengthIndicator, { isPasswordStrong, getPasswordRequirements } from "@/components/PasswordStrengthIndicator";
 import { getOnboardingRoute } from "@/lib/onboarding-steps";
 
 const Signup = () => {
   const [firstName, setFirstName] = useState("");
   const [lastInitial, setLastInitial] = useState("");
+  const [username, setUsername] = useState("");
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+  const [usernameChecking, setUsernameChecking] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [gender, setGender] = useState("");
@@ -23,7 +26,9 @@ const Signup = () => {
   const [loading, setLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
+
   const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const usernameDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -34,7 +39,6 @@ const Signup = () => {
     requestLocation();
   }, []);
 
-  // When user is authenticated (clicked magic link), redirect to their onboarding step
   useEffect(() => {
     if (user && profile) {
       const step = profile.onboarding_step ?? 0;
@@ -44,12 +48,46 @@ const Signup = () => {
     }
   }, [user, profile, navigate]);
 
-  // Cleanup cooldown interval
   useEffect(() => {
     return () => {
       if (cooldownRef.current) clearInterval(cooldownRef.current);
+      if (usernameDebounceRef.current) clearTimeout(usernameDebounceRef.current);
     };
   }, []);
+
+  // Real-time username uniqueness check with 600ms debounce
+  useEffect(() => {
+    if (usernameDebounceRef.current) clearTimeout(usernameDebounceRef.current);
+
+    if (!username || username.length < 4) {
+      setUsernameAvailable(null);
+      setUsernameChecking(false);
+      return;
+    }
+
+    setUsernameChecking(true);
+    setUsernameAvailable(null);
+
+    usernameDebounceRef.current = setTimeout(async () => {
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("user_id")
+          .eq("username", username.toLowerCase())
+          .maybeSingle();
+
+        if (error) {
+          setUsernameAvailable(null);
+        } else {
+          setUsernameAvailable(!data);
+        }
+      } catch {
+        setUsernameAvailable(null);
+      } finally {
+        setUsernameChecking(false);
+      }
+    }, 600);
+  }, [username]);
 
   const startCooldown = () => {
     setResendCooldown(60);
@@ -72,20 +110,24 @@ const Signup = () => {
       toast({ title: "GapRomance is currently only available in the United States.", variant: "destructive" });
       return false;
     }
-    if (!agreedToTerms || !agreedToPrivacy || !agreedToSafety) {
-      toast({ title: "You must agree to all required policies", variant: "destructive" });
-      return false;
-    }
-    if (!gender) {
-      toast({ title: "Please select your gender", variant: "destructive" });
-      return false;
-    }
-    if (!dob) {
-      toast({ title: "Please enter your date of birth", variant: "destructive" });
-      return false;
-    }
     if (!firstName.trim()) {
       toast({ title: "Please enter your first name", variant: "destructive" });
+      return false;
+    }
+    if (!username.trim() || username.length < 4) {
+      toast({ title: "Username must be at least 4 characters", variant: "destructive" });
+      return false;
+    }
+    if (username.length > 15) {
+      toast({ title: "Username must be 15 characters or fewer", variant: "destructive" });
+      return false;
+    }
+    if (usernameAvailable === false) {
+      toast({ title: "That username is already taken", variant: "destructive" });
+      return false;
+    }
+    if (usernameAvailable === null || usernameChecking) {
+      toast({ title: "Please wait while we check your username", variant: "destructive" });
       return false;
     }
     if (!email.trim() || !password) {
@@ -103,16 +145,26 @@ const Signup = () => {
       toast({ title: "Password too weak", description: `Missing: ${missing.join(", ")}`, variant: "destructive" });
       return false;
     }
-
+    if (!gender) {
+      toast({ title: "Please select your gender", variant: "destructive" });
+      return false;
+    }
+    if (!dob) {
+      toast({ title: "Please enter your date of birth", variant: "destructive" });
+      return false;
+    }
     const birthDate = new Date(dob);
     const today = new Date();
     let age = today.getFullYear() - birthDate.getFullYear();
     const m = today.getMonth() - birthDate.getMonth();
     if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
-
     const minAge = gender === "Man" ? 25 : 18;
     if (age < minAge) {
       toast({ title: `You must be at least ${minAge} years old`, variant: "destructive" });
+      return false;
+    }
+    if (!agreedToTerms || !agreedToPrivacy || !agreedToSafety) {
+      toast({ title: "You must agree to all required policies", variant: "destructive" });
       return false;
     }
     return true;
@@ -125,7 +177,7 @@ const Signup = () => {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: { emailRedirectTo: `${window.location.origin}/upload-photos` },
+        options: { emailRedirectTo: `${window.location.origin}/onboarding` },
       });
 
       if (error) {
@@ -138,21 +190,33 @@ const Signup = () => {
         return;
       }
 
-      // Update profile with form data
       if (data.user) {
-        const updateData: any = {
-          first_name: firstName,
-          last_initial: lastInitial,
+        // Wait 800ms for Supabase trigger to create the profile row, then upsert
+        await new Promise((res) => setTimeout(res, 800));
+
+        const upsertData: any = {
+          user_id: data.user.id,
+          first_name: firstName.trim(),
+          last_initial: lastInitial.trim(),
+          username: username.toLowerCase().trim(),
           gender,
           date_of_birth: dob,
           onboarding_step: 0,
         };
+
         if (location) {
-          updateData.latitude = location.lat;
-          updateData.longitude = location.lng;
-          updateData.city = location.city;
+          upsertData.latitude = location.lat;
+          upsertData.longitude = location.lng;
+          upsertData.city = location.city;
         }
-        await supabase.from("profiles").update(updateData).eq("user_id", data.user.id);
+
+        const { error: upsertError } = await supabase
+          .from("profiles")
+          .upsert(upsertData, { onConflict: "user_id" });
+
+        if (upsertError) {
+          console.error("Profile upsert error:", upsertError);
+        }
       }
 
       setEmailSent(true);
@@ -185,6 +249,14 @@ const Signup = () => {
   };
 
   const inputClass = "w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary";
+
+  const getUsernameStatusIcon = () => {
+    if (!username || username.length < 4) return null;
+    if (usernameChecking) return <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />;
+    if (usernameAvailable === true) return <Check className="w-4 h-4 text-green-500" />;
+    if (usernameAvailable === false) return <X className="w-4 h-4 text-destructive" />;
+    return null;
+  };
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -239,23 +311,64 @@ const Signup = () => {
             </motion.div>
           ) : (
             <div className="space-y-4">
+              {/* Name */}
               <div className="grid grid-cols-2 gap-3">
                 <input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="First Name" className={inputClass} />
-                <input value={lastInitial} onChange={(e) => setLastInitial(e.target.value)} placeholder="Last Initial" className={inputClass} />
+                <input value={lastInitial} onChange={(e) => setLastInitial(e.target.value.slice(0, 1))} placeholder="Last Initial" maxLength={1} className={inputClass} />
               </div>
+
+              {/* Username */}
+              <div className="relative">
+                <div className="flex items-center">
+                  <span className="absolute left-4 text-muted-foreground text-sm select-none">@</span>
+                  <input
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s/g, "").slice(0, 15))}
+                    placeholder="username"
+                    maxLength={15}
+                    className={`${inputClass} pl-8 pr-10 ${
+                      usernameAvailable === true ? "border-green-500" :
+                      usernameAvailable === false ? "border-destructive" : ""
+                    }`}
+                  />
+                  <span className="absolute right-4">{getUsernameStatusIcon()}</span>
+                </div>
+                <p className={`text-xs mt-1 ${
+                  usernameAvailable === false ? "text-destructive" :
+                  usernameAvailable === true ? "text-green-500" :
+                  "text-muted-foreground"
+                }`}>
+                  {!username || username.length < 4
+                    ? "4–15 characters"
+                    : usernameChecking
+                    ? "Checking availability..."
+                    : usernameAvailable === true
+                    ? "@" + username + " is available!"
+                    : usernameAvailable === false
+                    ? "That username is already taken"
+                    : ""}
+                </p>
+              </div>
+
+              {/* Email & Password */}
               <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" type="email" className={inputClass} />
               <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" type="password" className={inputClass} />
               <PasswordStrengthIndicator password={password} />
+
+              {/* Gender */}
               <div>
                 <label className="text-sm text-muted-foreground block mb-2">I am a</label>
                 <div className="grid grid-cols-2 gap-3">
                   {["Man", "Woman"].map((g) => (
-                    <button key={g} onClick={() => setGender(g)} className={`py-3 rounded-xl border text-sm font-bold transition-all ${gender === g ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/50"}`}>
+                    <button key={g} onClick={() => setGender(g)}
+                      className={`py-3 rounded-xl border text-sm font-bold transition-all ${gender === g ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/50"}`}>
                       {g}
                     </button>
                   ))}
                 </div>
               </div>
+
+              {/* Date of Birth */}
               <div>
                 <label className="text-sm text-muted-foreground block mb-2">Date of Birth</label>
                 <input type="date" value={dob} onChange={(e) => setDob(e.target.value)} className={inputClass} />
@@ -263,6 +376,7 @@ const Signup = () => {
                 {gender === "Man" && <p className="text-xs text-muted-foreground mt-1">Must be 25 or older</p>}
               </div>
 
+              {/* Policy checkboxes */}
               <div className="flex items-start gap-3 mt-2">
                 <input type="checkbox" checked={agreedToTerms} onChange={(e) => setAgreedToTerms(e.target.checked)} className="mt-1 accent-primary" id="terms-checkbox" />
                 <label htmlFor="terms-checkbox" className="text-sm text-muted-foreground">
