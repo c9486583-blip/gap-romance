@@ -31,6 +31,7 @@ const Discover = () => {
   const [showLikeLimit, setShowLikeLimit] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
   const [swipeDirection, setSwipeDirection] = useState<"left" | "right" | null>(null);
 
   // Filter state
