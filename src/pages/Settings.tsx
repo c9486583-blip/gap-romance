@@ -1,21 +1,14 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { User, CreditCard, Bell, Shield, LogOut, ChevronRight, CheckCircle, Music, X, MessageSquare, Sparkles, Heart, BellOff, Clock, Camera } from "lucide-react";
+import { User, CreditCard, Bell, Shield, LogOut, ChevronRight, CheckCircle, MessageSquare, BellOff, Clock, AtSign, MapPin, Eye, EyeOff, Loader2 } from "lucide-react";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { STRIPE_PRODUCTS } from "@/lib/stripe-products";
 import { Progress } from "@/components/ui/progress";
-import {
-  HOBBY_OPTIONS, LIFESTYLE_OPTIONS, PERSONALITY_OPTIONS, LOVE_LANGUAGES,
-  GENRE_OPTIONS, LIFESTYLE_ICONS, PERSONALITY_ICONS,
-} from "@/lib/profile-constants";
 import { calculateProfileCompleteness } from "@/lib/profile-completeness";
-import PhotoManager from "@/components/PhotoManager";
 import TopNav from "@/components/TopNav";
-import DeleteAccountDialog from "@/components/DeleteAccountDialog";
 
 const NOTE_PLACEHOLDERS = [
   "Just got back from hiking...",
@@ -35,6 +28,17 @@ const withTimeout = async <T,>(promiseLike: PromiseLike<T>, timeoutMs = REQUEST_
   ]);
 };
 
+const US_STATES = [
+  "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut",
+  "Delaware", "Florida", "Georgia", "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa",
+  "Kansas", "Kentucky", "Louisiana", "Maine", "Maryland", "Massachusetts", "Michigan",
+  "Minnesota", "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada", "New Hampshire",
+  "New Jersey", "New Mexico", "New York", "North Carolina", "North Dakota", "Ohio",
+  "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island", "South Carolina", "South Dakota",
+  "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington", "West Virginia",
+  "Wisconsin", "Wyoming",
+];
+
 const Settings = () => {
   const [activeTab, setActiveTab] = useState("account");
   const { user, profile, subscriptionTier, subscriptionEnd, signOut, refreshSubscription, refreshProfile } = useAuth();
@@ -42,10 +46,63 @@ const Settings = () => {
   const { toast } = useToast();
 
   // Account fields
-  const [displayName, setDisplayName] = useState("");
-  const [bio, setBio] = useState("");
-  const [datingMode, setDatingMode] = useState("Both");
+  const [firstName, setFirstName] = useState("");
+  const [lastInitial, setLastInitial] = useState("");
+  const [username, setUsername] = useState("");
+  const [usernameError, setUsernameError] = useState("");
+  const [usernameChecking, setUsernameChecking] = useState(false);
+  const [usernameTaken, setUsernameTaken] = useState(false);
+  const [locationPreference, setLocationPreference] = useState("");
   const [savingAccount, setSavingAccount] = useState(false);
+  const usernameCheckRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Today's Note
+  const [todaysNote, setTodaysNote] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
+  const notePlaceholder = NOTE_PLACEHOLDERS[Math.floor(Math.random() * NOTE_PLACEHOLDERS.length)];
+
+  // Delete account
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [showDeletePassword, setShowDeletePassword] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+
+  // Privacy toggles
+  const [showOnlineStatus, setShowOnlineStatus] = useState(true);
+  const [readReceipts, setReadReceipts] = useState(true);
+  const [savingPrivacy, setSavingPrivacy] = useState(false);
+
+  useEffect(() => {
+    if (profile) {
+      setFirstName(profile.first_name || "");
+      setLastInitial(profile.last_initial || "");
+      setUsername((profile as any).username || "");
+      setLocationPreference((profile as any).location_preference || "");
+      if (profile.todays_note && profile.todays_note_updated_at) {
+        const updatedAt = new Date(profile.todays_note_updated_at).getTime();
+        if (Date.now() - updatedAt < 24 * 60 * 60 * 1000) {
+          setTodaysNote(profile.todays_note);
+        }
+      }
+    }
+  }, [profile]);
+
+  // Load privacy prefs
+  useEffect(() => {
+    if (!user) return;
+    const load = async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("show_online_status, read_receipts")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (data) {
+        setShowOnlineStatus((data as any).show_online_status ?? true);
+        setReadReceipts((data as any).read_receipts ?? true);
+      }
+    };
+    load();
+  }, [user]);
 
   const handleLogout = async () => {
     await signOut();
@@ -61,227 +118,74 @@ const Settings = () => {
       }
       window.location.href = data.url;
     } catch (err: any) {
-      console.error("Portal error:", err);
       toast({ title: "Could not open portal", variant: "destructive" });
     }
   };
 
-  const handleVerify = async () => {
-    toast({ title: "Verification", description: "ID verification coming soon! This feature will use Stripe Identity." });
-  };
+  const handleUsernameChange = (val: string) => {
+    const cleaned = val.toLowerCase().replace(/\s/g, "");
+    setUsername(cleaned);
+    setUsernameTaken(false);
+    setUsernameError("");
 
-  // Music state
-  const [favoriteArtists, setFavoriteArtists] = useState<string[]>(["", "", ""]);
-  const [favoriteGenres, setFavoriteGenres] = useState<string[]>([]);
-  const [favoriteSong, setFavoriteSong] = useState("");
-  const [savingMusic, setSavingMusic] = useState(false);
-
-  // Today's Note state
-  const [todaysNote, setTodaysNote] = useState("");
-  const [savingNote, setSavingNote] = useState(false);
-  const notePlaceholder = NOTE_PLACEHOLDERS[Math.floor(Math.random() * NOTE_PLACEHOLDERS.length)];
-
-  // Profile badges state
-  const [hobbies, setHobbies] = useState<string[]>([]);
-  const [lifestyleBadges, setLifestyleBadges] = useState<string[]>([]);
-  const [personalityBadges, setPersonalityBadges] = useState<string[]>([]);
-  const [loveLanguage, setLoveLanguage] = useState<string>("");
-  const [savingProfile, setSavingProfile] = useState(false);
-
-  // Photos state
-  const [userPhotos, setUserPhotos] = useState<string[]>([]);
-  const [savingPhotos, setSavingPhotos] = useState(false);
-
-  useEffect(() => {
-    if (profile) {
-      const artists = profile.favorite_artists as string[] | null;
-      if (artists && artists.length > 0) {
-        const padded = [...artists, "", "", ""].slice(0, 3);
-        setFavoriteArtists(padded);
-      }
-      const genres = profile.favorite_genres as string[] | null;
-      if (genres) setFavoriteGenres(genres);
-      if (profile.favorite_song) setFavoriteSong(profile.favorite_song as string);
-      if (profile.todays_note && profile.todays_note_updated_at) {
-        const updatedAt = new Date(profile.todays_note_updated_at).getTime();
-        if (Date.now() - updatedAt < 24 * 60 * 60 * 1000) {
-          setTodaysNote(profile.todays_note);
-        }
-      }
-      if (profile.hobbies) setHobbies(profile.hobbies as string[]);
-      if (profile.lifestyle_badges) setLifestyleBadges(profile.lifestyle_badges as string[]);
-      if (profile.personality_badges) setPersonalityBadges(profile.personality_badges as string[]);
-      if (profile.love_language) setLoveLanguage(profile.love_language as string);
-      if (profile.photos) setUserPhotos(profile.photos as string[]);
-      // Account fields
-      setDisplayName(profile.first_name ? `${profile.first_name} ${profile.last_initial || ""}`.trim() : "");
-      setBio(profile.bio || "");
-      setDatingMode(profile.dating_mode || "Both");
+    if (cleaned.length === 0) return;
+    if (cleaned.length < 4) {
+      setUsernameError("Username must be at least 4 characters.");
+      return;
     }
-  }, [profile]);
-
-  const handleSaveNote = async () => {
-    if (!user) return;
-    setSavingNote(true);
-    try {
-      const { error } = await withTimeout(
-        supabase
-          .from("profiles")
-          .update({
-            todays_note: todaysNote.trim() || null,
-            todays_note_updated_at: todaysNote.trim() ? new Date().toISOString() : null,
-          } as any)
-          .eq("user_id", user.id)
-      );
-
-      if (error) {
-        toast({ title: "Failed to save note", variant: "destructive" });
-        return;
-      }
-
-      toast({ title: todaysNote.trim() ? "Today's Note updated!" : "Today's Note cleared" });
-      await refreshProfile();
-    } catch (err: any) {
-      toast({ title: err?.message || "Failed to save note", variant: "destructive" });
-    } finally {
-      setSavingNote(false);
+    if (cleaned.length > 15) {
+      setUsernameError("Username must be 15 characters or less.");
+      return;
     }
-  };
 
-  const toggleGenre = (genre: string) => {
-    setFavoriteGenres((prev) =>
-      prev.includes(genre) ? prev.filter((g) => g !== genre) : [...prev, genre]
-    );
-  };
-
-  const handleSaveMusic = async () => {
-    if (!user) return;
-    setSavingMusic(true);
-    try {
-      const cleanArtists = favoriteArtists.map((a) => a.trim()).filter(Boolean);
-      const { error } = await withTimeout(
-        supabase
-          .from("profiles")
-          .update({
-            favorite_artists: cleanArtists,
-            favorite_genres: favoriteGenres,
-            favorite_song: favoriteSong.trim() || null,
-          } as any)
-          .eq("user_id", user.id)
-      );
-
-      if (error) {
-        toast({ title: "Failed to save", variant: "destructive" });
-        return;
+    if (usernameCheckRef.current) clearTimeout(usernameCheckRef.current);
+    setUsernameChecking(true);
+    usernameCheckRef.current = setTimeout(async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("user_id")
+        .eq("username", cleaned)
+        .neq("user_id", user?.id || "")
+        .maybeSingle();
+      if (data) {
+        setUsernameTaken(true);
+        setUsernameError("This username is already taken.");
+      } else {
+        setUsernameTaken(false);
+        setUsernameError("");
       }
-
-      toast({ title: "Music saved!" });
-      await refreshProfile();
-    } catch (err: any) {
-      toast({ title: err?.message || "Failed to save", variant: "destructive" });
-    } finally {
-      setSavingMusic(false);
-    }
-  };
-
-  const toggleHobby = (h: string) => {
-    setHobbies((prev) =>
-      prev.includes(h) ? prev.filter((x) => x !== h) : prev.length < 10 ? [...prev, h] : prev
-    );
-  };
-
-  const toggleLifestyle = (l: string) => {
-    setLifestyleBadges((prev) =>
-      prev.includes(l) ? prev.filter((x) => x !== l) : prev.length < 4 ? [...prev, l] : prev
-    );
-  };
-
-  const togglePersonality = (p: string) => {
-    setPersonalityBadges((prev) =>
-      prev.includes(p) ? prev.filter((x) => x !== p) : prev.length < 2 ? [...prev, p] : prev
-    );
-  };
-
-  const handleSaveProfileBadges = async () => {
-    if (!user) return;
-    setSavingProfile(true);
-    try {
-      const { error } = await withTimeout(
-        supabase
-          .from("profiles")
-          .update({
-            hobbies,
-            lifestyle_badges: lifestyleBadges,
-            personality_badges: personalityBadges,
-            love_language: loveLanguage || null,
-          } as any)
-          .eq("user_id", user.id)
-      );
-
-      if (error) {
-        toast({ title: "Failed to save", variant: "destructive" });
-        return;
-      }
-
-      toast({ title: "Profile updated!" });
-      await refreshProfile();
-    } catch (err: any) {
-      toast({ title: err?.message || "Failed to save", variant: "destructive" });
-    } finally {
-      setSavingProfile(false);
-    }
-  };
-
-  const handleSavePhotos = async () => {
-    if (!user) return;
-    setSavingPhotos(true);
-    try {
-      const { error } = await withTimeout(
-        supabase
-          .from("profiles")
-          .update({ photos: userPhotos, avatar_url: userPhotos[0] || null } as any)
-          .eq("user_id", user.id)
-      );
-
-      if (error) {
-        toast({ title: "Failed to save", variant: "destructive" });
-        return;
-      }
-
-      toast({ title: "Photos saved!" });
-      await refreshProfile();
-    } catch (err: any) {
-      toast({ title: err?.message || "Failed to save", variant: "destructive" });
-    } finally {
-      setSavingPhotos(false);
-    }
+      setUsernameChecking(false);
+    }, 600);
   };
 
   const handleSaveAccount = async () => {
     if (!user) return;
+    if (username.length > 0 && username.length < 4) {
+      toast({ title: "Username must be at least 4 characters", variant: "destructive" });
+      return;
+    }
+    if (username.length > 15) {
+      toast({ title: "Username must be 15 characters or less", variant: "destructive" });
+      return;
+    }
+    if (usernameTaken) {
+      toast({ title: "That username is already taken", variant: "destructive" });
+      return;
+    }
     setSavingAccount(true);
     try {
-      const nameParts = displayName.trim().split(" ");
-      const firstName = nameParts[0] || null;
-      const lastInitial = nameParts.length > 1 ? nameParts[nameParts.length - 1].charAt(0) : null;
-
       const { error } = await withTimeout(
-        supabase
-          .from("profiles")
-          .update({
-            first_name: firstName,
-            last_initial: lastInitial,
-            bio: bio.trim() || null,
-            dating_mode: datingMode,
-          } as any)
-          .eq("user_id", user.id)
+        supabase.from("profiles").update({
+          first_name: firstName.trim() || null,
+          last_initial: lastInitial.trim() || null,
+          username: username.trim() || null,
+          location_preference: locationPreference || null,
+        } as any).eq("user_id", user.id)
       );
-
       if (error) {
         toast({ title: "Failed to save", variant: "destructive" });
         return;
       }
-
       toast({ title: "Account saved!" });
       await refreshProfile();
     } catch (err: any) {
@@ -291,13 +195,89 @@ const Settings = () => {
     }
   };
 
+  const handleSaveNote = async () => {
+    if (!user) return;
+    setSavingNote(true);
+    try {
+      const { error } = await withTimeout(
+        supabase.from("profiles").update({
+          todays_note: todaysNote.trim() || null,
+          todays_note_updated_at: todaysNote.trim() ? new Date().toISOString() : null,
+        } as any).eq("user_id", user.id)
+      );
+      if (error) {
+        toast({ title: "Failed to save note", variant: "destructive" });
+        return;
+      }
+      toast({ title: todaysNote.trim() ? "Today's Note updated!" : "Today's Note cleared" });
+      await refreshProfile();
+    } catch (err: any) {
+      toast({ title: err?.message || "Failed to save note", variant: "destructive" });
+    } finally {
+      setSavingNote(false);
+    }
+  };
+
+  const handleSavePrivacy = async () => {
+    if (!user) return;
+    setSavingPrivacy(true);
+    try {
+      const { error } = await withTimeout(
+        supabase.from("profiles").update({
+          show_online_status: showOnlineStatus,
+          read_receipts: readReceipts,
+        } as any).eq("user_id", user.id)
+      );
+      if (error) {
+        toast({ title: "Failed to save privacy settings", variant: "destructive" });
+        return;
+      }
+      toast({ title: "Privacy settings saved!" });
+      await refreshProfile();
+    } catch (err: any) {
+      toast({ title: err?.message || "Failed to save", variant: "destructive" });
+    } finally {
+      setSavingPrivacy(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!user || !deletePassword.trim()) {
+      toast({ title: "Please enter your password to confirm", variant: "destructive" });
+      return;
+    }
+    setDeletingAccount(true);
+    try {
+      // Re-authenticate to verify password
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user.email || "",
+        password: deletePassword,
+      });
+      if (signInError) {
+        toast({ title: "Incorrect password", description: "Please enter the correct password to delete your account.", variant: "destructive" });
+        return;
+      }
+      // Delete profile then auth user
+      await supabase.from("profiles").delete().eq("user_id", user.id);
+      const { error: deleteError } = await supabase.functions.invoke("delete-user");
+      if (deleteError) {
+        toast({ title: "Failed to delete account", description: "Please contact GapRomanceSupport@proton.me", variant: "destructive" });
+        return;
+      }
+      await signOut();
+      navigate("/");
+      toast({ title: "Account deleted", description: "Your account has been permanently deleted." });
+    } catch (err: any) {
+      toast({ title: err?.message || "Something went wrong", variant: "destructive" });
+    } finally {
+      setDeletingAccount(false);
+    }
+  };
+
   const completeness = calculateProfileCompleteness(profile);
 
   const tabs = [
     { id: "account", label: "Account", icon: User },
-    { id: "photos", label: "Photos", icon: Camera },
-    { id: "profile", label: "Profile & Badges", icon: Sparkles },
-    { id: "music", label: "Music Taste", icon: Music },
     { id: "subscription", label: "Subscription", icon: CreditCard },
     { id: "notifications", label: "Notifications", icon: Bell },
     { id: "privacy", label: "Privacy & Safety", icon: Shield },
@@ -326,6 +306,7 @@ const Settings = () => {
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <h1 className="text-3xl font-heading font-bold mb-8">Settings</h1>
         <div className="flex flex-col md:flex-row gap-6">
+          {/* Sidebar */}
           <div className="md:w-60 flex-shrink-0">
             <div className="space-y-1">
               {tabs.map((t) => (
@@ -340,7 +321,10 @@ const Settings = () => {
             </div>
           </div>
 
+          {/* Main content */}
           <div className="flex-1 glass rounded-xl p-6">
+
+            {/* ── ACCOUNT ── */}
             {activeTab === "account" && (
               <div className="space-y-6">
                 <h2 className="font-heading text-xl font-semibold">Account Details</h2>
@@ -369,41 +353,88 @@ const Settings = () => {
                 </div>
 
                 <div className="space-y-4">
-                  <div>
-                    <label className="text-sm text-muted-foreground block mb-1">Display Name</label>
-                    <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-primary" />
-                  </div>
-                  <div>
-                    <label className="text-sm text-muted-foreground block mb-1">Email</label>
-                    <input defaultValue={user.email || ""} disabled className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground opacity-60" />
-                  </div>
-                  <div>
-                    <label className="text-sm text-muted-foreground block mb-1">Bio</label>
-                    <textarea value={bio} onChange={(e) => setBio(e.target.value)} rows={3} maxLength={500}
-                      placeholder="Tell people about yourself..."
-                      className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-primary resize-none" />
-                  </div>
-                  <div>
-                    <label className="text-sm text-muted-foreground block mb-1">Dating Mode</label>
-                    <div className="flex flex-wrap gap-2">
-                      {["Serious Dating", "Casual Dating", "Both"].map((m) => (
-                        <button key={m} type="button" onClick={() => setDatingMode(m)}
-                          className={`px-4 py-2 rounded-full text-sm border transition-all ${datingMode === m ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:border-primary/50"}`}>
-                          {m === "Both" ? "Open to Both" : m}
-                        </button>
-                      ))}
+                  {/* Name */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-sm text-muted-foreground block mb-1">First Name</label>
+                      <input value={firstName} onChange={(e) => setFirstName(e.target.value)}
+                        className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-primary" />
+                    </div>
+                    <div>
+                      <label className="text-sm text-muted-foreground block mb-1">Last Initial</label>
+                      <input value={lastInitial} onChange={(e) => setLastInitial(e.target.value)} maxLength={1}
+                        className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-primary" />
                     </div>
                   </div>
+
+                  {/* Username */}
                   <div>
-                    <label className="text-sm text-muted-foreground block mb-1">Location</label>
-                    <input defaultValue={profile?.city || "Not set"} disabled className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground opacity-60" />
+                    <label className="text-sm text-muted-foreground block mb-1">Username</label>
+                    <div className="relative">
+                      <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <input
+                        value={username}
+                        onChange={(e) => handleUsernameChange(e.target.value)}
+                        placeholder="yourcreativeusername"
+                        maxLength={15}
+                        className={`w-full bg-secondary border rounded-lg pl-9 pr-10 py-3 text-foreground focus:outline-none focus:border-primary ${usernameError ? "border-destructive" : username.length >= 4 && !usernameTaken && !usernameChecking ? "border-green-500" : "border-border"}`}
+                      />
+                      {usernameChecking && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />}
+                      {!usernameChecking && username.length >= 4 && !usernameTaken && !usernameError && (
+                        <CheckCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-green-500" />
+                      )}
+                    </div>
+                    {usernameError && <p className="text-xs text-destructive mt-1">{usernameError}</p>}
+                    {!usernameError && <p className="text-xs text-muted-foreground mt-1">4–15 characters. Shows as "Chris · @{username || "username"}"</p>}
                   </div>
-                  <div className="flex items-center gap-3">
+
+                  {/* Email — readonly */}
+                  <div>
+                    <label className="text-sm text-muted-foreground block mb-1">Email</label>
+                    <input value={user.email || ""} disabled
+                      className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground opacity-60 cursor-not-allowed" />
+                    <p className="text-xs text-muted-foreground mt-1">Email cannot be changed. Contact <a href="mailto:GapRomanceSupport@proton.me" className="text-primary hover:underline">GapRomanceSupport@proton.me</a> for help.</p>
+                  </div>
+
+                  {/* Location — readonly */}
+                  <div>
+                    <label className="text-sm text-muted-foreground block mb-1 flex items-center gap-1">
+                      <MapPin className="w-3.5 h-3.5" /> Your Location
+                    </label>
+                    <input value={profile?.city ? `${profile.city}` : "Location not detected"} disabled
+                      className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground opacity-60 cursor-not-allowed" />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Only your city and state are shown — never your full address. To update your location, contact <a href="mailto:GapRomanceSupport@proton.me" className="text-primary hover:underline">GapRomanceSupport@proton.me</a>.
+                    </p>
+                  </div>
+
+                  {/* Location Preference */}
+                  <div>
+                    <label className="text-sm text-muted-foreground block mb-1">Location Preference</label>
+                    <p className="text-xs text-muted-foreground mb-2">Which US state would you like to find matches in?</p>
+                    <select
+                      value={locationPreference}
+                      onChange={(e) => setLocationPreference(e.target.value)}
+                      className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-primary"
+                    >
+                      <option value="">Anywhere in the US</option>
+                      {US_STATES.map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Verification Status */}
+                  <div className="flex items-center gap-3 py-2">
                     <span className="text-sm text-muted-foreground">Verification Status:</span>
                     {profile?.is_verified ? (
-                      <span className="inline-flex items-center gap-1 text-sm text-gold font-bold"><CheckCircle className="w-4 h-4" /> Verified</span>
+                      <span className="inline-flex items-center gap-1.5 text-sm font-bold text-green-400">
+                        <CheckCircle className="w-4 h-4" /> Verified ✓
+                      </span>
                     ) : (
-                      <Button variant="outline" size="sm" onClick={handleVerify}>Verify Identity (Free)</Button>
+                      <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+                        Pending verification
+                      </span>
                     )}
                   </div>
 
@@ -412,7 +443,7 @@ const Settings = () => {
                     <label className="text-sm font-medium flex items-center gap-2 mb-2">
                       <MessageSquare className="w-4 h-4 text-primary" /> Today's Note
                     </label>
-                    <p className="text-xs text-muted-foreground mb-2">Share what you're up to today — it appears on your profile and in discovery. Expires after 24 hours.</p>
+                    <p className="text-xs text-muted-foreground mb-2">Share what you're up to today — appears on your profile. Expires after 24 hours.</p>
                     <div className="relative">
                       <textarea
                         value={todaysNote}
@@ -431,210 +462,14 @@ const Settings = () => {
                     </Button>
                   </div>
 
-                  <Button variant="hero" disabled={savingAccount} onClick={handleSaveAccount}>
+                  <Button variant="hero" disabled={savingAccount || usernameTaken || usernameChecking} onClick={handleSaveAccount}>
                     {savingAccount ? "Saving..." : "Save Changes"}
                   </Button>
                 </div>
               </div>
             )}
 
-            {activeTab === "photos" && (
-              <div className="space-y-6">
-                <h2 className="font-heading text-xl font-semibold flex items-center gap-2">
-                  <Camera className="w-5 h-5 text-primary" /> Your Photos
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  Manage your profile photos. You need at least 2 and can have up to 6. Drag to reorder — your first photo is your main profile photo.
-                </p>
-                {user && (
-                  <PhotoManager
-                    userId={user.id}
-                    photos={userPhotos}
-                    onPhotosChange={setUserPhotos}
-                    minPhotos={2}
-                    maxPhotos={6}
-                    showGuidelines={false}
-                  />
-                )}
-                <Button variant="hero" onClick={handleSavePhotos} disabled={savingPhotos}>
-                  {savingPhotos ? "Saving..." : "Save Photos"}
-                </Button>
-              </div>
-            )}
-
-            {activeTab === "profile" && (
-              <div className="space-y-6">
-                <h2 className="font-heading text-xl font-semibold flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-primary" /> Profile & Badges
-                </h2>
-
-                {/* Hobbies */}
-                <div>
-                  <label className="text-sm font-medium block mb-1">
-                    Hobbies <span className="text-muted-foreground">({hobbies.length}/10)</span>
-                  </label>
-                  <p className="text-xs text-muted-foreground mb-3">Select up to 10 hobbies that describe you.</p>
-                  <div className="flex flex-wrap gap-2">
-                    {HOBBY_OPTIONS.map((h) => (
-                      <button
-                        key={h}
-                        type="button"
-                        onClick={() => toggleHobby(h)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
-                          hobbies.includes(h)
-                            ? "bg-secondary text-foreground border border-foreground/30"
-                            : "bg-secondary/50 text-muted-foreground border border-border hover:border-foreground/30"
-                        }`}
-                      >
-                        {h}
-                        {hobbies.includes(h) && <X className="w-3 h-3 ml-1 inline" />}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Lifestyle Badges */}
-                <div>
-                  <label className="text-sm font-medium block mb-1">
-                    Lifestyle Badges <span className="text-muted-foreground">({lifestyleBadges.length}/4)</span>
-                  </label>
-                  <p className="text-xs text-muted-foreground mb-3">Select up to 4 lifestyle badges.</p>
-                  <div className="flex flex-wrap gap-2">
-                    {LIFESTYLE_OPTIONS.map((l) => (
-                      <button
-                        key={l}
-                        type="button"
-                        onClick={() => toggleLifestyle(l)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1 ${
-                          lifestyleBadges.includes(l)
-                            ? "bg-primary/15 text-primary border border-primary/30"
-                            : "bg-secondary/50 text-muted-foreground border border-border hover:border-primary/30"
-                        }`}
-                      >
-                        <span>{LIFESTYLE_ICONS[l]}</span> {l}
-                        {lifestyleBadges.includes(l) && <X className="w-3 h-3 ml-1" />}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Personality Badges */}
-                <div>
-                  <label className="text-sm font-medium block mb-1">
-                    Personality Badges <span className="text-muted-foreground">({personalityBadges.length}/2)</span>
-                  </label>
-                  <p className="text-xs text-muted-foreground mb-3">Select up to 2 personality badges.</p>
-                  <div className="flex flex-wrap gap-2">
-                    {PERSONALITY_OPTIONS.map((p) => (
-                      <button
-                        key={p}
-                        type="button"
-                        onClick={() => togglePersonality(p)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1 ${
-                          personalityBadges.includes(p)
-                            ? "bg-primary/15 text-primary border border-primary/30"
-                            : "bg-secondary/50 text-muted-foreground border border-border hover:border-primary/30"
-                        }`}
-                      >
-                        <span>{PERSONALITY_ICONS[p]}</span> {p}
-                        {personalityBadges.includes(p) && <X className="w-3 h-3 ml-1" />}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Love Language */}
-                <div>
-                  <label className="text-sm font-medium block mb-1 flex items-center gap-1">
-                    <Heart className="w-4 h-4 text-primary" /> Love Language
-                  </label>
-                  <p className="text-xs text-muted-foreground mb-3">What's your love language?</p>
-                  <div className="flex flex-wrap gap-2">
-                    {LOVE_LANGUAGES.map((ll) => (
-                      <button
-                        key={ll}
-                        type="button"
-                        onClick={() => setLoveLanguage(loveLanguage === ll ? "" : ll)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
-                          loveLanguage === ll
-                            ? "bg-primary/15 text-primary border border-primary/30"
-                            : "bg-secondary/50 text-muted-foreground border border-border hover:border-primary/30"
-                        }`}
-                      >
-                        {ll}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <Button variant="hero" onClick={handleSaveProfileBadges} disabled={savingProfile}>
-                  {savingProfile ? "Saving..." : "Save Profile"}
-                </Button>
-              </div>
-            )}
-
-            {activeTab === "music" && (
-              <div className="space-y-6">
-                <h2 className="font-heading text-xl font-semibold flex items-center gap-2">
-                  <Music className="w-5 h-5 text-primary" /> Music Taste
-                </h2>
-                <p className="text-sm text-muted-foreground">Share your music taste on your profile for others to see.</p>
-
-                <div className="space-y-3">
-                  <label className="text-sm font-medium block">Favorite Artists (up to 3)</label>
-                  {favoriteArtists.map((artist, i) => (
-                    <input
-                      key={i}
-                      value={artist}
-                      onChange={(e) => {
-                        const updated = [...favoriteArtists];
-                        updated[i] = e.target.value;
-                        setFavoriteArtists(updated);
-                      }}
-                      maxLength={100}
-                      placeholder={`Artist ${i + 1}`}
-                      className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-primary"
-                    />
-                  ))}
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium block mb-3">Favorite Genres</label>
-                  <div className="flex flex-wrap gap-2">
-                    {GENRE_OPTIONS.map((genre) => (
-                      <button
-                        key={genre}
-                        type="button"
-                        onClick={() => toggleGenre(genre)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
-                          favoriteGenres.includes(genre)
-                            ? "bg-primary/15 text-primary border border-primary/30"
-                            : "bg-secondary text-muted-foreground border border-border hover:border-primary/30"
-                        }`}
-                      >
-                        {genre}
-                        {favoriteGenres.includes(genre) && <X className="w-3 h-3 ml-1 inline" />}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium block mb-1">Favorite Song</label>
-                  <input
-                    value={favoriteSong}
-                    onChange={(e) => setFavoriteSong(e.target.value)}
-                    maxLength={150}
-                    placeholder="e.g. Clair de Lune — Debussy"
-                    className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-primary"
-                  />
-                </div>
-
-                <Button variant="hero" onClick={handleSaveMusic} disabled={savingMusic}>
-                  {savingMusic ? "Saving..." : "Save Music"}
-                </Button>
-              </div>
-            )}
+            {/* ── SUBSCRIPTION ── */}
             {activeTab === "subscription" && (
               <div className="space-y-6">
                 <h2 className="font-heading text-xl font-semibold">Your Plan</h2>
@@ -653,7 +488,7 @@ const Settings = () => {
                       {subscriptionTier === "free" ? "$0" : subscriptionTier === "premium" ? "$19.99/mo" : "$34.99/mo"}
                     </span>
                   </div>
-                  <div className="flex gap-3">
+                  <div className="flex gap-3 flex-wrap">
                     {subscriptionTier === "free" && (
                       <Button variant="hero" asChild><Link to="/pricing">Upgrade</Link></Button>
                     )}
@@ -668,31 +503,97 @@ const Settings = () => {
                 </div>
               </div>
             )}
+
+            {/* ── NOTIFICATIONS ── */}
             {activeTab === "notifications" && (
               <NotificationSettings user={user} />
             )}
+
+            {/* ── PRIVACY & SAFETY ── */}
             {activeTab === "privacy" && (
               <div className="space-y-6">
                 <h2 className="font-heading text-xl font-semibold">Privacy & Safety</h2>
                 <div className="space-y-4">
-                  <label className="flex items-center justify-between py-3 border-b border-border/30 cursor-pointer">
+
+                  {/* Online Status Toggle */}
+                  <div className="flex items-center justify-between py-3 border-b border-border/30">
                     <div>
                       <span className="text-sm block">Show online status</span>
                       <span className="text-xs text-muted-foreground">Let others see when you're active</span>
                     </div>
-                    <input type="checkbox" defaultChecked className="accent-primary w-4 h-4" />
-                  </label>
-                  <label className="flex items-center justify-between py-3 border-b border-border/30 cursor-pointer">
+                    <div onClick={() => setShowOnlineStatus((v) => !v)}
+                      className={`w-10 h-5 rounded-full transition-colors relative cursor-pointer ${showOnlineStatus ? "bg-primary" : "bg-border"}`}>
+                      <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${showOnlineStatus ? "translate-x-5" : "translate-x-0.5"}`} />
+                    </div>
+                  </div>
+
+                  {/* Read Receipts Toggle */}
+                  <div className="flex items-center justify-between py-3 border-b border-border/30">
                     <div>
                       <span className="text-sm block">Read receipts</span>
                       <span className="text-xs text-muted-foreground">Show when you've read messages</span>
                     </div>
-                    <input type="checkbox" defaultChecked className="accent-primary w-4 h-4" />
-                  </label>
-                  <div className="pt-4">
+                    <div onClick={() => setReadReceipts((v) => !v)}
+                      className={`w-10 h-5 rounded-full transition-colors relative cursor-pointer ${readReceipts ? "bg-primary" : "bg-border"}`}>
+                      <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${readReceipts ? "translate-x-5" : "translate-x-0.5"}`} />
+                    </div>
+                  </div>
+
+                  <Button variant="hero" onClick={handleSavePrivacy} disabled={savingPrivacy}>
+                    {savingPrivacy ? "Saving..." : "Save Privacy Settings"}
+                  </Button>
+
+                  {/* Block List */}
+                  <div className="pt-2">
                     <Button variant="outline">Block List</Button>
                   </div>
-                  <DeleteAccountDialog user={user} signOut={signOut} />
+
+                  {/* Delete Account */}
+                  <div className="border-t border-border/30 pt-6">
+                    <h3 className="text-sm font-bold text-destructive mb-1">Delete Account</h3>
+                    <p className="text-xs text-muted-foreground mb-4">
+                      This is permanent and cannot be undone. All your data, matches, and messages will be deleted forever.
+                    </p>
+                    {!showDeleteConfirm ? (
+                      <Button variant="outline" className="border-destructive text-destructive hover:bg-destructive/10"
+                        onClick={() => setShowDeleteConfirm(true)}>
+                        Delete My Account
+                      </Button>
+                    ) : (
+                      <div className="space-y-3 p-4 rounded-xl border border-destructive/30 bg-destructive/5">
+                        <p className="text-sm font-medium">Enter your password to confirm deletion:</p>
+                        <div className="relative">
+                          <input
+                            type={showDeletePassword ? "text" : "password"}
+                            value={deletePassword}
+                            onChange={(e) => setDeletePassword(e.target.value)}
+                            placeholder="Your password"
+                            className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-destructive pr-10"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowDeletePassword((v) => !v)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                          >
+                            {showDeletePassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                        <div className="flex gap-3">
+                          <Button
+                            variant="outline"
+                            className="border-destructive text-destructive hover:bg-destructive/10"
+                            onClick={handleDeleteAccount}
+                            disabled={deletingAccount || !deletePassword.trim()}
+                          >
+                            {deletingAccount ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Deleting...</> : "Confirm Delete"}
+                          </Button>
+                          <Button variant="ghost" onClick={() => { setShowDeleteConfirm(false); setDeletePassword(""); }}>
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
@@ -703,8 +604,7 @@ const Settings = () => {
   );
 };
 
-
-// Notification Settings Component
+// ── NOTIFICATION SETTINGS COMPONENT ────────────────────────────────────────
 const NOTIF_CATEGORIES = [
   { key: "new_matches", label: "New Matches", desc: "When you match with someone" },
   { key: "new_messages", label: "New Messages", desc: "When you receive a message" },
@@ -729,19 +629,9 @@ const NotificationSettings = ({ user }: { user: any }) => {
     if (!user) return;
     const load = async () => {
       try {
-        const { data, error } = await withTimeout(
-          supabase
-            .from("notification_preferences")
-            .select("*")
-            .eq("user_id", user.id)
-            .maybeSingle()
+        const { data } = await withTimeout(
+          supabase.from("notification_preferences").select("*").eq("user_id", user.id).maybeSingle()
         );
-
-        if (error) {
-          console.error("Failed to load notification preferences:", error);
-          return;
-        }
-
         if (data) setPrefs(data);
       } catch (err) {
         console.error("Failed to load notification preferences:", err);
@@ -759,29 +649,25 @@ const NotificationSettings = ({ user }: { user: any }) => {
     setSaving(true);
     try {
       const { error } = await withTimeout(
-        supabase
-          .from("notification_preferences")
-          .upsert({
-            user_id: user.id,
-            new_matches: prefs.new_matches,
-            new_messages: prefs.new_messages,
-            virtual_gifts: prefs.virtual_gifts,
-            super_likes: prefs.super_likes,
-            profile_activity: prefs.profile_activity,
-            subscription_reminders: prefs.subscription_reminders,
-            daily_reminders: prefs.daily_reminders,
-            dnd_enabled: prefs.dnd_enabled,
-            dnd_start: prefs.dnd_start,
-            dnd_end: prefs.dnd_end,
-            updated_at: new Date().toISOString(),
-          } as any, { onConflict: "user_id" })
+        supabase.from("notification_preferences").upsert({
+          user_id: user.id,
+          new_matches: prefs.new_matches,
+          new_messages: prefs.new_messages,
+          virtual_gifts: prefs.virtual_gifts,
+          super_likes: prefs.super_likes,
+          profile_activity: prefs.profile_activity,
+          subscription_reminders: prefs.subscription_reminders,
+          daily_reminders: prefs.daily_reminders,
+          dnd_enabled: prefs.dnd_enabled,
+          dnd_start: prefs.dnd_start,
+          dnd_end: prefs.dnd_end,
+          updated_at: new Date().toISOString(),
+        } as any, { onConflict: "user_id" })
       );
-
       if (error) {
         toast({ title: "Failed to save", variant: "destructive" });
         return;
       }
-
       toast({ title: "Notification preferences saved!" });
     } catch (err: any) {
       toast({ title: err?.message || "Failed to save", variant: "destructive" });
@@ -796,16 +682,13 @@ const NotificationSettings = ({ user }: { user: any }) => {
         <Bell className="w-5 h-5 text-primary" /> Notifications
       </h2>
 
-      {/* Push notification status */}
       <div className="glass rounded-xl p-4">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium">Push Notifications</p>
             <p className="text-xs text-muted-foreground">
-              {!isSupported
-                ? "Not supported in this browser"
-                : isSubscribed
-                ? "Enabled — you'll receive notifications"
+              {!isSupported ? "Not supported in this browser"
+                : isSubscribed ? "Enabled — you'll receive notifications"
                 : "Disabled — enable to get notified of matches and messages"}
             </p>
           </div>
@@ -817,7 +700,6 @@ const NotificationSettings = ({ user }: { user: any }) => {
         </div>
       </div>
 
-      {/* Category toggles */}
       <div>
         <p className="text-sm font-medium mb-3">Notification Categories</p>
         {NOTIF_CATEGORIES.map((cat) => (
@@ -843,7 +725,6 @@ const NotificationSettings = ({ user }: { user: any }) => {
         </div>
       </div>
 
-      {/* Do Not Disturb */}
       <div className="glass rounded-xl p-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
