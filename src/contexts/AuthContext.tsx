@@ -41,6 +41,8 @@ export interface Profile {
   verification_status: "unverified" | "pending" | "verified" | null;
   onboarding_step: number;
   today_note: string | null;
+  todays_note: string | null;
+  todays_note_updated_at: string | null;
   last_active_at: string | null;
   created_at: string | null;
   updated_at: string | null;
@@ -99,6 +101,8 @@ const fallbackProfile = (userId: string): Profile => ({
   verification_status: null,
   onboarding_step: 0,
   today_note: null,
+  todays_note: null,
+  todays_note_updated_at: null,
   last_active_at: null,
   created_at: null,
   updated_at: null,
@@ -198,6 +202,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     let isMounted = true;
 
+    // Safety timeout — if auth hangs for 3s, force loading to false
+    const safetyTimer = setTimeout(() => {
+      if (isMounted) setLoading(false);
+    }, 3000);
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
       if (!isMounted) return;
       setSession(newSession);
@@ -209,7 +218,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setProfile(null);
         setSubscriptionTier("free");
       }
-      if (isMounted) setLoading(false);
+      if (isMounted) {
+        clearTimeout(safetyTimer);
+        setLoading(false);
+      }
     });
 
     supabase.auth.getSession().then(async ({ data: { session: existingSession } }) => {
@@ -220,11 +232,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         await fetchProfile(existingSession.user.id, existingSession.user);
         setTimeout(() => refreshSubscription(), 500);
       }
-      if (isMounted) setLoading(false);
+      if (isMounted) {
+        clearTimeout(safetyTimer);
+        setLoading(false);
+      }
+    }).catch(() => {
+      if (isMounted) {
+        clearTimeout(safetyTimer);
+        setLoading(false);
+      }
     });
 
     return () => {
       isMounted = false;
+      clearTimeout(safetyTimer);
       subscription.unsubscribe();
     };
   }, []);
