@@ -51,7 +51,6 @@ const Discover = () => {
   const [fetchError, setFetchError] = useState(false);
   const [swipeDirection, setSwipeDirection] = useState<"left" | "right" | null>(null);
 
-  // Filters
   const [sortBy, setSortBy] = useState<"distance" | "active" | "newest">("distance");
   const [ageMin, setAgeMin] = useState(18);
   const [ageMax, setAgeMax] = useState(80);
@@ -61,7 +60,7 @@ const Discover = () => {
   const [selectedHobbies, setSelectedHobbies] = useState<string[]>([]);
   const [showHobbyPicker, setShowHobbyPicker] = useState(false);
 
-  const myGender = (profile as any)?.gender as string | null;
+  const myGender = profile?.gender as string | null;
   const myAge = (() => {
     if (!profile?.date_of_birth) return null;
     const b = new Date(profile.date_of_birth);
