@@ -1,4 +1,4 @@
-import { Compass, Heart, MessageCircle, User } from "lucide-react";
+import { Compass, Heart, MessageCircle, User, Settings } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -7,6 +7,7 @@ const tabs = [
   { path: "/matches", label: "Matches", icon: Heart },
   { path: "/messages", label: "Messages", icon: MessageCircle },
   { path: "/profile", label: "Profile", icon: User },
+  { path: "/settings", label: "Settings", icon: Settings },
 ];
 
 const BottomNav = () => {
