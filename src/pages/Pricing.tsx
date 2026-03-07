@@ -115,7 +115,6 @@ const Pricing = () => {
     }
   };
 
-  // Resume pending checkout after login — defined after handleCheckout
   useEffect(() => {
     if (!user) return;
     const pending = sessionStorage.getItem("pending_checkout");
@@ -204,7 +203,6 @@ const Pricing = () => {
           ))}
         </div>
 
-        {/* Add-ons */}
         <div className="max-w-3xl mx-auto">
           <h2 className="text-3xl font-heading font-bold text-center mb-8">
             À La Carte <span className="text-gradient">Extras</span>
@@ -230,7 +228,6 @@ const Pricing = () => {
           </div>
         </div>
 
-        {/* Messaging Time Credits */}
         <div className="max-w-3xl mx-auto mt-16">
           <h2 className="text-3xl font-heading font-bold text-center mb-3">
             Messaging Time <span className="text-gradient">Credits</span>
@@ -256,7 +253,6 @@ const Pricing = () => {
           </div>
         </div>
 
-        {/* Virtual Gifts */}
         <div className="max-w-3xl mx-auto mt-16">
           <h2 className="text-3xl font-heading font-bold text-center mb-3">
             Virtual <span className="text-gradient">Gifts</span>
@@ -273,7 +269,6 @@ const Pricing = () => {
           </div>
         </div>
 
-        {/* Verified Badge */}
         <div className="max-w-3xl mx-auto mt-16 mb-8">
           <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}
             className="glass rounded-2xl p-8 text-center glow-border">
