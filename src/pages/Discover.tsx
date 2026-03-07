@@ -318,13 +318,31 @@ const Discover = () => {
             <div className="flex items-center justify-center h-full">
               <p className="text-muted-foreground">Loading profiles...</p>
             </div>
-          ) : !currentProfile ? (
-            <div className="flex flex-col items-center justify-center h-full text-center">
+          ) : fetchError ? (
+            <div className="flex flex-col items-center justify-center h-full text-center px-4">
               <img alt="GapRomance logo" className="h-16 w-auto object-contain mb-6" src="/lovable-uploads/35979146-566e-4b78-97a6-4d67f2473574.png" />
-              <h2 className="font-heading text-xl font-bold mb-2">No one here yet</h2>
-              <p className="text-muted-foreground text-sm mb-6">Check back soon! New members are joining every day.</p>
+              <h2 className="font-heading text-xl font-bold text-primary mb-2">Something went wrong</h2>
+              <p className="text-muted-foreground text-sm mb-6">We couldn't load profiles right now. Please try again.</p>
+              <Button variant="hero" size="sm" onClick={() => window.location.reload()}>
+                Try Again
+              </Button>
+            </div>
+          ) : !currentProfile && hasActiveFilters ? (
+            <div className="flex flex-col items-center justify-center h-full text-center px-4">
+              <img alt="GapRomance logo" className="h-16 w-auto object-contain mb-6" src="/lovable-uploads/35979146-566e-4b78-97a6-4d67f2473574.png" />
+              <h2 className="font-heading text-xl font-bold text-primary mb-2">No results</h2>
+              <p className="text-muted-foreground text-sm mb-6">No members match your current filters — try adjusting your preferences.</p>
+              <Button variant="hero" size="sm" onClick={resetFilters}>
+                Reset Filters
+              </Button>
+            </div>
+          ) : !currentProfile ? (
+            <div className="flex flex-col items-center justify-center h-full text-center px-4">
+              <img alt="GapRomance logo" className="h-16 w-auto object-contain mb-6" src="/lovable-uploads/35979146-566e-4b78-97a6-4d67f2473574.png" />
+              <h2 className="font-heading text-xl font-bold text-primary mb-2">Welcome to GapRomance</h2>
+              <p className="text-muted-foreground text-sm mb-6">No members to show right now — check back soon! New members are joining every day.</p>
               <Button variant="hero" size="sm" onClick={() => setShowFilters(true)}>
-                Update Your Preferences
+                Update Filters
               </Button>
             </div>
           ) : (
