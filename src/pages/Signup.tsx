@@ -55,7 +55,6 @@ const Signup = () => {
     };
   }, []);
 
-  // Real-time username uniqueness check with 600ms debounce
   useEffect(() => {
     if (usernameDebounceRef.current) clearTimeout(usernameDebounceRef.current);
 
@@ -191,7 +190,6 @@ const Signup = () => {
       }
 
       if (data.user) {
-        // Wait 800ms for Supabase trigger to create the profile row, then upsert
         await new Promise((res) => setTimeout(res, 800));
 
         const upsertData: any = {
@@ -311,13 +309,11 @@ const Signup = () => {
             </motion.div>
           ) : (
             <div className="space-y-4">
-              {/* Name */}
               <div className="grid grid-cols-2 gap-3">
                 <input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="First Name" className={inputClass} />
                 <input value={lastInitial} onChange={(e) => setLastInitial(e.target.value.slice(0, 1))} placeholder="Last Initial" maxLength={1} className={inputClass} />
               </div>
 
-              {/* Username */}
               <div className="relative">
                 <div className="flex items-center">
                   <span className="absolute left-4 text-muted-foreground text-sm select-none">@</span>
@@ -350,12 +346,10 @@ const Signup = () => {
                 </p>
               </div>
 
-              {/* Email & Password */}
               <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" type="email" className={inputClass} />
               <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" type="password" className={inputClass} />
               <PasswordStrengthIndicator password={password} />
 
-              {/* Gender */}
               <div>
                 <label className="text-sm text-muted-foreground block mb-2">I am a</label>
                 <div className="grid grid-cols-2 gap-3">
@@ -368,7 +362,6 @@ const Signup = () => {
                 </div>
               </div>
 
-              {/* Date of Birth */}
               <div>
                 <label className="text-sm text-muted-foreground block mb-2">Date of Birth</label>
                 <input type="date" value={dob} onChange={(e) => setDob(e.target.value)} className={inputClass} />
@@ -376,7 +369,6 @@ const Signup = () => {
                 {gender === "Man" && <p className="text-xs text-muted-foreground mt-1">Must be 25 or older</p>}
               </div>
 
-              {/* Policy checkboxes */}
               <div className="flex items-start gap-3 mt-2">
                 <input type="checkbox" checked={agreedToTerms} onChange={(e) => setAgreedToTerms(e.target.checked)} className="mt-1 accent-primary" id="terms-checkbox" />
                 <label htmlFor="terms-checkbox" className="text-sm text-muted-foreground">
