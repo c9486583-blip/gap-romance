@@ -31,6 +31,7 @@ const Discover = () => {
   const [showLikeLimit, setShowLikeLimit] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
   const [swipeDirection, setSwipeDirection] = useState<"left" | "right" | null>(null);
 
   // Filter state
@@ -70,62 +71,91 @@ const Discover = () => {
       .then(({ count }) => setLikesUsedToday(count || 0));
   }, [user]);
 
+  const hasActiveFilters = modeFilter !== "All" || verifiedOnly || ageMin !== 18 || ageMax !== 80 || distanceRadius > 0;
+
+  const resetFilters = () => {
+    setModeFilter("All");
+    setVerifiedOnly(false);
+    setAgeMin(18);
+    setAgeMax(80);
+    setDistanceRadius(0);
+  };
+
   // Fetch profiles
   useEffect(() => {
     const fetchProfiles = async () => {
-      if (!user) return;
-      setLoading(true);
-
-      const { data } = await supabase.from("profiles").select("*").neq("user_id", user.id);
-
-      // Get blocked users
-      const { data: blocksOut } = await supabase.from("blocks").select("blocked_id").eq("blocker_id", user.id);
-      const { data: blocksIn } = await supabase.from("blocks").select("blocker_id").eq("blocked_id", user.id);
-      const blockedIds = new Set([
-        ...(blocksOut || []).map((b: any) => b.blocked_id),
-        ...(blocksIn || []).map((b: any) => b.blocker_id),
-      ]);
-
-      // Get already liked/passed users
-      const { data: likedData } = await supabase.from("likes").select("liked_id").eq("liker_id", user.id);
-      const likedIds = new Set((likedData || []).map((l: any) => l.liked_id));
-
-      const filtered = (data || []).filter((p: any) => {
-        if (blockedIds.has(p.user_id)) return false;
-        if (likedIds.has(p.user_id)) return false;
-        const { percentage } = calculateProfileCompleteness(p);
-        if (percentage < COMPLETENESS_THRESHOLD) return false;
-        return true;
-      });
-
-      // Apply filters
-      const finalFiltered = filtered.filter((p: any) => {
-        if (modeFilter !== "All") {
-          const modeMap: Record<string, string> = { Serious: "Serious Dating", Casual: "Casual Dating" };
-          const target = modeMap[modeFilter] || modeFilter;
-          if (p.dating_mode !== target && p.dating_mode !== "Both") return false;
-        }
-        if (verifiedOnly && !p.is_verified) return false;
-        const age = getAge(p.date_of_birth);
-        if (age !== null) {
-          if (age < ageMin || age > ageMax) return false;
-        }
-        if (distanceRadius > 0) {
-          const dist = getDistance(p);
-          if (dist === null || dist > distanceRadius) return false;
-        }
-        return true;
-      });
-
-      // Shuffle
-      for (let i = finalFiltered.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [finalFiltered[i], finalFiltered[j]] = [finalFiltered[j], finalFiltered[i]];
+      if (!user) {
+        setLoading(false);
+        return;
       }
+      setLoading(true);
+      setFetchError(false);
 
-      setProfiles(finalFiltered);
-      setCurrentIndex(0);
-      setLoading(false);
+      try {
+        const { data, error: queryError } = await supabase.from("profiles").select("*").neq("user_id", user.id);
+
+        if (queryError) {
+          console.error("Failed to fetch profiles:", queryError);
+          setFetchError(true);
+          setProfiles([]);
+          setLoading(false);
+          return;
+        }
+
+        // Get blocked users
+        const { data: blocksOut } = await supabase.from("blocks").select("blocked_id").eq("blocker_id", user.id);
+        const { data: blocksIn } = await supabase.from("blocks").select("blocker_id").eq("blocked_id", user.id);
+        const blockedIds = new Set([
+          ...(blocksOut || []).map((b: any) => b.blocked_id),
+          ...(blocksIn || []).map((b: any) => b.blocker_id),
+        ]);
+
+        // Get already liked/passed users
+        const { data: likedData } = await supabase.from("likes").select("liked_id").eq("liker_id", user.id);
+        const likedIds = new Set((likedData || []).map((l: any) => l.liked_id));
+
+        const filtered = (data || []).filter((p: any) => {
+          if (blockedIds.has(p.user_id)) return false;
+          if (likedIds.has(p.user_id)) return false;
+          const { percentage } = calculateProfileCompleteness(p);
+          if (percentage < COMPLETENESS_THRESHOLD) return false;
+          return true;
+        });
+
+        // Apply filters
+        const finalFiltered = filtered.filter((p: any) => {
+          if (modeFilter !== "All") {
+            const modeMap: Record<string, string> = { Serious: "Serious Dating", Casual: "Casual Dating" };
+            const target = modeMap[modeFilter] || modeFilter;
+            if (p.dating_mode !== target && p.dating_mode !== "Both") return false;
+          }
+          if (verifiedOnly && !p.is_verified) return false;
+          const age = getAge(p.date_of_birth);
+          if (age !== null) {
+            if (age < ageMin || age > ageMax) return false;
+          }
+          if (distanceRadius > 0) {
+            const dist = getDistance(p);
+            if (dist === null || dist > distanceRadius) return false;
+          }
+          return true;
+        });
+
+        // Shuffle
+        for (let i = finalFiltered.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [finalFiltered[i], finalFiltered[j]] = [finalFiltered[j], finalFiltered[i]];
+        }
+
+        setProfiles(finalFiltered);
+        setCurrentIndex(0);
+      } catch (err) {
+        console.error("Discover fetch error:", err);
+        setFetchError(true);
+        setProfiles([]);
+      } finally {
+        setLoading(false);
+      }
     };
     fetchProfiles();
   }, [user, modeFilter, verifiedOnly, ageMin, ageMax, distanceRadius]);
@@ -288,13 +318,31 @@ const Discover = () => {
             <div className="flex items-center justify-center h-full">
               <p className="text-muted-foreground">Loading profiles...</p>
             </div>
-          ) : !currentProfile ? (
-            <div className="flex flex-col items-center justify-center h-full text-center">
+          ) : fetchError ? (
+            <div className="flex flex-col items-center justify-center h-full text-center px-4">
               <img alt="GapRomance logo" className="h-16 w-auto object-contain mb-6" src="/lovable-uploads/35979146-566e-4b78-97a6-4d67f2473574.png" />
-              <h2 className="font-heading text-xl font-bold mb-2">No one here yet</h2>
-              <p className="text-muted-foreground text-sm mb-6">Check back soon! New members are joining every day.</p>
+              <h2 className="font-heading text-xl font-bold text-primary mb-2">Something went wrong</h2>
+              <p className="text-muted-foreground text-sm mb-6">We couldn't load profiles right now. Please try again.</p>
+              <Button variant="hero" size="sm" onClick={() => window.location.reload()}>
+                Try Again
+              </Button>
+            </div>
+          ) : !currentProfile && hasActiveFilters ? (
+            <div className="flex flex-col items-center justify-center h-full text-center px-4">
+              <img alt="GapRomance logo" className="h-16 w-auto object-contain mb-6" src="/lovable-uploads/35979146-566e-4b78-97a6-4d67f2473574.png" />
+              <h2 className="font-heading text-xl font-bold text-primary mb-2">No results</h2>
+              <p className="text-muted-foreground text-sm mb-6">No members match your current filters — try adjusting your preferences.</p>
+              <Button variant="hero" size="sm" onClick={resetFilters}>
+                Reset Filters
+              </Button>
+            </div>
+          ) : !currentProfile ? (
+            <div className="flex flex-col items-center justify-center h-full text-center px-4">
+              <img alt="GapRomance logo" className="h-16 w-auto object-contain mb-6" src="/lovable-uploads/35979146-566e-4b78-97a6-4d67f2473574.png" />
+              <h2 className="font-heading text-xl font-bold text-primary mb-2">Welcome to GapRomance</h2>
+              <p className="text-muted-foreground text-sm mb-6">No members to show right now — check back soon! New members are joining every day.</p>
               <Button variant="hero" size="sm" onClick={() => setShowFilters(true)}>
-                Update Your Preferences
+                Update Filters
               </Button>
             </div>
           ) : (
