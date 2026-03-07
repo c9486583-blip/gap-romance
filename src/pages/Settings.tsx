@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { User, CreditCard, Bell, Shield, LogOut, ChevronRight, CheckCircle, MessageSquare, BellOff, Clock, AtSign, MapPin, Eye, EyeOff, Loader2 } from "lucide-react";
+import { User, CreditCard, Bell, Shield, LogOut, ChevronRight, CheckCircle, BellOff, Clock, Eye, EyeOff, Loader2 } from "lucide-react";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -9,6 +9,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
 import { calculateProfileCompleteness } from "@/lib/profile-completeness";
 import TopNav from "@/components/TopNav";
+import DeleteAccountDialog from "@/components/DeleteAccountDialog";
+import { MessageSquare } from "lucide-react";
 
 const NOTE_PLACEHOLDERS = [
   "Just got back from hiking...",
@@ -17,26 +19,24 @@ const NOTE_PLACEHOLDERS = [
   "Working from a coffee shop today",
 ];
 
-const REQUEST_TIMEOUT_MS = 15000;
-
-const withTimeout = async <T,>(promiseLike: PromiseLike<T>, timeoutMs = REQUEST_TIMEOUT_MS): Promise<T> => {
-  return await Promise.race([
-    Promise.resolve(promiseLike),
-    new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error("Request timed out. Please try again.")), timeoutMs)
-    ),
-  ]);
-};
-
 const US_STATES = [
-  "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut",
-  "Delaware", "Florida", "Georgia", "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa",
-  "Kansas", "Kentucky", "Louisiana", "Maine", "Maryland", "Massachusetts", "Michigan",
-  "Minnesota", "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada", "New Hampshire",
-  "New Jersey", "New Mexico", "New York", "North Carolina", "North Dakota", "Ohio",
-  "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island", "South Carolina", "South Dakota",
-  "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington", "West Virginia",
-  "Wisconsin", "Wyoming",
+  "Anywhere in US","Alabama","Alaska","Arizona","Arkansas","California","Colorado",
+  "Connecticut","Delaware","Florida","Georgia","Hawaii","Idaho","Illinois","Indiana",
+  "Iowa","Kansas","Kentucky","Louisiana","Maine","Maryland","Massachusetts","Michigan",
+  "Minnesota","Mississippi","Missouri","Montana","Nebraska","Nevada","New Hampshire",
+  "New Jersey","New Mexico","New York","North Carolina","North Dakota","Ohio","Oklahoma",
+  "Oregon","Pennsylvania","Rhode Island","South Carolina","South Dakota","Tennessee",
+  "Texas","Utah","Vermont","Virginia","Washington","West Virginia","Wisconsin","Wyoming",
+];
+
+const NOTIF_CATEGORIES = [
+  { key: "new_matches",            label: "New Matches",            desc: "When you match with someone" },
+  { key: "new_messages",           label: "New Messages",           desc: "When you receive a message" },
+  { key: "virtual_gifts",          label: "Virtual Gifts",          desc: "When someone sends you a gift" },
+  { key: "super_likes",            label: "Super Likes",            desc: "When someone Super Likes you" },
+  { key: "profile_activity",       label: "Profile Activity",       desc: "Likes, views, and engagement" },
+  { key: "subscription_reminders", label: "Subscription Reminders", desc: "Renewal and expiry alerts" },
+  { key: "daily_reminders",        label: "Daily Reminders",        desc: "Message resets and Today's Note" },
 ];
 
 const Settings = () => {
@@ -45,64 +45,74 @@ const Settings = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Account fields
-  const [firstName, setFirstName] = useState("");
-  const [lastInitial, setLastInitial] = useState("");
-  const [username, setUsername] = useState("");
-  const [usernameError, setUsernameError] = useState("");
-  const [usernameChecking, setUsernameChecking] = useState(false);
-  const [usernameTaken, setUsernameTaken] = useState(false);
-  const [locationPreference, setLocationPreference] = useState("");
+  // ── Account fields ──────────────────────────────────────────────────────────
+  const [firstName, setFirstName]         = useState("");
+  const [lastInitial, setLastInitial]     = useState("");
+  const [username, setUsername]           = useState("");
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+  const [usernameChecking, setUsernameChecking]   = useState(false);
+  const [bio, setBio]                     = useState("");
+  const [datingMode, setDatingMode]       = useState("Both");
+  const [locationPref, setLocationPref]   = useState("Anywhere in US");
+  const [todaysNote, setTodaysNote]       = useState("");
   const [savingAccount, setSavingAccount] = useState(false);
-  const usernameCheckRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Today's Note
-  const [todaysNote, setTodaysNote] = useState("");
-  const [savingNote, setSavingNote] = useState(false);
+  const [savingNote, setSavingNote]       = useState(false);
   const notePlaceholder = NOTE_PLACEHOLDERS[Math.floor(Math.random() * NOTE_PLACEHOLDERS.length)];
 
-  // Delete account
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [deletePassword, setDeletePassword] = useState("");
-  const [showDeletePassword, setShowDeletePassword] = useState(false);
-  const [deletingAccount, setDeletingAccount] = useState(false);
-
-  // Privacy toggles
+  // ── Privacy fields ──────────────────────────────────────────────────────────
   const [showOnlineStatus, setShowOnlineStatus] = useState(true);
-  const [readReceipts, setReadReceipts] = useState(true);
-  const [savingPrivacy, setSavingPrivacy] = useState(false);
+  const [readReceipts, setReadReceipts]         = useState(true);
+  const [savingPrivacy, setSavingPrivacy]       = useState(false);
+  const [deletePassword, setDeletePassword]     = useState("");
+  const [showDeletePassword, setShowDeletePassword] = useState(false);
+  const [deletingAccount, setDeletingAccount]   = useState(false);
+
+  const usernameDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (profile) {
       setFirstName(profile.first_name || "");
       setLastInitial(profile.last_initial || "");
-      setUsername((profile as any).username || "");
-      setLocationPreference((profile as any).location_preference || "");
-      if (profile.todays_note && profile.todays_note_updated_at) {
-        const updatedAt = new Date(profile.todays_note_updated_at).getTime();
+      setUsername(profile.username || "");
+      setBio(profile.bio || "");
+      setDatingMode(profile.dating_mode || "Both");
+      setLocationPref((profile as any).location_preference || "Anywhere in US");
+      setShowOnlineStatus(profile.show_online_status ?? true);
+      setReadReceipts(profile.read_receipts ?? true);
+      if ((profile as any).todays_note && (profile as any).todays_note_updated_at) {
+        const updatedAt = new Date((profile as any).todays_note_updated_at).getTime();
         if (Date.now() - updatedAt < 24 * 60 * 60 * 1000) {
-          setTodaysNote(profile.todays_note);
+          setTodaysNote((profile as any).todays_note);
         }
       }
     }
   }, [profile]);
 
-  // Load privacy prefs
+  // Username uniqueness check
   useEffect(() => {
-    if (!user) return;
-    const load = async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("show_online_status, read_receipts")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      if (data) {
-        setShowOnlineStatus((data as any).show_online_status ?? true);
-        setReadReceipts((data as any).read_receipts ?? true);
+    if (usernameDebounceRef.current) clearTimeout(usernameDebounceRef.current);
+    const originalUsername = profile?.username || "";
+    if (!username || username.length < 4 || username === originalUsername) {
+      setUsernameAvailable(null);
+      setUsernameChecking(false);
+      return;
+    }
+    setUsernameChecking(true);
+    usernameDebounceRef.current = setTimeout(async () => {
+      try {
+        const { data } = await supabase
+          .from("profiles")
+          .select("user_id")
+          .eq("username", username.toLowerCase())
+          .maybeSingle();
+        setUsernameAvailable(!data);
+      } catch {
+        setUsernameAvailable(null);
+      } finally {
+        setUsernameChecking(false);
       }
-    };
-    load();
-  }, [user]);
+    }, 600);
+  }, [username, profile?.username]);
 
   const handleLogout = async () => {
     await signOut();
@@ -112,84 +122,40 @@ const Settings = () => {
   const handleManageSubscription = async () => {
     try {
       const { data, error } = await supabase.functions.invoke("customer-portal");
-      if (error || !data?.url) {
-        toast({ title: "Could not open portal", variant: "destructive" });
-        return;
-      }
+      if (error || !data?.url) { toast({ title: "Could not open portal", variant: "destructive" }); return; }
       window.location.href = data.url;
-    } catch (err: any) {
+    } catch {
       toast({ title: "Could not open portal", variant: "destructive" });
     }
   };
 
-  const handleUsernameChange = (val: string) => {
-    const cleaned = val.toLowerCase().replace(/\s/g, "");
-    setUsername(cleaned);
-    setUsernameTaken(false);
-    setUsernameError("");
-
-    if (cleaned.length === 0) return;
-    if (cleaned.length < 4) {
-      setUsernameError("Username must be at least 4 characters.");
-      return;
-    }
-    if (cleaned.length > 15) {
-      setUsernameError("Username must be 15 characters or less.");
-      return;
-    }
-
-    if (usernameCheckRef.current) clearTimeout(usernameCheckRef.current);
-    setUsernameChecking(true);
-    usernameCheckRef.current = setTimeout(async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("user_id")
-        .eq("username", cleaned)
-        .neq("user_id", user?.id || "")
-        .maybeSingle();
-      if (data) {
-        setUsernameTaken(true);
-        setUsernameError("This username is already taken.");
-      } else {
-        setUsernameTaken(false);
-        setUsernameError("");
-      }
-      setUsernameChecking(false);
-    }, 600);
-  };
-
   const handleSaveAccount = async () => {
     if (!user) return;
-    if (username.length > 0 && username.length < 4) {
-      toast({ title: "Username must be at least 4 characters", variant: "destructive" });
-      return;
-    }
-    if (username.length > 15) {
-      toast({ title: "Username must be 15 characters or less", variant: "destructive" });
-      return;
-    }
-    if (usernameTaken) {
-      toast({ title: "That username is already taken", variant: "destructive" });
-      return;
+    if (username && username !== profile?.username) {
+      if (username.length < 4 || username.length > 15) {
+        toast({ title: "Username must be 4–15 characters", variant: "destructive" });
+        return;
+      }
+      if (usernameAvailable === false) {
+        toast({ title: "That username is already taken", variant: "destructive" });
+        return;
+      }
     }
     setSavingAccount(true);
     try {
-      const { error } = await withTimeout(
-        supabase.from("profiles").update({
-          first_name: firstName.trim() || null,
-          last_initial: lastInitial.trim() || null,
-          username: username.trim() || null,
-          location_preference: locationPreference || null,
-        } as any).eq("user_id", user.id)
-      );
-      if (error) {
-        toast({ title: "Failed to save", variant: "destructive" });
-        return;
-      }
+      const { error } = await supabase.from("profiles").update({
+        first_name: firstName.trim() || null,
+        last_initial: lastInitial.trim().slice(0, 1) || null,
+        username: username.toLowerCase().trim() || null,
+        bio: bio.trim() || null,
+        dating_mode: datingMode,
+        location_preference: locationPref,
+      } as any).eq("user_id", user.id);
+      if (error) { toast({ title: "Failed to save", variant: "destructive" }); return; }
       toast({ title: "Account saved!" });
       await refreshProfile();
-    } catch (err: any) {
-      toast({ title: err?.message || "Failed to save", variant: "destructive" });
+    } catch {
+      toast({ title: "Failed to save", variant: "destructive" });
     } finally {
       setSavingAccount(false);
     }
@@ -199,20 +165,15 @@ const Settings = () => {
     if (!user) return;
     setSavingNote(true);
     try {
-      const { error } = await withTimeout(
-        supabase.from("profiles").update({
-          todays_note: todaysNote.trim() || null,
-          todays_note_updated_at: todaysNote.trim() ? new Date().toISOString() : null,
-        } as any).eq("user_id", user.id)
-      );
-      if (error) {
-        toast({ title: "Failed to save note", variant: "destructive" });
-        return;
-      }
+      const { error } = await supabase.from("profiles").update({
+        todays_note: todaysNote.trim() || null,
+        todays_note_updated_at: todaysNote.trim() ? new Date().toISOString() : null,
+      } as any).eq("user_id", user.id);
+      if (error) { toast({ title: "Failed to save note", variant: "destructive" }); return; }
       toast({ title: todaysNote.trim() ? "Today's Note updated!" : "Today's Note cleared" });
       await refreshProfile();
-    } catch (err: any) {
-      toast({ title: err?.message || "Failed to save note", variant: "destructive" });
+    } catch {
+      toast({ title: "Failed to save note", variant: "destructive" });
     } finally {
       setSavingNote(false);
     }
@@ -222,53 +183,43 @@ const Settings = () => {
     if (!user) return;
     setSavingPrivacy(true);
     try {
-      const { error } = await withTimeout(
-        supabase.from("profiles").update({
-          show_online_status: showOnlineStatus,
-          read_receipts: readReceipts,
-        } as any).eq("user_id", user.id)
-      );
-      if (error) {
-        toast({ title: "Failed to save privacy settings", variant: "destructive" });
-        return;
-      }
+      const { error } = await supabase.from("profiles").update({
+        show_online_status: showOnlineStatus,
+        read_receipts: readReceipts,
+      } as any).eq("user_id", user.id);
+      if (error) { toast({ title: "Failed to save", variant: "destructive" }); return; }
       toast({ title: "Privacy settings saved!" });
       await refreshProfile();
-    } catch (err: any) {
-      toast({ title: err?.message || "Failed to save", variant: "destructive" });
+    } catch {
+      toast({ title: "Failed to save", variant: "destructive" });
     } finally {
       setSavingPrivacy(false);
     }
   };
 
   const handleDeleteAccount = async () => {
-    if (!user || !deletePassword.trim()) {
-      toast({ title: "Please enter your password to confirm", variant: "destructive" });
+    if (!user || !deletePassword) {
+      toast({ title: "Please enter your password", variant: "destructive" });
       return;
     }
     setDeletingAccount(true);
     try {
-      // Re-authenticate to verify password
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: user.email || "",
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: user.email!,
         password: deletePassword,
       });
-      if (signInError) {
-        toast({ title: "Incorrect password", description: "Please enter the correct password to delete your account.", variant: "destructive" });
+      if (authError) {
+        toast({ title: "Incorrect password", variant: "destructive" });
         return;
       }
-      // Delete profile then auth user
-      await supabase.from("profiles").delete().eq("user_id", user.id);
-      const { error: deleteError } = await supabase.functions.invoke("delete-user");
-      if (deleteError) {
-        toast({ title: "Failed to delete account", description: "Please contact GapRomanceSupport@proton.me", variant: "destructive" });
-        return;
-      }
+      const { error } = await supabase.from("profiles").delete().eq("user_id", user.id);
+      if (error) { toast({ title: "Failed to delete account", variant: "destructive" }); return; }
+      await supabase.auth.admin.deleteUser(user.id).catch(() => {});
       await signOut();
       navigate("/");
-      toast({ title: "Account deleted", description: "Your account has been permanently deleted." });
-    } catch (err: any) {
-      toast({ title: err?.message || "Something went wrong", variant: "destructive" });
+      toast({ title: "Account deleted" });
+    } catch {
+      toast({ title: "Failed to delete account", variant: "destructive" });
     } finally {
       setDeletingAccount(false);
     }
@@ -277,11 +228,13 @@ const Settings = () => {
   const completeness = calculateProfileCompleteness(profile);
 
   const tabs = [
-    { id: "account", label: "Account", icon: User },
-    { id: "subscription", label: "Subscription", icon: CreditCard },
-    { id: "notifications", label: "Notifications", icon: Bell },
-    { id: "privacy", label: "Privacy & Safety", icon: Shield },
+    { id: "account",       label: "Account",        icon: User },
+    { id: "subscription",  label: "Subscription",   icon: CreditCard },
+    { id: "notifications", label: "Notifications",  icon: Bell },
+    { id: "privacy",       label: "Privacy & Safety", icon: Shield },
   ];
+
+  const inputClass = "w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-primary";
 
   if (!user) {
     return (
@@ -306,6 +259,7 @@ const Settings = () => {
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <h1 className="text-3xl font-heading font-bold mb-8">Settings</h1>
         <div className="flex flex-col md:flex-row gap-6">
+
           {/* Sidebar */}
           <div className="md:w-60 flex-shrink-0">
             <div className="space-y-1">
@@ -321,10 +275,10 @@ const Settings = () => {
             </div>
           </div>
 
-          {/* Main content */}
+          {/* Content */}
           <div className="flex-1 glass rounded-xl p-6">
 
-            {/* ── ACCOUNT ── */}
+            {/* ── ACCOUNT TAB ── */}
             {activeTab === "account" && (
               <div className="space-y-6">
                 <h2 className="font-heading text-xl font-semibold">Account Details</h2>
@@ -345,11 +299,6 @@ const Settings = () => {
                         : "🔥 Complete your profile to get 3x more matches!"}
                     </p>
                   )}
-                  {completeness.missing.length > 0 && completeness.percentage < 100 && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Missing: {completeness.missing.join(", ")}
-                    </p>
-                  )}
                 </div>
 
                 <div className="space-y-4">
@@ -357,85 +306,92 @@ const Settings = () => {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="text-sm text-muted-foreground block mb-1">First Name</label>
-                      <input value={firstName} onChange={(e) => setFirstName(e.target.value)}
-                        className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-primary" />
+                      <input value={firstName} onChange={(e) => setFirstName(e.target.value)} className={inputClass} />
                     </div>
                     <div>
                       <label className="text-sm text-muted-foreground block mb-1">Last Initial</label>
-                      <input value={lastInitial} onChange={(e) => setLastInitial(e.target.value)} maxLength={1}
-                        className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-primary" />
+                      <input value={lastInitial} onChange={(e) => setLastInitial(e.target.value.slice(0, 1))} maxLength={1} className={inputClass} />
                     </div>
                   </div>
 
                   {/* Username */}
                   <div>
                     <label className="text-sm text-muted-foreground block mb-1">Username</label>
-                    <div className="relative">
-                      <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <div className="relative flex items-center">
+                      <span className="absolute left-4 text-muted-foreground text-sm">@</span>
                       <input
                         value={username}
-                        onChange={(e) => handleUsernameChange(e.target.value)}
-                        placeholder="yourcreativeusername"
+                        onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s/g, "").slice(0, 15))}
                         maxLength={15}
-                        className={`w-full bg-secondary border rounded-lg pl-9 pr-10 py-3 text-foreground focus:outline-none focus:border-primary ${usernameError ? "border-destructive" : username.length >= 4 && !usernameTaken && !usernameChecking ? "border-green-500" : "border-border"}`}
+                        className={`${inputClass} pl-8 pr-10 ${usernameAvailable === true ? "border-green-500" : usernameAvailable === false ? "border-destructive" : ""}`}
                       />
-                      {usernameChecking && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />}
-                      {!usernameChecking && username.length >= 4 && !usernameTaken && !usernameError && (
-                        <CheckCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-green-500" />
-                      )}
+                      <span className="absolute right-4">
+                        {usernameChecking && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+                        {!usernameChecking && usernameAvailable === true && <CheckCircle className="w-4 h-4 text-green-500" />}
+                        {!usernameChecking && usernameAvailable === false && <span className="text-destructive text-xs">✕</span>}
+                      </span>
                     </div>
-                    {usernameError && <p className="text-xs text-destructive mt-1">{usernameError}</p>}
-                    {!usernameError && <p className="text-xs text-muted-foreground mt-1">4–15 characters. Shows as "Chris · @{username || "username"}"</p>}
+                    {usernameAvailable === false && (
+                      <p className="text-xs text-destructive mt-1">That username is already taken</p>
+                    )}
                   </div>
 
                   {/* Email — readonly */}
                   <div>
                     <label className="text-sm text-muted-foreground block mb-1">Email</label>
-                    <input value={user.email || ""} disabled
-                      className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground opacity-60 cursor-not-allowed" />
-                    <p className="text-xs text-muted-foreground mt-1">Email cannot be changed. Contact <a href="mailto:GapRomanceSupport@proton.me" className="text-primary hover:underline">GapRomanceSupport@proton.me</a> for help.</p>
+                    <input defaultValue={user.email || ""} disabled className={`${inputClass} opacity-60`} />
+                    <p className="text-xs text-muted-foreground mt-1">To change your email, contact support.</p>
                   </div>
 
                   {/* Location — readonly */}
                   <div>
-                    <label className="text-sm text-muted-foreground block mb-1 flex items-center gap-1">
-                      <MapPin className="w-3.5 h-3.5" /> Your Location
-                    </label>
-                    <input value={profile?.city ? `${profile.city}` : "Location not detected"} disabled
-                      className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground opacity-60 cursor-not-allowed" />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Only your city and state are shown — never your full address. To update your location, contact <a href="mailto:GapRomanceSupport@proton.me" className="text-primary hover:underline">GapRomanceSupport@proton.me</a>.
-                    </p>
+                    <label className="text-sm text-muted-foreground block mb-1">Location</label>
+                    <input defaultValue={profile?.city ? `${profile.city}` : "Not set"} disabled className={`${inputClass} opacity-60`} />
+                    <p className="text-xs text-muted-foreground mt-1">Location is detected automatically. Contact support to update.</p>
                   </div>
 
                   {/* Location Preference */}
                   <div>
                     <label className="text-sm text-muted-foreground block mb-1">Location Preference</label>
-                    <p className="text-xs text-muted-foreground mb-2">Which US state would you like to find matches in?</p>
-                    <select
-                      value={locationPreference}
-                      onChange={(e) => setLocationPreference(e.target.value)}
-                      className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-primary"
-                    >
-                      <option value="">Anywhere in the US</option>
-                      {US_STATES.map((s) => (
-                        <option key={s} value={s}>{s}</option>
-                      ))}
+                    <select value={locationPref} onChange={(e) => setLocationPref(e.target.value)}
+                      className={inputClass}>
+                      {US_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
                     </select>
                   </div>
 
-                  {/* Verification Status */}
-                  <div className="flex items-center gap-3 py-2">
-                    <span className="text-sm text-muted-foreground">Verification Status:</span>
+                  {/* Verification status */}
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm text-muted-foreground">Verification:</span>
                     {profile?.is_verified ? (
-                      <span className="inline-flex items-center gap-1.5 text-sm font-bold text-green-400">
+                      <span className="inline-flex items-center gap-1.5 text-sm text-green-400 font-bold">
                         <CheckCircle className="w-4 h-4" /> Verified ✓
                       </span>
+                    ) : (profile as any)?.verification_status === "pending" ? (
+                      <span className="text-sm text-yellow-400 font-medium">Pending verification</span>
                     ) : (
-                      <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
-                        Pending verification
-                      </span>
+                      <span className="text-sm text-muted-foreground">Not verified</span>
                     )}
+                  </div>
+
+                  {/* Bio */}
+                  <div>
+                    <label className="text-sm text-muted-foreground block mb-1">Bio</label>
+                    <textarea value={bio} onChange={(e) => setBio(e.target.value)} rows={3} maxLength={500}
+                      placeholder="Tell people about yourself..."
+                      className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-primary resize-none" />
+                  </div>
+
+                  {/* Dating Mode */}
+                  <div>
+                    <label className="text-sm text-muted-foreground block mb-1">Dating Mode</label>
+                    <div className="flex flex-wrap gap-2">
+                      {["Serious Dating", "Casual Dating", "Both"].map((m) => (
+                        <button key={m} onClick={() => setDatingMode(m)}
+                          className={`px-4 py-2 rounded-full text-sm border transition-all ${datingMode === m ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:border-primary/50"}`}>
+                          {m === "Both" ? "Open to Both" : m}
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
                   {/* Today's Note */}
@@ -443,7 +399,7 @@ const Settings = () => {
                     <label className="text-sm font-medium flex items-center gap-2 mb-2">
                       <MessageSquare className="w-4 h-4 text-primary" /> Today's Note
                     </label>
-                    <p className="text-xs text-muted-foreground mb-2">Share what you're up to today — appears on your profile. Expires after 24 hours.</p>
+                    <p className="text-xs text-muted-foreground mb-2">Share what you're up to today — expires after 24 hours.</p>
                     <div className="relative">
                       <textarea
                         value={todaysNote}
@@ -462,14 +418,14 @@ const Settings = () => {
                     </Button>
                   </div>
 
-                  <Button variant="hero" disabled={savingAccount || usernameTaken || usernameChecking} onClick={handleSaveAccount}>
+                  <Button variant="hero" disabled={savingAccount} onClick={handleSaveAccount}>
                     {savingAccount ? "Saving..." : "Save Changes"}
                   </Button>
                 </div>
               </div>
             )}
 
-            {/* ── SUBSCRIPTION ── */}
+            {/* ── SUBSCRIPTION TAB ── */}
             {activeTab === "subscription" && (
               <div className="space-y-6">
                 <h2 className="font-heading text-xl font-semibold">Your Plan</h2>
@@ -489,114 +445,68 @@ const Settings = () => {
                     </span>
                   </div>
                   <div className="flex gap-3 flex-wrap">
-                    {subscriptionTier === "free" && (
-                      <Button variant="hero" asChild><Link to="/pricing">Upgrade</Link></Button>
-                    )}
-                    {subscriptionTier === "premium" && (
-                      <Button variant="hero" asChild><Link to="/pricing">Upgrade to Elite</Link></Button>
-                    )}
-                    {subscriptionTier !== "free" && (
-                      <Button variant="outline" onClick={handleManageSubscription}>Manage Subscription</Button>
-                    )}
+                    {subscriptionTier === "free" && <Button variant="hero" asChild><Link to="/pricing">Upgrade</Link></Button>}
+                    {subscriptionTier === "premium" && <Button variant="hero" asChild><Link to="/pricing">Upgrade to Elite</Link></Button>}
+                    {subscriptionTier !== "free" && <Button variant="outline" onClick={handleManageSubscription}>Manage Subscription</Button>}
                     <Button variant="ghost" onClick={refreshSubscription}>Refresh Status</Button>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* ── NOTIFICATIONS ── */}
-            {activeTab === "notifications" && (
-              <NotificationSettings user={user} />
-            )}
+            {/* ── NOTIFICATIONS TAB ── */}
+            {activeTab === "notifications" && <NotificationSettings user={user} />}
 
-            {/* ── PRIVACY & SAFETY ── */}
+            {/* ── PRIVACY TAB ── */}
             {activeTab === "privacy" && (
               <div className="space-y-6">
                 <h2 className="font-heading text-xl font-semibold">Privacy & Safety</h2>
+
                 <div className="space-y-4">
+                  <Toggle
+                    label="Show online status"
+                    desc="Let others see when you're active"
+                    checked={showOnlineStatus}
+                    onChange={setShowOnlineStatus}
+                  />
+                  <Toggle
+                    label="Read receipts"
+                    desc="Show when you've read messages"
+                    checked={readReceipts}
+                    onChange={setReadReceipts}
+                  />
+                </div>
 
-                  {/* Online Status Toggle */}
-                  <div className="flex items-center justify-between py-3 border-b border-border/30">
-                    <div>
-                      <span className="text-sm block">Show online status</span>
-                      <span className="text-xs text-muted-foreground">Let others see when you're active</span>
-                    </div>
-                    <div onClick={() => setShowOnlineStatus((v) => !v)}
-                      className={`w-10 h-5 rounded-full transition-colors relative cursor-pointer ${showOnlineStatus ? "bg-primary" : "bg-border"}`}>
-                      <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${showOnlineStatus ? "translate-x-5" : "translate-x-0.5"}`} />
-                    </div>
+                <Button variant="hero" onClick={handleSavePrivacy} disabled={savingPrivacy}>
+                  {savingPrivacy ? "Saving..." : "Save Privacy Settings"}
+                </Button>
+
+                {/* Delete account */}
+                <div className="border-t border-border/30 pt-6">
+                  <h3 className="text-sm font-bold text-destructive mb-3">Delete Account</h3>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    This permanently deletes your profile, matches, and messages. This cannot be undone.
+                  </p>
+                  <div className="relative mb-3">
+                    <input
+                      type={showDeletePassword ? "text" : "password"}
+                      value={deletePassword}
+                      onChange={(e) => setDeletePassword(e.target.value)}
+                      placeholder="Enter your password to confirm"
+                      className={`${inputClass} pr-10`}
+                    />
+                    <button onClick={() => setShowDeletePassword(!showDeletePassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                      {showDeletePassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
                   </div>
-
-                  {/* Read Receipts Toggle */}
-                  <div className="flex items-center justify-between py-3 border-b border-border/30">
-                    <div>
-                      <span className="text-sm block">Read receipts</span>
-                      <span className="text-xs text-muted-foreground">Show when you've read messages</span>
-                    </div>
-                    <div onClick={() => setReadReceipts((v) => !v)}
-                      className={`w-10 h-5 rounded-full transition-colors relative cursor-pointer ${readReceipts ? "bg-primary" : "bg-border"}`}>
-                      <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${readReceipts ? "translate-x-5" : "translate-x-0.5"}`} />
-                    </div>
-                  </div>
-
-                  <Button variant="hero" onClick={handleSavePrivacy} disabled={savingPrivacy}>
-                    {savingPrivacy ? "Saving..." : "Save Privacy Settings"}
+                  <Button variant="destructive" onClick={handleDeleteAccount} disabled={deletingAccount || !deletePassword}>
+                    {deletingAccount ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Deleting...</> : "Permanently Delete Account"}
                   </Button>
-
-                  {/* Block List */}
-                  <div className="pt-2">
-                    <Button variant="outline">Block List</Button>
-                  </div>
-
-                  {/* Delete Account */}
-                  <div className="border-t border-border/30 pt-6">
-                    <h3 className="text-sm font-bold text-destructive mb-1">Delete Account</h3>
-                    <p className="text-xs text-muted-foreground mb-4">
-                      This is permanent and cannot be undone. All your data, matches, and messages will be deleted forever.
-                    </p>
-                    {!showDeleteConfirm ? (
-                      <Button variant="outline" className="border-destructive text-destructive hover:bg-destructive/10"
-                        onClick={() => setShowDeleteConfirm(true)}>
-                        Delete My Account
-                      </Button>
-                    ) : (
-                      <div className="space-y-3 p-4 rounded-xl border border-destructive/30 bg-destructive/5">
-                        <p className="text-sm font-medium">Enter your password to confirm deletion:</p>
-                        <div className="relative">
-                          <input
-                            type={showDeletePassword ? "text" : "password"}
-                            value={deletePassword}
-                            onChange={(e) => setDeletePassword(e.target.value)}
-                            placeholder="Your password"
-                            className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-destructive pr-10"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowDeletePassword((v) => !v)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                          >
-                            {showDeletePassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                          </button>
-                        </div>
-                        <div className="flex gap-3">
-                          <Button
-                            variant="outline"
-                            className="border-destructive text-destructive hover:bg-destructive/10"
-                            onClick={handleDeleteAccount}
-                            disabled={deletingAccount || !deletePassword.trim()}
-                          >
-                            {deletingAccount ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Deleting...</> : "Confirm Delete"}
-                          </Button>
-                          <Button variant="ghost" onClick={() => { setShowDeleteConfirm(false); setDeletePassword(""); }}>
-                            Cancel
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
                 </div>
               </div>
             )}
+
           </div>
         </div>
       </div>
@@ -604,17 +514,21 @@ const Settings = () => {
   );
 };
 
-// ── NOTIFICATION SETTINGS COMPONENT ────────────────────────────────────────
-const NOTIF_CATEGORIES = [
-  { key: "new_matches", label: "New Matches", desc: "When you match with someone" },
-  { key: "new_messages", label: "New Messages", desc: "When you receive a message" },
-  { key: "virtual_gifts", label: "Virtual Gifts", desc: "When someone sends you a gift" },
-  { key: "super_likes", label: "Super Likes", desc: "When someone Super Likes you" },
-  { key: "profile_activity", label: "Profile Activity", desc: "Likes, views, and engagement" },
-  { key: "subscription_reminders", label: "Subscription Reminders", desc: "Renewal and expiry alerts" },
-  { key: "daily_reminders", label: "Daily Reminders", desc: "Message resets and Today's Note" },
-];
+// ── TOGGLE COMPONENT ──────────────────────────────────────────────────────────
+const Toggle = ({ label, desc, checked, onChange }: { label: string; desc: string; checked: boolean; onChange: (v: boolean) => void }) => (
+  <label className="flex items-center justify-between py-3 border-b border-border/30 cursor-pointer">
+    <div>
+      <span className="text-sm block">{label}</span>
+      <span className="text-xs text-muted-foreground">{desc}</span>
+    </div>
+    <div onClick={() => onChange(!checked)}
+      className={`w-10 h-5 rounded-full transition-colors relative cursor-pointer ${checked ? "bg-primary" : "bg-border"}`}>
+      <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${checked ? "translate-x-5" : "translate-x-0.5"}`} />
+    </div>
+  </label>
+);
 
+// ── NOTIFICATION SETTINGS ─────────────────────────────────────────────────────
 const NotificationSettings = ({ user }: { user: any }) => {
   const { isSupported, isSubscribed, subscribe, unsubscribe } = usePushNotifications();
   const [prefs, setPrefs] = useState<Record<string, any>>({
@@ -627,50 +541,25 @@ const NotificationSettings = ({ user }: { user: any }) => {
 
   useEffect(() => {
     if (!user) return;
-    const load = async () => {
-      try {
-        const { data } = await withTimeout(
-          supabase.from("notification_preferences").select("*").eq("user_id", user.id).maybeSingle()
-        );
-        if (data) setPrefs(data);
-      } catch (err) {
-        console.error("Failed to load notification preferences:", err);
-      }
-    };
-    load();
+    supabase.from("notification_preferences").select("*").eq("user_id", user.id).maybeSingle()
+      .then(({ data }) => { if (data) setPrefs(data); });
   }, [user]);
 
-  const updatePref = (key: string, value: any) => {
-    setPrefs((p: Record<string, any>) => ({ ...p, [key]: value }));
-  };
+  const updatePref = (key: string, value: any) => setPrefs((p) => ({ ...p, [key]: value }));
 
   const savePrefs = async () => {
     if (!user) return;
     setSaving(true);
     try {
-      const { error } = await withTimeout(
-        supabase.from("notification_preferences").upsert({
-          user_id: user.id,
-          new_matches: prefs.new_matches,
-          new_messages: prefs.new_messages,
-          virtual_gifts: prefs.virtual_gifts,
-          super_likes: prefs.super_likes,
-          profile_activity: prefs.profile_activity,
-          subscription_reminders: prefs.subscription_reminders,
-          daily_reminders: prefs.daily_reminders,
-          dnd_enabled: prefs.dnd_enabled,
-          dnd_start: prefs.dnd_start,
-          dnd_end: prefs.dnd_end,
-          updated_at: new Date().toISOString(),
-        } as any, { onConflict: "user_id" })
-      );
-      if (error) {
-        toast({ title: "Failed to save", variant: "destructive" });
-        return;
-      }
+      const { error } = await supabase.from("notification_preferences").upsert({
+        user_id: user.id,
+        ...prefs,
+        updated_at: new Date().toISOString(),
+      } as any, { onConflict: "user_id" });
+      if (error) { toast({ title: "Failed to save", variant: "destructive" }); return; }
       toast({ title: "Notification preferences saved!" });
-    } catch (err: any) {
-      toast({ title: err?.message || "Failed to save", variant: "destructive" });
+    } catch {
+      toast({ title: "Failed to save", variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -689,7 +578,7 @@ const NotificationSettings = ({ user }: { user: any }) => {
             <p className="text-xs text-muted-foreground">
               {!isSupported ? "Not supported in this browser"
                 : isSubscribed ? "Enabled — you'll receive notifications"
-                : "Disabled — enable to get notified of matches and messages"}
+                : "Disabled — enable to get notified"}
             </p>
           </div>
           {isSupported && (
@@ -703,23 +592,16 @@ const NotificationSettings = ({ user }: { user: any }) => {
       <div>
         <p className="text-sm font-medium mb-3">Notification Categories</p>
         {NOTIF_CATEGORIES.map((cat) => (
-          <label key={cat.key} className="flex items-center justify-between py-3 border-b border-border/30 cursor-pointer">
-            <div>
-              <span className="text-sm block">{cat.label}</span>
-              <span className="text-xs text-muted-foreground">{cat.desc}</span>
-            </div>
-            <div onClick={() => updatePref(cat.key, !prefs[cat.key])}
-              className={`w-10 h-5 rounded-full transition-colors relative cursor-pointer ${prefs[cat.key] ? "bg-primary" : "bg-border"}`}>
-              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${prefs[cat.key] ? "translate-x-5" : "translate-x-0.5"}`} />
-            </div>
-          </label>
+          <Toggle key={cat.key} label={cat.label} desc={cat.desc}
+            checked={prefs[cat.key] ?? true}
+            onChange={(v) => updatePref(cat.key, v)} />
         ))}
         <div className="flex items-center justify-between py-3 border-b border-border/30">
           <div>
             <span className="text-sm block">Safety Alerts</span>
-            <span className="text-xs text-muted-foreground">Report updates and safety notices — always on</span>
+            <span className="text-xs text-muted-foreground">Always on</span>
           </div>
-          <div className="w-10 h-5 rounded-full bg-primary relative cursor-not-allowed opacity-60">
+          <div className="w-10 h-5 rounded-full bg-primary relative opacity-60 cursor-not-allowed">
             <div className="absolute top-0.5 w-4 h-4 rounded-full bg-white translate-x-5" />
           </div>
         </div>
@@ -741,13 +623,13 @@ const NotificationSettings = ({ user }: { user: any }) => {
             <div className="flex-1">
               <label className="text-xs text-muted-foreground block mb-1">From</label>
               <input type="time" value={prefs.dnd_start || "23:00"} onChange={(e) => updatePref("dnd_start", e.target.value)}
-                className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary" />
+                className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary" />
             </div>
             <Clock className="w-4 h-4 text-muted-foreground mt-4" />
             <div className="flex-1">
               <label className="text-xs text-muted-foreground block mb-1">To</label>
               <input type="time" value={prefs.dnd_end || "08:00"} onChange={(e) => updatePref("dnd_end", e.target.value)}
-                className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary" />
+                className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary" />
             </div>
           </div>
         )}
