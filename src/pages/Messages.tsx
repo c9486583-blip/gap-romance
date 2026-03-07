@@ -438,9 +438,10 @@ const Messages = () => {
               <p className="text-sm text-muted-foreground">Loading conversations...</p>
             ) : matches.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-muted-foreground mb-2">No matches yet</p>
-                <p className="text-sm text-muted-foreground mb-4">Start discovering people to find your match!</p>
-                <Button variant="hero" size="sm" asChild><Link to="/discover">Discover</Link></Button>
+                <MessageCircle className="w-10 h-10 text-primary mx-auto mb-3" />
+                <p className="text-muted-foreground mb-2 font-semibold">No messages yet</p>
+                <p className="text-sm text-muted-foreground mb-4">Match with someone and start a conversation!</p>
+                <Button variant="hero" size="sm" asChild><Link to="/discover">Find Someone</Link></Button>
               </div>
             ) : (
               <div className="space-y-1">
