@@ -36,7 +36,7 @@ const Safety = () => {
                 <h3 className="font-bold text-primary/80 mb-2">1.1 How Verification Works</h3>
                 <p className="text-muted-foreground">Every GapRomance user is required to complete mandatory identity verification before their profile is visible to others. Verification consists of two steps:</p>
                 <ul className="list-disc pl-6 mt-2 space-y-1 text-muted-foreground">
-                  <li>Phone number verification via SMS confirmation at the time of registration.</li>
+                  <li>Email verification via a confirmation link sent to your registered email address at the time of registration.</li>
                   <li>Identity verification via a government-issued photo ID and a real-time selfie match processed through our secure verification partner.</li>
                 </ul>
                 <p className="text-muted-foreground mt-3">Verification is free for all users. GapRomance absorbs the cost of verification as part of our commitment to platform safety.</p>
