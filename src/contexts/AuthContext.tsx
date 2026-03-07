@@ -3,10 +3,53 @@ import { supabase } from "@/integrations/supabase/client";
 import { Session, User } from "@supabase/supabase-js";
 import { getTierFromProductId } from "@/lib/stripe-products";
 
+export interface Profile {
+  user_id: string;
+  first_name: string | null;
+  last_initial: string | null;
+  username: string | null;
+  email: string | null;
+  gender: "Man" | "Woman" | null;
+  date_of_birth: string | null;
+  bio: string | null;
+  occupation: string | null;
+  city: string | null;
+  state: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  location_preference: string | null;
+  photos: string[];
+  avatar_url: string | null;
+  hobbies: string[];
+  lifestyle_badges: string[];
+  personality_badges: string[];
+  favorite_genres: string[];
+  favorite_artists: string[];
+  favorite_song: string | null;
+  love_language: string | null;
+  dating_mode: "Serious Dating" | "Casual Dating" | "Both" | null;
+  preferred_age_min: number | null;
+  preferred_age_max: number | null;
+  dealbreakers: string[];
+  prompt_answers: Record<string, string> | null;
+  music_taste: string | null;
+  chronotype: string | null;
+  is_online: boolean;
+  show_online_status: boolean;
+  read_receipts: boolean;
+  is_verified: boolean;
+  verification_status: "unverified" | "pending" | "verified" | null;
+  onboarding_step: number;
+  today_note: string | null;
+  last_active_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
 interface AuthState {
   session: Session | null;
   user: User | null;
-  profile: any | null;
+  profile: Profile | null;
   loading: boolean;
   subscriptionTier: "free" | "premium" | "elite";
   subscriptionEnd: string | null;
@@ -18,61 +61,106 @@ interface AuthState {
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
 
+const fallbackProfile = (userId: string): Profile => ({
+  user_id: userId,
+  first_name: null,
+  last_initial: null,
+  username: null,
+  email: null,
+  gender: null,
+  date_of_birth: null,
+  bio: null,
+  occupation: null,
+  city: null,
+  state: null,
+  latitude: null,
+  longitude: null,
+  location_preference: null,
+  photos: [],
+  avatar_url: null,
+  hobbies: [],
+  lifestyle_badges: [],
+  personality_badges: [],
+  favorite_genres: [],
+  favorite_artists: [],
+  favorite_song: null,
+  love_language: null,
+  dating_mode: null,
+  preferred_age_min: null,
+  preferred_age_max: null,
+  dealbreakers: [],
+  prompt_answers: null,
+  music_taste: null,
+  chronotype: null,
+  is_online: false,
+  show_online_status: true,
+  read_receipts: true,
+  is_verified: false,
+  verification_status: null,
+  onboarding_step: 0,
+  today_note: null,
+  last_active_at: null,
+  created_at: null,
+  updated_at: null,
+});
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<any | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [subscriptionTier, setSubscriptionTier] = useState<"free" | "premium" | "elite">("free");
   const [subscriptionEnd, setSubscriptionEnd] = useState<string | null>(null);
 
-  const fetchProfile = async (userId: string, currentUser?: User | null) => {
+  const fetchProfile = async (userId: string, currentUser?: User | null): Promise<Profile> => {
     try {
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
         .eq("user_id", userId)
         .single();
+
       if (data) {
-        // Auto-bump onboarding_step from 0 to 1 if email is verified
         const theUser = currentUser || user;
         if (data.onboarding_step === 0 && theUser?.email_confirmed_at) {
           const { error: updateErr } = await supabase
             .from("profiles")
-            .update({ onboarding_step: 1 } as any)
+            .update({ onboarding_step: 1 })
             .eq("user_id", userId);
-          if (!updateErr) {
-            data.onboarding_step = 1;
-          }
+          if (!updateErr) data.onboarding_step = 1;
         }
-        setProfile(data);
-        return data;
+        const typed = data as Profile;
+        setProfile(typed);
+        return typed;
       }
+
       if (error && error.code === "PGRST116") {
         try {
           const { data: sessionData } = await supabase.auth.getUser();
-          const email = sessionData?.user?.email || null;
+          const email = sessionData?.user?.email ?? null;
           const { data: newProfile } = await supabase
             .from("profiles")
             .insert({ user_id: userId, email })
             .select()
             .single();
           if (newProfile) {
-            setProfile(newProfile);
-            return newProfile;
+            const typed = newProfile as Profile;
+            setProfile(typed);
+            return typed;
           }
         } catch (insertErr) {
           console.error("Failed to create profile:", insertErr);
         }
       }
-      const fallback = { user_id: userId, first_name: null, photos: [], hobbies: [], bio: null, onboarding_step: 0 };
-      setProfile(fallback);
-      return fallback;
+
+      const fb = fallbackProfile(userId);
+      setProfile(fb);
+      return fb;
     } catch (err) {
       console.error("fetchProfile error:", err);
-      const fallback = { user_id: userId, first_name: null, photos: [], hobbies: [], bio: null, onboarding_step: 0 };
-      setProfile(fallback);
-      return fallback;
+      const fb = fallbackProfile(userId);
+      setProfile(fb);
+      return fb;
     }
   };
 
@@ -95,9 +183,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       .from("profiles")
       .update({ latitude: lat, longitude: lng, city })
       .eq("user_id", user.id);
-    if (profile) {
-      setProfile({ ...profile, latitude: lat, longitude: lng, city });
-    }
+    if (profile) setProfile({ ...profile, latitude: lat, longitude: lng, city });
   };
 
   const signOut = async () => {
