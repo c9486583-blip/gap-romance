@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { STRIPE_PRODUCTS, STRIPE_ADDONS, STRIPE_TIME_CREDITS } from "@/lib/stripe-products";
 import { useToast } from "@/hooks/use-toast";
+import TopNav from "@/components/TopNav";
 
 const plans = [
   {
@@ -81,31 +82,49 @@ const Pricing = () => {
         return;
       }
 
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${accessToken}`,
-            "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-          },
-          body: JSON.stringify({ priceId, mode, successUrl }),
+      // FIX #2: Add 10-second timeout using AbortController
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+      }, 10000);
+
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${accessToken}`,
+              "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            },
+            body: JSON.stringify({ priceId, mode, successUrl }),
+            signal: controller.signal,
+          }
+        );
+
+        clearTimeout(timeoutId);
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          toast({ title: "Checkout failed", description: result?.error || "Unknown error", variant: "destructive" });
+          return;
         }
-      );
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        toast({ title: "Checkout failed", description: result?.error || "Unknown error", variant: "destructive" });
-        return;
-      }
-
-      if (result?.url) {
-        window.location.href = result.url;
-        return;
-      } else {
-        toast({ title: "Checkout failed", description: "No checkout URL returned", variant: "destructive" });
+        if (result?.url) {
+          window.location.href = result.url;
+          return;
+        } else {
+          toast({ title: "Checkout failed", description: "No checkout URL returned", variant: "destructive" });
+        }
+      } catch (fetchErr: any) {
+        clearTimeout(timeoutId);
+        if (fetchErr.name === 'AbortError') {
+          toast({ title: "Checkout failed", description: "Request timeout. Please try again.", variant: "destructive" });
+        } else {
+          throw fetchErr;
+        }
       }
     } catch (err: any) {
       toast({ title: "Checkout failed", description: err?.message || "Something went wrong", variant: "destructive" });
@@ -131,21 +150,17 @@ const Pricing = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <nav className="sticky top-0 z-50 glass border-b border-border/30">
-        <div className="container mx-auto flex items-center justify-between h-16 px-4">
-          <Link to="/" className="text-2xl font-heading font-bold text-gradient">GapRomance</Link>
-          <div className="flex items-center gap-3">
-            {user ? (
-              <>
-                <Button variant="ghost" size="sm" asChild><Link to="/discover">Discover</Link></Button>
-                <Button variant="hero" size="sm" asChild><Link to="/profile">Profile</Link></Button>
-              </>
-            ) : (
-              <Button variant="hero" size="sm" asChild><Link to="/signup">Join Free</Link></Button>
-            )}
-          </div>
-        </div>
-      </nav>
+      {/* FIX #1: Use TopNav component instead of custom nav */}
+      <TopNav rightContent={
+        user ? (
+          <>
+            <Button variant="ghost" size="sm" asChild><Link to="/discover">Discover</Link></Button>
+            <Button variant="hero" size="sm" asChild><Link to="/profile">Profile</Link></Button>
+          </>
+        ) : (
+          <Button variant="hero" size="sm" asChild><Link to="/signup">Join Free</Link></Button>
+        )
+      } />
 
       <div className="container mx-auto px-4 py-16">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-16">
