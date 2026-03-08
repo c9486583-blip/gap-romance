@@ -61,12 +61,14 @@ const Pricing = () => {
   const checkoutInProgress = useRef(false);
 
   const handleCheckout = async (priceId: string, mode: "subscription" | "payment" = "subscription", successUrl?: string) => {
+    // FIX: If user is NOT logged in, redirect to signup with the pricing page as return URL
     if (!user) {
       sessionStorage.setItem("pending_checkout", JSON.stringify({ priceId, mode, successUrl }));
       navigate("/signup?redirect=/pricing");
       return;
     }
 
+    // Only proceed if user IS logged in
     if (checkoutInProgress.current) return;
     checkoutInProgress.current = true;
     setCheckoutLoading(priceId);
@@ -82,7 +84,7 @@ const Pricing = () => {
         return;
       }
 
-      // FIX #2: Add 10-second timeout using AbortController
+      // FIX: Add 10-second timeout using AbortController to prevent endless loading
       const controller = new AbortController();
       const timeoutId = setTimeout(() => {
         controller.abort();
@@ -150,7 +152,7 @@ const Pricing = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* FIX #1: Use TopNav component instead of custom nav */}
+      {/* FIX: Show Login/Sign Up buttons when NOT logged in, show Profile/Discover when logged in */}
       <TopNav rightContent={
         user ? (
           <>
@@ -158,7 +160,10 @@ const Pricing = () => {
             <Button variant="hero" size="sm" asChild><Link to="/profile">Profile</Link></Button>
           </>
         ) : (
-          <Button variant="hero" size="sm" asChild><Link to="/signup">Join Free</Link></Button>
+          <>
+            <Button variant="ghost" size="sm" asChild><Link to="/login">Log In</Link></Button>
+            <Button variant="hero" size="sm" asChild><Link to="/signup">Sign Up</Link></Button>
+          </>
         )
       } />
 
