@@ -55,6 +55,7 @@ const Signup = () => {
     };
   }, []);
 
+  // FIX #3: Improved username availability checker with better timeout handling
   useEffect(() => {
     if (usernameDebounceRef.current) clearTimeout(usernameDebounceRef.current);
 
@@ -68,21 +69,40 @@ const Signup = () => {
     setUsernameAvailable(null);
 
     usernameDebounceRef.current = setTimeout(async () => {
-      // 3 second timeout — if Supabase hangs, assume username is available
-      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000));
-      const queryPromise = supabase
-        .from("profiles")
-        .select("user_id")
-        .eq("username", username.toLowerCase())
-        .maybeSingle()
-        .then(({ data }) => data);
+      // 5 second timeout — increased from 3 seconds for better reliability
+      const timeoutPromise = new Promise<null>((resolve) => {
+        setTimeout(() => {
+          console.warn(`Username check timed out for: ${username}`);
+          resolve(null);
+        }, 5000);
+      });
+
+      const queryPromise = (async () => {
+        try {
+          const { data, error } = await supabase
+            .from("profiles")
+            .select("user_id")
+            .eq("username", username.toLowerCase())
+            .maybeSingle();
+
+          if (error) {
+            console.error("Username check error:", error);
+            return null; // On error, assume available
+          }
+          return data;
+        } catch (err) {
+          console.error("Username check exception:", err);
+          return null; // On exception, assume available
+        }
+      })();
 
       try {
         const result = await Promise.race([queryPromise, timeoutPromise]);
         // null means no match found (available) or timed out (assume available)
         setUsernameAvailable(result === undefined ? true : !result);
-      } catch {
-        // On error, assume available so user isn't blocked
+      } catch (err) {
+        console.error("Username check failed:", err);
+        // On any error, assume available so user isn't blocked
         setUsernameAvailable(true);
       } finally {
         setUsernameChecking(false);
