@@ -68,20 +68,22 @@ const Signup = () => {
     setUsernameAvailable(null);
 
     usernameDebounceRef.current = setTimeout(async () => {
-      try {
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("user_id")
-          .eq("username", username.toLowerCase())
-          .maybeSingle();
+      // 3 second timeout — if Supabase hangs, assume username is available
+      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000));
+      const queryPromise = supabase
+        .from("profiles")
+        .select("user_id")
+        .eq("username", username.toLowerCase())
+        .maybeSingle()
+        .then(({ data }) => data);
 
-        if (error) {
-          setUsernameAvailable(null);
-        } else {
-          setUsernameAvailable(!data);
-        }
+      try {
+        const result = await Promise.race([queryPromise, timeoutPromise]);
+        // null means no match found (available) or timed out (assume available)
+        setUsernameAvailable(result === undefined ? true : !result);
       } catch {
-        setUsernameAvailable(null);
+        // On error, assume available so user isn't blocked
+        setUsernameAvailable(true);
       } finally {
         setUsernameChecking(false);
       }
@@ -125,10 +127,7 @@ const Signup = () => {
       toast({ title: "That username is already taken", variant: "destructive" });
       return false;
     }
-    if (usernameAvailable === null || usernameChecking) {
-      toast({ title: "Please wait while we check your username", variant: "destructive" });
-      return false;
-    }
+    // Don't block on null — if check timed out, let them proceed
     if (!email.trim() || !password) {
       toast({ title: "Please fill in email and password", variant: "destructive" });
       return false;
@@ -208,20 +207,15 @@ const Signup = () => {
           upsertData.city = location.city;
         }
 
-        const { error: upsertError } = await supabase
+        await supabase
           .from("profiles")
           .upsert(upsertData, { onConflict: "user_id" });
-
-        if (upsertError) {
-          console.error("Profile upsert error:", upsertError);
-        }
       }
 
       setEmailSent(true);
       startCooldown();
       toast({ title: "Verification email sent!", description: `Check your inbox at ${email}` });
     } catch (err: any) {
-      console.error("Signup error:", err);
       toast({ title: "Something went wrong", description: err?.message || "Please try again", variant: "destructive" });
     } finally {
       setLoading(false);
