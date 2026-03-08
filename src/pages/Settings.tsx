@@ -1,16 +1,19 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { User, CreditCard, Bell, Shield, LogOut, ChevronRight, CheckCircle, BellOff, Clock, Eye, EyeOff, Loader2 } from "lucide-react";
+import { User, CreditCard, Bell, Shield, LogOut, ChevronRight, CheckCircle, Music, X, MessageSquare, Sparkles, Heart, BellOff, Clock, Camera } from "lucide-react";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { STRIPE_PRODUCTS } from "@/lib/stripe-products";
 import { Progress } from "@/components/ui/progress";
+import {
+  HOBBY_OPTIONS, LIFESTYLE_OPTIONS, PERSONALITY_OPTIONS, LOVE_LANGUAGES,
+  GENRE_OPTIONS, LIFESTYLE_ICONS, PERSONALITY_ICONS,
+} from "@/lib/profile-constants";
 import { calculateProfileCompleteness } from "@/lib/profile-completeness";
-import TopNav from "@/components/TopNav";
-import DeleteAccountDialog from "@/components/DeleteAccountDialog";
-import { MessageSquare } from "lucide-react";
+import PhotoManager from "@/components/PhotoManager";
 
 const NOTE_PLACEHOLDERS = [
   "Just got back from hiking...",
@@ -19,100 +22,11 @@ const NOTE_PLACEHOLDERS = [
   "Working from a coffee shop today",
 ];
 
-const US_STATES = [
-  "Anywhere in US","Alabama","Alaska","Arizona","Arkansas","California","Colorado",
-  "Connecticut","Delaware","Florida","Georgia","Hawaii","Idaho","Illinois","Indiana",
-  "Iowa","Kansas","Kentucky","Louisiana","Maine","Maryland","Massachusetts","Michigan",
-  "Minnesota","Mississippi","Missouri","Montana","Nebraska","Nevada","New Hampshire",
-  "New Jersey","New Mexico","New York","North Carolina","North Dakota","Ohio","Oklahoma",
-  "Oregon","Pennsylvania","Rhode Island","South Carolina","South Dakota","Tennessee",
-  "Texas","Utah","Vermont","Virginia","Washington","West Virginia","Wisconsin","Wyoming",
-];
-
-const NOTIF_CATEGORIES = [
-  { key: "new_matches",            label: "New Matches",            desc: "When you match with someone" },
-  { key: "new_messages",           label: "New Messages",           desc: "When you receive a message" },
-  { key: "virtual_gifts",          label: "Virtual Gifts",          desc: "When someone sends you a gift" },
-  { key: "super_likes",            label: "Super Likes",            desc: "When someone Super Likes you" },
-  { key: "profile_activity",       label: "Profile Activity",       desc: "Likes, views, and engagement" },
-  { key: "subscription_reminders", label: "Subscription Reminders", desc: "Renewal and expiry alerts" },
-  { key: "daily_reminders",        label: "Daily Reminders",        desc: "Message resets and Today's Note" },
-];
-
 const Settings = () => {
   const [activeTab, setActiveTab] = useState("account");
   const { user, profile, subscriptionTier, subscriptionEnd, signOut, refreshSubscription, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-
-  // ── Account fields ──────────────────────────────────────────────────────────
-  const [firstName, setFirstName]         = useState("");
-  const [lastInitial, setLastInitial]     = useState("");
-  const [username, setUsername]           = useState("");
-  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
-  const [usernameChecking, setUsernameChecking]   = useState(false);
-  const [bio, setBio]                     = useState("");
-  const [datingMode, setDatingMode]       = useState("Both");
-  const [locationPref, setLocationPref]   = useState("Anywhere in US");
-  const [todaysNote, setTodaysNote]       = useState("");
-  const [savingAccount, setSavingAccount] = useState(false);
-  const [savingNote, setSavingNote]       = useState(false);
-  const notePlaceholder = NOTE_PLACEHOLDERS[Math.floor(Math.random() * NOTE_PLACEHOLDERS.length)];
-
-  // ── Privacy fields ──────────────────────────────────────────────────────────
-  const [showOnlineStatus, setShowOnlineStatus] = useState(true);
-  const [readReceipts, setReadReceipts]         = useState(true);
-  const [savingPrivacy, setSavingPrivacy]       = useState(false);
-  const [deletePassword, setDeletePassword]     = useState("");
-  const [showDeletePassword, setShowDeletePassword] = useState(false);
-  const [deletingAccount, setDeletingAccount]   = useState(false);
-
-  const usernameDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    if (profile) {
-      setFirstName(profile.first_name || "");
-      setLastInitial(profile.last_initial || "");
-      setUsername(profile.username || "");
-      setBio(profile.bio || "");
-      setDatingMode(profile.dating_mode || "Both");
-      setLocationPref((profile as any).location_preference || "Anywhere in US");
-      setShowOnlineStatus(profile.show_online_status ?? true);
-      setReadReceipts(profile.read_receipts ?? true);
-      if ((profile as any).todays_note && (profile as any).todays_note_updated_at) {
-        const updatedAt = new Date((profile as any).todays_note_updated_at).getTime();
-        if (Date.now() - updatedAt < 24 * 60 * 60 * 1000) {
-          setTodaysNote((profile as any).todays_note);
-        }
-      }
-    }
-  }, [profile]);
-
-  // Username uniqueness check
-  useEffect(() => {
-    if (usernameDebounceRef.current) clearTimeout(usernameDebounceRef.current);
-    const originalUsername = profile?.username || "";
-    if (!username || username.length < 4 || username === originalUsername) {
-      setUsernameAvailable(null);
-      setUsernameChecking(false);
-      return;
-    }
-    setUsernameChecking(true);
-    usernameDebounceRef.current = setTimeout(async () => {
-      try {
-        const { data } = await supabase
-          .from("profiles")
-          .select("user_id")
-          .eq("username", username.toLowerCase())
-          .maybeSingle();
-        setUsernameAvailable(!data);
-      } catch {
-        setUsernameAvailable(null);
-      } finally {
-        setUsernameChecking(false);
-      }
-    }, 600);
-  }, [username, profile?.username]);
 
   const handleLogout = async () => {
     await signOut();
@@ -122,119 +36,173 @@ const Settings = () => {
   const handleManageSubscription = async () => {
     try {
       const { data, error } = await supabase.functions.invoke("customer-portal");
-      if (error || !data?.url) { toast({ title: "Could not open portal", variant: "destructive" }); return; }
+      if (error || !data?.url) {
+        toast({ title: "Could not open portal", variant: "destructive" });
+        return;
+      }
       window.location.href = data.url;
-    } catch {
+    } catch (err: any) {
+      console.error("Portal error:", err);
       toast({ title: "Could not open portal", variant: "destructive" });
     }
   };
 
-  const handleSaveAccount = async () => {
-    if (!user) return;
-    if (username && username !== profile?.username) {
-      if (username.length < 4 || username.length > 15) {
-        toast({ title: "Username must be 4–15 characters", variant: "destructive" });
-        return;
-      }
-      if (usernameAvailable === false) {
-        toast({ title: "That username is already taken", variant: "destructive" });
-        return;
-      }
-    }
-    setSavingAccount(true);
-    try {
-      const { error } = await supabase.from("profiles").update({
-        first_name: firstName.trim() || null,
-        last_initial: lastInitial.trim().slice(0, 1) || null,
-        username: username.toLowerCase().trim() || null,
-        bio: bio.trim() || null,
-        dating_mode: datingMode,
-        location_preference: locationPref,
-      } as any).eq("user_id", user.id);
-      if (error) { toast({ title: "Failed to save", variant: "destructive" }); return; }
-      toast({ title: "Account saved!" });
-      await refreshProfile();
-    } catch {
-      toast({ title: "Failed to save", variant: "destructive" });
-    } finally {
-      setSavingAccount(false);
-    }
+  const handleVerify = async () => {
+    toast({ title: "Verification", description: "ID verification coming soon! This feature will use Stripe Identity." });
   };
+
+  // Music state
+  const [favoriteArtists, setFavoriteArtists] = useState<string[]>(["", "", ""]);
+  const [favoriteGenres, setFavoriteGenres] = useState<string[]>([]);
+  const [favoriteSong, setFavoriteSong] = useState("");
+  const [savingMusic, setSavingMusic] = useState(false);
+
+  // Today's Note state
+  const [todaysNote, setTodaysNote] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
+  const notePlaceholder = NOTE_PLACEHOLDERS[Math.floor(Math.random() * NOTE_PLACEHOLDERS.length)];
+
+  // Profile badges state
+  const [hobbies, setHobbies] = useState<string[]>([]);
+  const [lifestyleBadges, setLifestyleBadges] = useState<string[]>([]);
+  const [personalityBadges, setPersonalityBadges] = useState<string[]>([]);
+  const [loveLanguage, setLoveLanguage] = useState<string>("");
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  // Photos state
+  const [userPhotos, setUserPhotos] = useState<string[]>([]);
+  const [savingPhotos, setSavingPhotos] = useState(false);
+
+  useEffect(() => {
+    if (profile) {
+      const artists = profile.favorite_artists as string[] | null;
+      if (artists && artists.length > 0) {
+        const padded = [...artists, "", "", ""].slice(0, 3);
+        setFavoriteArtists(padded);
+      }
+      const genres = profile.favorite_genres as string[] | null;
+      if (genres) setFavoriteGenres(genres);
+      if (profile.favorite_song) setFavoriteSong(profile.favorite_song as string);
+      if (profile.todays_note && profile.todays_note_updated_at) {
+        const updatedAt = new Date(profile.todays_note_updated_at).getTime();
+        if (Date.now() - updatedAt < 24 * 60 * 60 * 1000) {
+          setTodaysNote(profile.todays_note);
+        }
+      }
+      if (profile.hobbies) setHobbies(profile.hobbies as string[]);
+      if (profile.lifestyle_badges) setLifestyleBadges(profile.lifestyle_badges as string[]);
+      if (profile.personality_badges) setPersonalityBadges(profile.personality_badges as string[]);
+      if (profile.love_language) setLoveLanguage(profile.love_language as string);
+      if (profile.photos) setUserPhotos(profile.photos as string[]);
+    }
+  }, [profile]);
 
   const handleSaveNote = async () => {
     if (!user) return;
     setSavingNote(true);
-    try {
-      const { error } = await supabase.from("profiles").update({
+    const { error } = await supabase
+      .from("profiles")
+      .update({
         todays_note: todaysNote.trim() || null,
         todays_note_updated_at: todaysNote.trim() ? new Date().toISOString() : null,
-      } as any).eq("user_id", user.id);
-      if (error) { toast({ title: "Failed to save note", variant: "destructive" }); return; }
+      } as any)
+      .eq("user_id", user.id);
+    setSavingNote(false);
+    if (!error) {
       toast({ title: todaysNote.trim() ? "Today's Note updated!" : "Today's Note cleared" });
-      await refreshProfile();
-    } catch {
+      refreshProfile();
+    } else {
       toast({ title: "Failed to save note", variant: "destructive" });
-    } finally {
-      setSavingNote(false);
     }
   };
 
-  const handleSavePrivacy = async () => {
+  const toggleGenre = (genre: string) => {
+    setFavoriteGenres((prev) =>
+      prev.includes(genre) ? prev.filter((g) => g !== genre) : [...prev, genre]
+    );
+  };
+
+  const handleSaveMusic = async () => {
     if (!user) return;
-    setSavingPrivacy(true);
-    try {
-      const { error } = await supabase.from("profiles").update({
-        show_online_status: showOnlineStatus,
-        read_receipts: readReceipts,
-      } as any).eq("user_id", user.id);
-      if (error) { toast({ title: "Failed to save", variant: "destructive" }); return; }
-      toast({ title: "Privacy settings saved!" });
-      await refreshProfile();
-    } catch {
-      toast({ title: "Failed to save", variant: "destructive" });
-    } finally {
-      setSavingPrivacy(false);
-    }
+    setSavingMusic(true);
+    const cleanArtists = favoriteArtists.map((a) => a.trim()).filter(Boolean);
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        favorite_artists: cleanArtists,
+        favorite_genres: favoriteGenres,
+        favorite_song: favoriteSong.trim() || null,
+      } as any)
+      .eq("user_id", user.id);
+    setSavingMusic(false);
+    toast({
+      title: error ? "Failed to save" : "Music saved!",
+      variant: error ? "destructive" : "default",
+    });
+    if (!error) refreshProfile();
   };
 
-  const handleDeleteAccount = async () => {
-    if (!user || !deletePassword) {
-      toast({ title: "Please enter your password", variant: "destructive" });
-      return;
-    }
-    setDeletingAccount(true);
-    try {
-      const { error: authError } = await supabase.auth.signInWithPassword({
-        email: user.email!,
-        password: deletePassword,
-      });
-      if (authError) {
-        toast({ title: "Incorrect password", variant: "destructive" });
-        return;
-      }
-      const { error } = await supabase.from("profiles").delete().eq("user_id", user.id);
-      if (error) { toast({ title: "Failed to delete account", variant: "destructive" }); return; }
-      await supabase.auth.admin.deleteUser(user.id).catch(() => {});
-      await signOut();
-      navigate("/");
-      toast({ title: "Account deleted" });
-    } catch {
-      toast({ title: "Failed to delete account", variant: "destructive" });
-    } finally {
-      setDeletingAccount(false);
-    }
+  const toggleHobby = (h: string) => {
+    setHobbies((prev) =>
+      prev.includes(h) ? prev.filter((x) => x !== h) : prev.length < 10 ? [...prev, h] : prev
+    );
+  };
+
+  const toggleLifestyle = (l: string) => {
+    setLifestyleBadges((prev) =>
+      prev.includes(l) ? prev.filter((x) => x !== l) : prev.length < 4 ? [...prev, l] : prev
+    );
+  };
+
+  const togglePersonality = (p: string) => {
+    setPersonalityBadges((prev) =>
+      prev.includes(p) ? prev.filter((x) => x !== p) : prev.length < 2 ? [...prev, p] : prev
+    );
+  };
+
+  const handleSaveProfileBadges = async () => {
+    if (!user) return;
+    setSavingProfile(true);
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        hobbies,
+        lifestyle_badges: lifestyleBadges,
+        personality_badges: personalityBadges,
+        love_language: loveLanguage || null,
+      } as any)
+      .eq("user_id", user.id);
+    setSavingProfile(false);
+    toast({
+      title: error ? "Failed to save" : "Profile updated!",
+      variant: error ? "destructive" : "default",
+    });
+    if (!error) refreshProfile();
+  };
+
+  const handleSavePhotos = async () => {
+    if (!user) return;
+    setSavingPhotos(true);
+    const { error } = await supabase
+      .from("profiles")
+      .update({ photos: userPhotos, avatar_url: userPhotos[0] || null } as any)
+      .eq("user_id", user.id);
+    setSavingPhotos(false);
+    toast({ title: error ? "Failed to save" : "Photos saved!", variant: error ? "destructive" : "default" });
+    if (!error) refreshProfile();
   };
 
   const completeness = calculateProfileCompleteness(profile);
 
   const tabs = [
-    { id: "account",       label: "Account",        icon: User },
-    { id: "subscription",  label: "Subscription",   icon: CreditCard },
-    { id: "notifications", label: "Notifications",  icon: Bell },
-    { id: "privacy",       label: "Privacy & Safety", icon: Shield },
+    { id: "account", label: "Account", icon: User },
+    { id: "photos", label: "Photos", icon: Camera },
+    { id: "profile", label: "Profile & Badges", icon: Sparkles },
+    { id: "music", label: "Music Taste", icon: Music },
+    { id: "subscription", label: "Subscription", icon: CreditCard },
+    { id: "notifications", label: "Notifications", icon: Bell },
+    { id: "privacy", label: "Privacy & Safety", icon: Shield },
   ];
-
-  const inputClass = "w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-primary";
 
   if (!user) {
     return (
@@ -248,19 +216,20 @@ const Settings = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-20">
-      <TopNav rightContent={
-        <>
-          <Button variant="ghost" size="sm" asChild><Link to="/discover">Discover</Link></Button>
-          <Button variant="ghost" size="sm" asChild><Link to="/profile">Profile</Link></Button>
-        </>
-      } />
+    <div className="min-h-screen bg-background">
+      <nav className="sticky top-0 z-50 glass border-b border-border/30">
+        <div className="container mx-auto flex items-center justify-between h-16 px-4">
+          <Link to="/" className="text-2xl font-heading font-bold text-gradient">GapRomance</Link>
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="sm" asChild><Link to="/discover">Discover</Link></Button>
+            <Button variant="ghost" size="sm" asChild><Link to="/profile">Profile</Link></Button>
+          </div>
+        </div>
+      </nav>
 
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <h1 className="text-3xl font-heading font-bold mb-8">Settings</h1>
         <div className="flex flex-col md:flex-row gap-6">
-
-          {/* Sidebar */}
           <div className="md:w-60 flex-shrink-0">
             <div className="space-y-1">
               {tabs.map((t) => (
@@ -275,10 +244,7 @@ const Settings = () => {
             </div>
           </div>
 
-          {/* Content */}
           <div className="flex-1 glass rounded-xl p-6">
-
-            {/* ── ACCOUNT TAB ── */}
             {activeTab === "account" && (
               <div className="space-y-6">
                 <h2 className="font-heading text-xl font-semibold">Account Details</h2>
@@ -299,99 +265,33 @@ const Settings = () => {
                         : "🔥 Complete your profile to get 3x more matches!"}
                     </p>
                   )}
+                  {completeness.missing.length > 0 && completeness.percentage < 100 && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Missing: {completeness.missing.join(", ")}
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-4">
-                  {/* Name */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-sm text-muted-foreground block mb-1">First Name</label>
-                      <input value={firstName} onChange={(e) => setFirstName(e.target.value)} className={inputClass} />
-                    </div>
-                    <div>
-                      <label className="text-sm text-muted-foreground block mb-1">Last Initial</label>
-                      <input value={lastInitial} onChange={(e) => setLastInitial(e.target.value.slice(0, 1))} maxLength={1} className={inputClass} />
-                    </div>
-                  </div>
-
-                  {/* Username */}
                   <div>
-                    <label className="text-sm text-muted-foreground block mb-1">Username</label>
-                    <div className="relative flex items-center">
-                      <span className="absolute left-4 text-muted-foreground text-sm">@</span>
-                      <input
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s/g, "").slice(0, 15))}
-                        maxLength={15}
-                        className={`${inputClass} pl-8 pr-10 ${usernameAvailable === true ? "border-green-500" : usernameAvailable === false ? "border-destructive" : ""}`}
-                      />
-                      <span className="absolute right-4">
-                        {usernameChecking && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
-                        {!usernameChecking && usernameAvailable === true && <CheckCircle className="w-4 h-4 text-green-500" />}
-                        {!usernameChecking && usernameAvailable === false && <span className="text-destructive text-xs">✕</span>}
-                      </span>
-                    </div>
-                    {usernameAvailable === false && (
-                      <p className="text-xs text-destructive mt-1">That username is already taken</p>
-                    )}
+                    <label className="text-sm text-muted-foreground block mb-1">Display Name</label>
+                    <input defaultValue={profile?.first_name ? `${profile.first_name} ${profile.last_initial || ""}` : ""} className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-primary" />
                   </div>
-
-                  {/* Email — readonly */}
                   <div>
                     <label className="text-sm text-muted-foreground block mb-1">Email</label>
-                    <input defaultValue={user.email || ""} disabled className={`${inputClass} opacity-60`} />
-                    <p className="text-xs text-muted-foreground mt-1">To change your email, contact support.</p>
+                    <input defaultValue={user.email || ""} disabled className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground opacity-60" />
                   </div>
-
-                  {/* Location — readonly */}
                   <div>
                     <label className="text-sm text-muted-foreground block mb-1">Location</label>
-                    <input defaultValue={profile?.city ? `${profile.city}` : "Not set"} disabled className={`${inputClass} opacity-60`} />
-                    <p className="text-xs text-muted-foreground mt-1">Location is detected automatically. Contact support to update.</p>
+                    <input defaultValue={profile?.city || "Not set"} disabled className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground opacity-60" />
                   </div>
-
-                  {/* Location Preference */}
-                  <div>
-                    <label className="text-sm text-muted-foreground block mb-1">Location Preference</label>
-                    <select value={locationPref} onChange={(e) => setLocationPref(e.target.value)}
-                      className={inputClass}>
-                      {US_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  </div>
-
-                  {/* Verification status */}
                   <div className="flex items-center gap-3">
-                    <span className="text-sm text-muted-foreground">Verification:</span>
+                    <span className="text-sm text-muted-foreground">Verification Status:</span>
                     {profile?.is_verified ? (
-                      <span className="inline-flex items-center gap-1.5 text-sm text-green-400 font-bold">
-                        <CheckCircle className="w-4 h-4" /> Verified ✓
-                      </span>
-                    ) : (profile as any)?.verification_status === "pending" ? (
-                      <span className="text-sm text-yellow-400 font-medium">Pending verification</span>
+                      <span className="inline-flex items-center gap-1 text-sm text-gold font-bold"><CheckCircle className="w-4 h-4" /> Verified</span>
                     ) : (
-                      <span className="text-sm text-muted-foreground">Not verified</span>
+                      <Button variant="outline" size="sm" onClick={handleVerify}>Verify Identity (Free)</Button>
                     )}
-                  </div>
-
-                  {/* Bio */}
-                  <div>
-                    <label className="text-sm text-muted-foreground block mb-1">Bio</label>
-                    <textarea value={bio} onChange={(e) => setBio(e.target.value)} rows={3} maxLength={500}
-                      placeholder="Tell people about yourself..."
-                      className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-primary resize-none" />
-                  </div>
-
-                  {/* Dating Mode */}
-                  <div>
-                    <label className="text-sm text-muted-foreground block mb-1">Dating Mode</label>
-                    <div className="flex flex-wrap gap-2">
-                      {["Serious Dating", "Casual Dating", "Both"].map((m) => (
-                        <button key={m} onClick={() => setDatingMode(m)}
-                          className={`px-4 py-2 rounded-full text-sm border transition-all ${datingMode === m ? "bg-primary/20 border-primary text-primary" : "border-border text-muted-foreground hover:border-primary/50"}`}>
-                          {m === "Both" ? "Open to Both" : m}
-                        </button>
-                      ))}
-                    </div>
                   </div>
 
                   {/* Today's Note */}
@@ -399,7 +299,7 @@ const Settings = () => {
                     <label className="text-sm font-medium flex items-center gap-2 mb-2">
                       <MessageSquare className="w-4 h-4 text-primary" /> Today's Note
                     </label>
-                    <p className="text-xs text-muted-foreground mb-2">Share what you're up to today — expires after 24 hours.</p>
+                    <p className="text-xs text-muted-foreground mb-2">Share what you're up to today — it appears on your profile and in discovery. Expires after 24 hours.</p>
                     <div className="relative">
                       <textarea
                         value={todaysNote}
@@ -418,14 +318,208 @@ const Settings = () => {
                     </Button>
                   </div>
 
-                  <Button variant="hero" disabled={savingAccount} onClick={handleSaveAccount}>
-                    {savingAccount ? "Saving..." : "Save Changes"}
-                  </Button>
+                  <Button variant="hero">Save Changes</Button>
                 </div>
               </div>
             )}
 
-            {/* ── SUBSCRIPTION TAB ── */}
+            {activeTab === "photos" && (
+              <div className="space-y-6">
+                <h2 className="font-heading text-xl font-semibold flex items-center gap-2">
+                  <Camera className="w-5 h-5 text-primary" /> Your Photos
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Manage your profile photos. You need at least 2 and can have up to 6. Drag to reorder — your first photo is your main profile photo.
+                </p>
+                {user && (
+                  <PhotoManager
+                    userId={user.id}
+                    photos={userPhotos}
+                    onPhotosChange={setUserPhotos}
+                    minPhotos={2}
+                    maxPhotos={6}
+                    showGuidelines={false}
+                  />
+                )}
+                <Button variant="hero" onClick={handleSavePhotos} disabled={savingPhotos}>
+                  {savingPhotos ? "Saving..." : "Save Photos"}
+                </Button>
+              </div>
+            )}
+
+            {activeTab === "profile" && (
+              <div className="space-y-6">
+                <h2 className="font-heading text-xl font-semibold flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-primary" /> Profile & Badges
+                </h2>
+
+                {/* Hobbies */}
+                <div>
+                  <label className="text-sm font-medium block mb-1">
+                    Hobbies <span className="text-muted-foreground">({hobbies.length}/10)</span>
+                  </label>
+                  <p className="text-xs text-muted-foreground mb-3">Select up to 10 hobbies that describe you.</p>
+                  <div className="flex flex-wrap gap-2">
+                    {HOBBY_OPTIONS.map((h) => (
+                      <button
+                        key={h}
+                        type="button"
+                        onClick={() => toggleHobby(h)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+                          hobbies.includes(h)
+                            ? "bg-secondary text-foreground border border-foreground/30"
+                            : "bg-secondary/50 text-muted-foreground border border-border hover:border-foreground/30"
+                        }`}
+                      >
+                        {h}
+                        {hobbies.includes(h) && <X className="w-3 h-3 ml-1 inline" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Lifestyle Badges */}
+                <div>
+                  <label className="text-sm font-medium block mb-1">
+                    Lifestyle Badges <span className="text-muted-foreground">({lifestyleBadges.length}/4)</span>
+                  </label>
+                  <p className="text-xs text-muted-foreground mb-3">Select up to 4 lifestyle badges.</p>
+                  <div className="flex flex-wrap gap-2">
+                    {LIFESTYLE_OPTIONS.map((l) => (
+                      <button
+                        key={l}
+                        type="button"
+                        onClick={() => toggleLifestyle(l)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1 ${
+                          lifestyleBadges.includes(l)
+                            ? "bg-primary/15 text-primary border border-primary/30"
+                            : "bg-secondary/50 text-muted-foreground border border-border hover:border-primary/30"
+                        }`}
+                      >
+                        <span>{LIFESTYLE_ICONS[l]}</span> {l}
+                        {lifestyleBadges.includes(l) && <X className="w-3 h-3 ml-1" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Personality Badges */}
+                <div>
+                  <label className="text-sm font-medium block mb-1">
+                    Personality Badges <span className="text-muted-foreground">({personalityBadges.length}/2)</span>
+                  </label>
+                  <p className="text-xs text-muted-foreground mb-3">Select up to 2 personality badges.</p>
+                  <div className="flex flex-wrap gap-2">
+                    {PERSONALITY_OPTIONS.map((p) => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => togglePersonality(p)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1 ${
+                          personalityBadges.includes(p)
+                            ? "bg-primary/15 text-primary border border-primary/30"
+                            : "bg-secondary/50 text-muted-foreground border border-border hover:border-primary/30"
+                        }`}
+                      >
+                        <span>{PERSONALITY_ICONS[p]}</span> {p}
+                        {personalityBadges.includes(p) && <X className="w-3 h-3 ml-1" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Love Language */}
+                <div>
+                  <label className="text-sm font-medium block mb-1 flex items-center gap-1">
+                    <Heart className="w-4 h-4 text-primary" /> Love Language
+                  </label>
+                  <p className="text-xs text-muted-foreground mb-3">What's your love language?</p>
+                  <div className="flex flex-wrap gap-2">
+                    {LOVE_LANGUAGES.map((ll) => (
+                      <button
+                        key={ll}
+                        type="button"
+                        onClick={() => setLoveLanguage(loveLanguage === ll ? "" : ll)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+                          loveLanguage === ll
+                            ? "bg-primary/15 text-primary border border-primary/30"
+                            : "bg-secondary/50 text-muted-foreground border border-border hover:border-primary/30"
+                        }`}
+                      >
+                        {ll}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <Button variant="hero" onClick={handleSaveProfileBadges} disabled={savingProfile}>
+                  {savingProfile ? "Saving..." : "Save Profile"}
+                </Button>
+              </div>
+            )}
+
+            {activeTab === "music" && (
+              <div className="space-y-6">
+                <h2 className="font-heading text-xl font-semibold flex items-center gap-2">
+                  <Music className="w-5 h-5 text-primary" /> Music Taste
+                </h2>
+                <p className="text-sm text-muted-foreground">Share your music taste on your profile for others to see.</p>
+
+                <div className="space-y-3">
+                  <label className="text-sm font-medium block">Favorite Artists (up to 3)</label>
+                  {favoriteArtists.map((artist, i) => (
+                    <input
+                      key={i}
+                      value={artist}
+                      onChange={(e) => {
+                        const updated = [...favoriteArtists];
+                        updated[i] = e.target.value;
+                        setFavoriteArtists(updated);
+                      }}
+                      maxLength={100}
+                      placeholder={`Artist ${i + 1}`}
+                      className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-primary"
+                    />
+                  ))}
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium block mb-3">Favorite Genres</label>
+                  <div className="flex flex-wrap gap-2">
+                    {GENRE_OPTIONS.map((genre) => (
+                      <button
+                        key={genre}
+                        type="button"
+                        onClick={() => toggleGenre(genre)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+                          favoriteGenres.includes(genre)
+                            ? "bg-primary/15 text-primary border border-primary/30"
+                            : "bg-secondary text-muted-foreground border border-border hover:border-primary/30"
+                        }`}
+                      >
+                        {genre}
+                        {favoriteGenres.includes(genre) && <X className="w-3 h-3 ml-1 inline" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium block mb-1">Favorite Song</label>
+                  <input
+                    value={favoriteSong}
+                    onChange={(e) => setFavoriteSong(e.target.value)}
+                    maxLength={150}
+                    placeholder="e.g. Clair de Lune — Debussy"
+                    className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-primary"
+                  />
+                </div>
+
+                <Button variant="hero" onClick={handleSaveMusic} disabled={savingMusic}>
+                  {savingMusic ? "Saving..." : "Save Music"}
+                </Button>
+              </div>
+            )}
             {activeTab === "subscription" && (
               <div className="space-y-6">
                 <h2 className="font-heading text-xl font-semibold">Your Plan</h2>
@@ -444,69 +538,51 @@ const Settings = () => {
                       {subscriptionTier === "free" ? "$0" : subscriptionTier === "premium" ? "$19.99/mo" : "$34.99/mo"}
                     </span>
                   </div>
-                  <div className="flex gap-3 flex-wrap">
-                    {subscriptionTier === "free" && <Button variant="hero" asChild><Link to="/pricing">Upgrade</Link></Button>}
-                    {subscriptionTier === "premium" && <Button variant="hero" asChild><Link to="/pricing">Upgrade to Elite</Link></Button>}
-                    {subscriptionTier !== "free" && <Button variant="outline" onClick={handleManageSubscription}>Manage Subscription</Button>}
+                  <div className="flex gap-3">
+                    {subscriptionTier === "free" && (
+                      <Button variant="hero" asChild><Link to="/pricing">Upgrade</Link></Button>
+                    )}
+                    {subscriptionTier === "premium" && (
+                      <Button variant="hero" asChild><Link to="/pricing">Upgrade to Elite</Link></Button>
+                    )}
+                    {subscriptionTier !== "free" && (
+                      <Button variant="outline" onClick={handleManageSubscription}>Manage Subscription</Button>
+                    )}
                     <Button variant="ghost" onClick={refreshSubscription}>Refresh Status</Button>
                   </div>
                 </div>
               </div>
             )}
-
-            {/* ── NOTIFICATIONS TAB ── */}
-            {activeTab === "notifications" && <NotificationSettings user={user} />}
-
-            {/* ── PRIVACY TAB ── */}
+            {activeTab === "notifications" && (
+              <NotificationSettings user={user} />
+            )}
             {activeTab === "privacy" && (
               <div className="space-y-6">
                 <h2 className="font-heading text-xl font-semibold">Privacy & Safety</h2>
-
                 <div className="space-y-4">
-                  <Toggle
-                    label="Show online status"
-                    desc="Let others see when you're active"
-                    checked={showOnlineStatus}
-                    onChange={setShowOnlineStatus}
-                  />
-                  <Toggle
-                    label="Read receipts"
-                    desc="Show when you've read messages"
-                    checked={readReceipts}
-                    onChange={setReadReceipts}
-                  />
-                </div>
-
-                <Button variant="hero" onClick={handleSavePrivacy} disabled={savingPrivacy}>
-                  {savingPrivacy ? "Saving..." : "Save Privacy Settings"}
-                </Button>
-
-                {/* Delete account */}
-                <div className="border-t border-border/30 pt-6">
-                  <h3 className="text-sm font-bold text-destructive mb-3">Delete Account</h3>
-                  <p className="text-xs text-muted-foreground mb-3">
-                    This permanently deletes your profile, matches, and messages. This cannot be undone.
-                  </p>
-                  <div className="relative mb-3">
-                    <input
-                      type={showDeletePassword ? "text" : "password"}
-                      value={deletePassword}
-                      onChange={(e) => setDeletePassword(e.target.value)}
-                      placeholder="Enter your password to confirm"
-                      className={`${inputClass} pr-10`}
-                    />
-                    <button onClick={() => setShowDeletePassword(!showDeletePassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                      {showDeletePassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
+                  <label className="flex items-center justify-between py-3 border-b border-border/30 cursor-pointer">
+                    <div>
+                      <span className="text-sm block">Show online status</span>
+                      <span className="text-xs text-muted-foreground">Let others see when you're active</span>
+                    </div>
+                    <input type="checkbox" defaultChecked className="accent-primary w-4 h-4" />
+                  </label>
+                  <label className="flex items-center justify-between py-3 border-b border-border/30 cursor-pointer">
+                    <div>
+                      <span className="text-sm block">Read receipts</span>
+                      <span className="text-xs text-muted-foreground">Show when you've read messages</span>
+                    </div>
+                    <input type="checkbox" defaultChecked className="accent-primary w-4 h-4" />
+                  </label>
+                  <div className="pt-4">
+                    <Button variant="outline">Block List</Button>
                   </div>
-                  <Button variant="destructive" onClick={handleDeleteAccount} disabled={deletingAccount || !deletePassword}>
-                    {deletingAccount ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Deleting...</> : "Permanently Delete Account"}
-                  </Button>
+                  <div className="pt-2">
+                    <Button variant="destructive">Delete Account</Button>
+                  </div>
                 </div>
               </div>
             )}
-
           </div>
         </div>
       </div>
@@ -514,21 +590,17 @@ const Settings = () => {
   );
 };
 
-// ── TOGGLE COMPONENT ──────────────────────────────────────────────────────────
-const Toggle = ({ label, desc, checked, onChange }: { label: string; desc: string; checked: boolean; onChange: (v: boolean) => void }) => (
-  <label className="flex items-center justify-between py-3 border-b border-border/30 cursor-pointer">
-    <div>
-      <span className="text-sm block">{label}</span>
-      <span className="text-xs text-muted-foreground">{desc}</span>
-    </div>
-    <div onClick={() => onChange(!checked)}
-      className={`w-10 h-5 rounded-full transition-colors relative cursor-pointer ${checked ? "bg-primary" : "bg-border"}`}>
-      <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${checked ? "translate-x-5" : "translate-x-0.5"}`} />
-    </div>
-  </label>
-);
+// Notification Settings Component
+const NOTIF_CATEGORIES = [
+  { key: "new_matches", label: "New Matches", desc: "When you match with someone" },
+  { key: "new_messages", label: "New Messages", desc: "When you receive a message" },
+  { key: "virtual_gifts", label: "Virtual Gifts", desc: "When someone sends you a gift" },
+  { key: "super_likes", label: "Super Likes", desc: "When someone Super Likes you" },
+  { key: "profile_activity", label: "Profile Activity", desc: "Likes, views, and engagement" },
+  { key: "subscription_reminders", label: "Subscription Reminders", desc: "Renewal and expiry alerts" },
+  { key: "daily_reminders", label: "Daily Reminders", desc: "Message resets and Today's Note" },
+];
 
-// ── NOTIFICATION SETTINGS ─────────────────────────────────────────────────────
 const NotificationSettings = ({ user }: { user: any }) => {
   const { isSupported, isSubscribed, subscribe, unsubscribe } = usePushNotifications();
   const [prefs, setPrefs] = useState<Record<string, any>>({
@@ -541,28 +613,42 @@ const NotificationSettings = ({ user }: { user: any }) => {
 
   useEffect(() => {
     if (!user) return;
-    supabase.from("notification_preferences").select("*").eq("user_id", user.id).maybeSingle()
-      .then(({ data }) => { if (data) setPrefs(data); });
+    const load = async () => {
+      const { data } = await supabase
+        .from("notification_preferences")
+        .select("*")
+        .eq("user_id", user.id)
+        .single();
+      if (data) setPrefs(data);
+    };
+    load();
   }, [user]);
 
-  const updatePref = (key: string, value: any) => setPrefs((p) => ({ ...p, [key]: value }));
+  const updatePref = (key: string, value: any) => {
+    setPrefs((p: Record<string, any>) => ({ ...p, [key]: value }));
+  };
 
   const savePrefs = async () => {
     if (!user) return;
     setSaving(true);
-    try {
-      const { error } = await supabase.from("notification_preferences").upsert({
+    const { error } = await supabase
+      .from("notification_preferences")
+      .upsert({
         user_id: user.id,
-        ...prefs,
+        new_matches: prefs.new_matches,
+        new_messages: prefs.new_messages,
+        virtual_gifts: prefs.virtual_gifts,
+        super_likes: prefs.super_likes,
+        profile_activity: prefs.profile_activity,
+        subscription_reminders: prefs.subscription_reminders,
+        daily_reminders: prefs.daily_reminders,
+        dnd_enabled: prefs.dnd_enabled,
+        dnd_start: prefs.dnd_start,
+        dnd_end: prefs.dnd_end,
         updated_at: new Date().toISOString(),
       } as any, { onConflict: "user_id" });
-      if (error) { toast({ title: "Failed to save", variant: "destructive" }); return; }
-      toast({ title: "Notification preferences saved!" });
-    } catch {
-      toast({ title: "Failed to save", variant: "destructive" });
-    } finally {
-      setSaving(false);
-    }
+    setSaving(false);
+    toast({ title: error ? "Failed to save" : "Notification preferences saved!", variant: error ? "destructive" : "default" });
   };
 
   return (
@@ -571,14 +657,17 @@ const NotificationSettings = ({ user }: { user: any }) => {
         <Bell className="w-5 h-5 text-primary" /> Notifications
       </h2>
 
+      {/* Push notification status */}
       <div className="glass rounded-xl p-4">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium">Push Notifications</p>
             <p className="text-xs text-muted-foreground">
-              {!isSupported ? "Not supported in this browser"
-                : isSubscribed ? "Enabled — you'll receive notifications"
-                : "Disabled — enable to get notified"}
+              {!isSupported
+                ? "Not supported in this browser"
+                : isSubscribed
+                ? "Enabled — you'll receive notifications"
+                : "Disabled — enable to get notified of matches and messages"}
             </p>
           </div>
           {isSupported && (
@@ -589,24 +678,33 @@ const NotificationSettings = ({ user }: { user: any }) => {
         </div>
       </div>
 
+      {/* Category toggles */}
       <div>
         <p className="text-sm font-medium mb-3">Notification Categories</p>
         {NOTIF_CATEGORIES.map((cat) => (
-          <Toggle key={cat.key} label={cat.label} desc={cat.desc}
-            checked={prefs[cat.key] ?? true}
-            onChange={(v) => updatePref(cat.key, v)} />
+          <label key={cat.key} className="flex items-center justify-between py-3 border-b border-border/30 cursor-pointer">
+            <div>
+              <span className="text-sm block">{cat.label}</span>
+              <span className="text-xs text-muted-foreground">{cat.desc}</span>
+            </div>
+            <div onClick={() => updatePref(cat.key, !prefs[cat.key])}
+              className={`w-10 h-5 rounded-full transition-colors relative cursor-pointer ${prefs[cat.key] ? "bg-primary" : "bg-border"}`}>
+              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${prefs[cat.key] ? "translate-x-5" : "translate-x-0.5"}`} />
+            </div>
+          </label>
         ))}
         <div className="flex items-center justify-between py-3 border-b border-border/30">
           <div>
             <span className="text-sm block">Safety Alerts</span>
-            <span className="text-xs text-muted-foreground">Always on</span>
+            <span className="text-xs text-muted-foreground">Report updates and safety notices — always on</span>
           </div>
-          <div className="w-10 h-5 rounded-full bg-primary relative opacity-60 cursor-not-allowed">
+          <div className="w-10 h-5 rounded-full bg-primary relative cursor-not-allowed opacity-60">
             <div className="absolute top-0.5 w-4 h-4 rounded-full bg-white translate-x-5" />
           </div>
         </div>
       </div>
 
+      {/* Do Not Disturb */}
       <div className="glass rounded-xl p-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
@@ -623,13 +721,13 @@ const NotificationSettings = ({ user }: { user: any }) => {
             <div className="flex-1">
               <label className="text-xs text-muted-foreground block mb-1">From</label>
               <input type="time" value={prefs.dnd_start || "23:00"} onChange={(e) => updatePref("dnd_start", e.target.value)}
-                className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary" />
+                className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary" />
             </div>
             <Clock className="w-4 h-4 text-muted-foreground mt-4" />
             <div className="flex-1">
               <label className="text-xs text-muted-foreground block mb-1">To</label>
               <input type="time" value={prefs.dnd_end || "08:00"} onChange={(e) => updatePref("dnd_end", e.target.value)}
-                className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary" />
+                className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary" />
             </div>
           </div>
         )}

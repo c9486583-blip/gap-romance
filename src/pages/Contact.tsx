@@ -90,8 +90,8 @@ const Contact = () => {
             <div className="glass rounded-2xl p-6 text-center">
               <Mail className="w-8 h-8 text-primary mx-auto mb-3" />
               <p className="text-muted-foreground text-sm mb-1">You can also reach us directly at</p>
-              <a href="mailto:GapRomanceSupport@proton.me" className="text-primary font-semibold hover:underline">
-                GapRomanceSupport@proton.me
+              <a href="mailto:support@gapromance.com" className="text-primary font-semibold hover:underline">
+                support@gapromance.com
               </a>
               <p className="text-muted-foreground text-xs mt-2">We aim to respond within 2 business days.</p>
             </div>

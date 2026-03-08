@@ -85,10 +85,6 @@
     @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-xl;
   }
 
-  .safe-area-bottom {
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-  }
-
   /* Virtual Gift Animations */
   .gift-float-up {
     animation: giftFloatUp 1.2s ease-out forwards;

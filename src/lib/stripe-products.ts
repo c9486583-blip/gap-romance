@@ -1,15 +1,15 @@
-export const STRIPE_PUBLISHABLE_KEY = "pk_live_51T7UMJKKKR3maVmCmNbrscoHaQSN0SKwyJFjWKta47kDCcKUBvFqZBTi1cH6IdGZ2qmmhlnMJGh0dXIMS3b9wYhN00MFirJeYZ";
+export const STRIPE_PUBLISHABLE_KEY = "pk_test_51T7UMW30RgnjoIxNuHXfSxtfbtwjQ3drlizGP4n6Ox9KnhdqHdbxwIi4t338M276ctQtR0qN0DGDOCZidw2PbmAk006kh0AnTd";
 
 export const STRIPE_PRODUCTS = {
   premium: {
-    product_id: "prod_U61w6SFz6fxpXF",
-    price_id: "price_1T7psPKKKR3maVmC7Yvb5q4F",
+    product_id: "prod_U5g9XMxRsS0LVp",
+    price_id: "price_1T7UnE30RgnjoIxN9Dj2eevl",
     name: "Premium",
     price: 19.99,
   },
   elite: {
-    product_id: "prod_U61wIicHFsQSf2",
-    price_id: "price_1T7psiKKKR3maVmCZLdZ0eq1",
+    product_id: "prod_U5g9c98SqspkzJ",
+    price_id: "price_1T7UnX30RgnjoIxNy85Kf3Io",
     name: "Elite",
     price: 34.99,
   },
@@ -17,20 +17,20 @@ export const STRIPE_PRODUCTS = {
 
 export const STRIPE_ADDONS = {
   boost: {
-    product_id: "prod_U61wjf6FtTsN5Q",
-    price_id: "price_1T7pszKKKR3maVmCWqRNelMa",
+    product_id: "prod_U5gA258zZMT0xO",
+    price_id: "price_1T7Unt30RgnjoIxN9g62E01V",
     name: "Profile Boost",
     price: 5,
   },
   superLike: {
-    product_id: "prod_U61xO1BEt66ADE",
-    price_id: "price_1T7ptJKKKR3maVmCk3u2PyxS",
+    product_id: "prod_U5gBZ9HIDoDZVR",
+    price_id: "price_1T7UpJ30RgnjoIxN5MZLSPBo",
     name: "Super Like",
     price: 2,
   },
   spotlight: {
-    product_id: "prod_U61xQelJ1BhQW8",
-    price_id: "price_1T7ptcKKKR3maVmCZlojviO0",
+    product_id: "prod_U5gCtQWNRtufj4",
+    price_id: "price_1T7Uph30RgnjoIxNtPEBU8Q5",
     name: "Spotlight Badge",
     price: 7,
   },
@@ -38,22 +38,22 @@ export const STRIPE_ADDONS = {
 
 export const STRIPE_TIME_CREDITS = {
   thirtyMin: {
-    product_id: "prod_U61xFBK1RoVx3t",
-    price_id: "price_1T7ptuKKKR3maVmC4QAr74HP",
+    product_id: "prod_U5zq04PHrIkLY9",
+    price_id: "price_1T7nqT30RgnjoIxNAYkcHxwq",
     name: "30 Minutes Extra",
     seconds: 1800,
     price: 0.99,
   },
   twoHours: {
-    product_id: "prod_U61yAWrXnRjvV7",
-    price_id: "price_1T7puBKKKR3maVmCMPneBSp4",
+    product_id: "prod_U5zqXPmEXJEODu",
+    price_id: "price_1T7nqq30RgnjoIxNKmciHQaY",
     name: "2 Hours Extra",
     seconds: 7200,
     price: 2.99,
   },
   unlimitedDay: {
-    product_id: "prod_U61yLNwgjmuZFr",
-    price_id: "price_1T7puSKKKR3maVmCQMovMa3M",
+    product_id: "prod_U5zq0I05x3tFuj",
+    price_id: "price_1T7nr530RgnjoIxN8sAVrQ0Y",
     name: "Unlimited Today",
     seconds: -1, // -1 means unlimited
     price: 4.99,

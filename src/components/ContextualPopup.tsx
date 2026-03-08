@@ -1,10 +1,9 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { X, Crown, Zap, Heart, Rocket, Star } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
 import { STRIPE_PRODUCTS, STRIPE_ADDONS, STRIPE_COUPON_WELCOME } from "@/lib/stripe-products";
 import { ReactNode } from "react";
 
@@ -85,24 +84,11 @@ const popupConfigs: Record<ContextualPopupProps["type"], {
 
 const ContextualPopup = ({ open, onClose, type }: ContextualPopupProps) => {
   const { toast } = useToast();
-  const { user } = useAuth();
-  const navigate = useNavigate();
   const config = popupConfigs[type];
 
   const handleCta = async () => {
     if (!config.priceId) return;
-    if (!user) {
-      navigate("/signup?redirect=/pricing");
-      onClose();
-      return;
-    }
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData?.session?.access_token;
-      if (!accessToken) {
-        toast({ title: "Please log in again", description: "Your session has expired.", variant: "destructive" });
-        return;
-      }
       const body: any = {
         priceId: config.priceId,
         mode: config.mode || "subscription",
@@ -110,28 +96,12 @@ const ContextualPopup = ({ open, onClose, type }: ContextualPopupProps) => {
       if (config.discount) {
         body.coupon = STRIPE_COUPON_WELCOME;
       }
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${accessToken}`,
-            "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-          },
-          body: JSON.stringify(body),
-        }
-      );
-      const result = await response.json();
-      if (!response.ok) {
-        toast({ title: "Checkout failed", description: result?.error || "Unknown error", variant: "destructive" });
+      const { data, error } = await supabase.functions.invoke("create-checkout", { body });
+      if (error || !data?.url) {
+        toast({ title: "Checkout failed", variant: "destructive" });
         return;
       }
-      if (!result?.url) {
-        toast({ title: "Checkout failed", description: "No checkout URL returned", variant: "destructive" });
-        return;
-      }
-      window.location.href = result.url;
+      window.location.href = data.url;
       onClose();
     } catch {
       toast({ title: "Something went wrong", variant: "destructive" });

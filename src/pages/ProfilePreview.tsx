@@ -6,8 +6,6 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import OnboardingProgress from "@/components/OnboardingProgress";
-import { ONBOARDING_STEPS } from "@/lib/onboarding-steps";
 
 const ProfilePreview = () => {
   const navigate = useNavigate();
@@ -59,9 +57,9 @@ const ProfilePreview = () => {
     if (!user || !bio.trim()) return;
     setSaving(true);
 
+    // Save bio + quiz data to profile
     const updateData: Record<string, any> = {
       bio: bio.trim(),
-      onboarding_step: ONBOARDING_STEPS.QUIZ_COMPLETED,
     };
 
     if (quizData) {
@@ -69,7 +67,7 @@ const ProfilePreview = () => {
       if (quizData.hobbies?.length) updateData.hobbies = quizData.hobbies;
       if (quizData.lifestyle?.length) updateData.lifestyle_badges = quizData.lifestyle;
       if (quizData.music?.length) updateData.favorite_genres = quizData.music;
-      if (quizData.favoriteArtists?.length) updateData.favorite_artists = quizData.favoriteArtists;
+      if (quizData.cuisine?.length) updateData.favorite_artists = quizData.cuisine; // reusing field
       if (quizData.loveLang) updateData.love_language = quizData.loveLang;
       if (quizData.intent) updateData.dating_mode = quizData.intent;
       if (quizData.dealbreakers?.length) updateData.dealbreakers = quizData.dealbreakers;
@@ -77,8 +75,7 @@ const ProfilePreview = () => {
         updateData.preferred_age_min = quizData.ageRange[0];
         updateData.preferred_age_max = quizData.ageRange[1];
       }
-      if (quizData.favoriteSong) updateData.favorite_song = quizData.favoriteSong;
-      if (quizData.selfDescription) updateData.music_taste = quizData.selfDescription; // store self-description
+      if (quizData.vibeAnswer) updateData.favorite_song = quizData.vibeAnswer;
       if (quizData.promptAnswers && Object.keys(quizData.promptAnswers).length > 0) {
         updateData.prompt_answers = Object.entries(quizData.promptAnswers).map(([prompt, answer]) => ({
           prompt,
@@ -100,7 +97,7 @@ const ProfilePreview = () => {
 
     await refreshProfile();
     setSaving(false);
-    navigate("/profile-setup");
+    navigate("/upload-photos");
   };
 
   if (!user) {
@@ -109,9 +106,12 @@ const ProfilePreview = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
-      <OnboardingProgress currentStep={3} totalSteps={6} stepLabel="Review Bio" />
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-lg">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-lg"
+      >
         <div className="text-center mb-8">
           <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
             <Sparkles className="w-8 h-8 text-primary" />
@@ -134,23 +134,46 @@ const ProfilePreview = () => {
                 <Pencil className="w-4 h-4 text-muted-foreground" />
                 <span className="text-sm text-muted-foreground font-medium">Your bio</span>
               </div>
-              <textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Your bio will appear here..."
-                className="w-full bg-secondary border border-border rounded-xl p-4 text-foreground placeholder:text-muted-foreground resize-none h-40 focus:outline-none focus:border-primary font-body text-base leading-relaxed" />
-              <p className="text-xs text-muted-foreground mt-2 text-right">{bio.length} characters</p>
+              <textarea
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                placeholder="Your bio will appear here..."
+                className="w-full bg-secondary border border-border rounded-xl p-4 text-foreground placeholder:text-muted-foreground resize-none h-40 focus:outline-none focus:border-primary font-body text-base leading-relaxed"
+              />
+              <p className="text-xs text-muted-foreground mt-2 text-right">
+                {bio.length} characters
+              </p>
             </>
           )}
         </div>
 
         <div className="flex gap-3">
-          <Button variant="outline" className="flex-1" onClick={generateBio} disabled={generating}>
-            <RefreshCw className={`mr-2 w-4 h-4 ${generating ? "animate-spin" : ""}`} /> Regenerate
+          <Button
+            variant="outline"
+            className="flex-1"
+            onClick={generateBio}
+            disabled={generating}
+          >
+            <RefreshCw className={`mr-2 w-4 h-4 ${generating ? "animate-spin" : ""}`} />
+            Regenerate
           </Button>
-          <Button variant="hero" className="flex-1" onClick={saveAndContinue} disabled={saving || generating || !bio.trim()}>
-            {saving ? <><Loader2 className="mr-2 w-4 h-4 animate-spin" /> Saving...</> : <>Continue <ArrowRight className="ml-2 w-4 h-4" /></>}
+          <Button
+            variant="hero"
+            className="flex-1"
+            onClick={saveAndContinue}
+            disabled={saving || generating || !bio.trim()}
+          >
+            {saving ? (
+              <><Loader2 className="mr-2 w-4 h-4 animate-spin" /> Saving...</>
+            ) : (
+              <>Continue <ArrowRight className="ml-2 w-4 h-4" /></>
+            )}
           </Button>
         </div>
 
-        <p className="text-xs text-muted-foreground text-center mt-6">You can always edit your bio later in Settings.</p>
+        <p className="text-xs text-muted-foreground text-center mt-6">
+          You can always edit your bio later in Settings.
+        </p>
       </motion.div>
     </div>
   );

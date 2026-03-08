@@ -1,78 +1,24 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Loader2 } from "lucide-react";
+import { X } from "lucide-react";
 import { VIRTUAL_GIFTS, VirtualGift } from "@/lib/virtual-gifts";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/hooks/use-toast";
 
 interface GiftPickerProps {
   open: boolean;
   onClose: () => void;
   onSend: (gift: VirtualGift) => void;
-  recipientId?: string;
-  matchId?: string | null;
 }
 
-const GiftPicker = ({ open, onClose, onSend, recipientId, matchId }: GiftPickerProps) => {
-  const [purchasing, setPurchasing] = useState<string | null>(null);
-  const { user } = useAuth();
-  const { toast } = useToast();
+const GiftPicker = ({ open, onClose, onSend }: GiftPickerProps) => {
+  const [sending, setSending] = useState<string | null>(null);
 
-  const handlePurchase = async (gift: VirtualGift) => {
-    if (!user) {
-      toast({ title: "Please log in to send gifts", variant: "destructive" });
-      return;
-    }
-
-    setPurchasing(gift.id);
-
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData?.session?.access_token;
-      if (!accessToken) {
-        toast({ title: "Session expired", description: "Please log in again.", variant: "destructive" });
-        setPurchasing(null);
-        return;
-      }
-
-      // Store gift info so we can send it after payment
-      sessionStorage.setItem("pending_gift", JSON.stringify({
-        gift,
-        recipientId,
-        matchId,
-      }));
-
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${accessToken}`,
-            "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-          },
-          body: JSON.stringify({
-            priceId: gift.price_id,
-            mode: "payment",
-            successUrl: "/payment-success",
-          }),
-        }
-      );
-
-      const result = await response.json();
-      if (!response.ok) {
-        toast({ title: "Checkout failed", description: result?.error || "Unknown error", variant: "destructive" });
-      } else if (result?.url) {
-        window.location.href = result.url;
-      } else {
-        toast({ title: "Checkout failed", description: "No checkout URL returned", variant: "destructive" });
-      }
-    } catch {
-      toast({ title: "Something went wrong", variant: "destructive" });
-    } finally {
-      setPurchasing(null);
-    }
+  const handleSend = (gift: VirtualGift) => {
+    setSending(gift.id);
+    onSend(gift);
+    setTimeout(() => {
+      setSending(null);
+      onClose();
+    }, 600);
   };
 
   return (
@@ -96,23 +42,16 @@ const GiftPicker = ({ open, onClose, onSend, recipientId, matchId }: GiftPickerP
                 key={gift.id}
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
-                onClick={() => handlePurchase(gift)}
-                disabled={purchasing !== null}
-                className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-secondary transition-colors relative"
+                onClick={() => handleSend(gift)}
+                disabled={sending === gift.id}
+                className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-secondary transition-colors"
               >
-                {purchasing === gift.id ? (
-                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                ) : (
-                  <span className="text-2xl">{gift.emoji}</span>
-                )}
+                <span className="text-2xl">{gift.emoji}</span>
                 <span className="text-[10px] text-muted-foreground truncate w-full text-center">{gift.name}</span>
                 <span className="text-[10px] font-bold text-primary">${gift.price}</span>
               </motion.button>
             ))}
           </div>
-          <p className="text-[10px] text-muted-foreground text-center mt-2">
-            Payment processed securely via Stripe
-          </p>
         </motion.div>
       )}
     </AnimatePresence>

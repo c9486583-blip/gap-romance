@@ -30,36 +30,18 @@ const BlockConfirmDialog = ({ open, onOpenChange, blockedUserId, blockedUserName
   const handleBlock = async () => {
     if (!user) return;
     setBlocking(true);
-
-    try {
-      const { error } = await supabase.from("blocks").insert({
-        blocker_id: user.id,
-        blocked_id: blockedUserId,
-      } as any);
-
-      if (error) {
-        toast({ title: "Failed to block user", description: error.message, variant: "destructive" });
-        setBlocking(false);
-        return;
-      }
-
-      // Close dialog first
-      onOpenChange(false);
-      setBlocking(false);
-
-      // Show success toast
-      toast({ title: "User has been blocked", description: "They can no longer see your profile or contact you." });
-
-      // Callback to refresh parent state
-      onBlocked?.();
-    } catch (err: any) {
-      toast({ title: "Failed to block user", variant: "destructive" });
-      setBlocking(false);
-    }
+    await supabase.from("blocks").insert({
+      blocker_id: user.id,
+      blocked_id: blockedUserId,
+    } as any);
+    toast({ title: "User blocked", description: "They can no longer see your profile or contact you." });
+    setBlocking(false);
+    onOpenChange(false);
+    onBlocked?.();
   };
 
   return (
-    <AlertDialog open={open} onOpenChange={(v) => { if (!blocking) onOpenChange(v); }}>
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
@@ -70,9 +52,9 @@ const BlockConfirmDialog = ({ open, onOpenChange, blockedUserId, blockedUserName
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={blocking}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
           <Button variant="destructive" onClick={handleBlock} disabled={blocking}>
-            {blocking ? "Blocking..." : "Yes, Block"}
+            {blocking ? "Blocking..." : "Confirm Block"}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

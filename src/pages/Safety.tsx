@@ -28,7 +28,7 @@ const Safety = () => {
               <section>
                 <h2 className="text-xl font-heading font-bold text-primary mb-3">Our Commitment to Your Safety</h2>
                 <p className="text-muted-foreground">At GapRomance, your safety is our highest priority. We have built safety into every layer of the platform — from mandatory identity verification before any profile goes live, to automated content moderation, to a robust reporting and blocking system. These Safety Guidelines are designed to help you understand the protections we have in place and how you can stay safe while using GapRomance.</p>
-                <p className="text-muted-foreground mt-3">We ask all users to read these guidelines carefully and take personal responsibility for their own safety when interacting with others online and in person. If you ever feel unsafe or encounter behavior that violates these guidelines, please report it immediately using our in-app tools or by contacting us at <a href="mailto:GapRomanceSupport@proton.me" className="text-primary hover:underline">GapRomanceSupport@proton.me</a>.</p>
+                <p className="text-muted-foreground mt-3">We ask all users to read these guidelines carefully and take personal responsibility for their own safety when interacting with others online and in person. If you ever feel unsafe or encounter behavior that violates these guidelines, please report it immediately using our in-app tools or by contacting us at <a href="mailto:support@gapromance.com" className="text-primary hover:underline">support@gapromance.com</a>.</p>
               </section>
 
               <section>
@@ -36,7 +36,7 @@ const Safety = () => {
                 <h3 className="font-bold text-primary/80 mb-2">1.1 How Verification Works</h3>
                 <p className="text-muted-foreground">Every GapRomance user is required to complete mandatory identity verification before their profile is visible to others. Verification consists of two steps:</p>
                 <ul className="list-disc pl-6 mt-2 space-y-1 text-muted-foreground">
-                  <li>Email verification via a confirmation link sent to your registered email address at the time of registration.</li>
+                  <li>Phone number verification via SMS confirmation at the time of registration.</li>
                   <li>Identity verification via a government-issued photo ID and a real-time selfie match processed through our secure verification partner.</li>
                 </ul>
                 <p className="text-muted-foreground mt-3">Verification is free for all users. GapRomance absorbs the cost of verification as part of our commitment to platform safety.</p>
@@ -121,14 +121,14 @@ const Safety = () => {
                   <li>Use the in-app report feature to alert our safety team.</li>
                   <li>Screenshot and save threatening messages for potential law enforcement use.</li>
                   <li>If you feel you are in immediate danger, contact your local emergency services.</li>
-                  <li>Contact our support team at <a href="mailto:GapRomanceSupport@proton.me" className="text-primary hover:underline">GapRomanceSupport@proton.me</a>.</li>
+                  <li>Contact our support team at <a href="mailto:support@gapromance.com" className="text-primary hover:underline">support@gapromance.com</a>.</li>
                 </ul>
               </section>
 
               <section>
                 <h2 className="text-xl font-heading font-bold text-primary mb-3">6. Reporting & Blocking</h2>
                 <h3 className="font-bold text-primary/80 mb-2">6.1 How to Report</h3>
-                <p className="text-muted-foreground">Every profile, message, and piece of content includes a report option. Tap the three-dot menu or flag icon, select "Report," choose the reason, and submit. You can also email <a href="mailto:GapRomanceSupport@proton.me" className="text-primary hover:underline">GapRomanceSupport@proton.me</a> or use our <Link to="/contact" className="text-primary hover:underline">Contact Us</Link> form.</p>
+                <p className="text-muted-foreground">Every profile, message, and piece of content includes a report option. Tap the three-dot menu or flag icon, select "Report," choose the reason, and submit. You can also email <a href="mailto:support@gapromance.com" className="text-primary hover:underline">support@gapromance.com</a> or use our <Link to="/contact" className="text-primary hover:underline">Contact Us</Link> form.</p>
                 <h3 className="font-bold text-primary/80 mb-2 mt-4">6.2 How to Block</h3>
                 <p className="text-muted-foreground">Blocking a user prevents them from viewing your profile, messaging you, or appearing in discovery. Blocked users are not notified.</p>
                 <h3 className="font-bold text-primary/80 mb-2 mt-4">6.3 What Happens After You Report</h3>
@@ -146,7 +146,7 @@ const Safety = () => {
               <section>
                 <h2 className="text-xl font-heading font-bold text-primary mb-3">8. Protection of Minors</h2>
                 <p className="text-muted-foreground">GapRomance has an absolute zero tolerance policy for any content, behavior, or activity that exploits, harms, or endangers minors. Women must be at least 18 and men must be at least 25 to use the platform. Mandatory verification enforces these requirements. Any account found to belong to a minor will be immediately and permanently terminated.</p>
-                <p className="text-muted-foreground mt-3">If you believe a minor is using GapRomance, report it immediately to <a href="mailto:GapRomanceSupport@proton.me" className="text-primary hover:underline">GapRomanceSupport@proton.me</a>.</p>
+                <p className="text-muted-foreground mt-3">If you believe a minor is using GapRomance, report it immediately to <a href="mailto:support@gapromance.com" className="text-primary hover:underline">support@gapromance.com</a>.</p>
               </section>
 
               <section>
@@ -162,14 +162,14 @@ const Safety = () => {
                   <li>Rejection is a normal part of dating. It does not define your worth.</li>
                   <li>If you are struggling, reach out to a qualified mental health professional.</li>
                 </ul>
-                <p className="text-muted-foreground mt-3">If you encounter a user who appears to be in crisis or expresses thoughts of self-harm, please report it immediately to <a href="mailto:GapRomanceSupport@proton.me" className="text-primary hover:underline">GapRomanceSupport@proton.me</a>.</p>
+                <p className="text-muted-foreground mt-3">If you encounter a user who appears to be in crisis or expresses thoughts of self-harm, please report it immediately to <a href="mailto:support@gapromance.com" className="text-primary hover:underline">support@gapromance.com</a>.</p>
               </section>
 
               <section>
                 <h2 className="text-xl font-heading font-bold text-primary mb-3">11. Contact Our Safety Team</h2>
                 <ul className="list-disc pl-6 space-y-1 text-muted-foreground">
                   <li>In-app report feature: available on every profile and message.</li>
-                  <li>Email: <a href="mailto:GapRomanceSupport@proton.me" className="text-primary hover:underline">GapRomanceSupport@proton.me</a></li>
+                  <li>Email: <a href="mailto:support@gapromance.com" className="text-primary hover:underline">support@gapromance.com</a></li>
                   <li>Contact form: available on our <Link to="/contact" className="text-primary hover:underline">Contact Us</Link> page.</li>
                 </ul>
                 <p className="text-muted-foreground mt-3">We aim to respond to all safety-related reports within 24 hours. For urgent concerns, contact your local emergency services.</p>

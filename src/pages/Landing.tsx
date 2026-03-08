@@ -2,7 +2,6 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Heart, Shield, Sparkles, Users, Star, ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
 import Footer from "@/components/Footer";
 import gapromanceLogo from "@/assets/gapromance_logo.png";
 
@@ -16,20 +15,22 @@ const features = [
 
 
 const Landing = () => {
-  const { user } = useAuth();
-
   return (
     <div className="min-h-screen bg-background">
       {/* Nav */}
       <nav className="fixed top-0 w-full z-50 glass border-b border-border/30">
         <div className="container mx-auto flex items-center justify-between h-16 px-4">
-          <Link to="/" className="flex items-center gap-2">
-            <img alt="GapRomance logo" className="h-8 w-auto object-contain border-0 rounded-none" src="/lovable-uploads/35979146-566e-4b78-97a6-4d67f2473574.png" />
-            <span className="text-xl font-heading font-bold text-gradient whitespace-nowrap">GapRomance</span>
+          <Link to="/" className="flex items-center gap-2 text-2xl font-heading font-bold text-gradient">
+            <img alt="GapRomance logo" className="h-8 w-auto object-fill border-0 rounded-none" src="/lovable-uploads/35979146-566e-4b78-97a6-4d67f2473574.png" />
+            GapRomance
           </Link>
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" asChild><Link to="/login">Log In</Link></Button>
-            <Button variant="hero" size="sm" asChild><Link to="/signup">Join Free</Link></Button>
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/login">Log In</Link>
+            </Button>
+            <Button variant="hero" size="sm" asChild>
+              <Link to="/signup">Join Free</Link>
+            </Button>
           </div>
         </div>
       </nav>

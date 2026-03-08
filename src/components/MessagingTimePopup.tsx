@@ -4,9 +4,8 @@ import { Clock, Crown, X, Zap } from "lucide-react";
 import { STRIPE_TIME_CREDITS, STRIPE_PRODUCTS } from "@/lib/stripe-products";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 interface MessagingTimePopupProps {
   open: boolean;
@@ -21,51 +20,23 @@ const timeOptions = [
 
 const MessagingTimePopup = ({ open, onClose }: MessagingTimePopupProps) => {
   const { toast } = useToast();
-  const { user } = useAuth();
-  const navigate = useNavigate();
   const [purchasing, setPurchasing] = useState<string | null>(null);
 
   const handlePurchase = async (priceId: string) => {
     setPurchasing(priceId);
-    if (!user) {
-      sessionStorage.setItem("pending_checkout", JSON.stringify({ priceId, mode: "payment", successUrl: "/payment-success" }));
-      navigate("/signup?redirect=/pricing");
-      onClose();
-      return;
-    }
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData?.session?.access_token;
-      if (!accessToken) {
-        toast({ title: "Please log in again", description: "Your session has expired.", variant: "destructive" });
-        setPurchasing(null);
-        return;
-      }
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${accessToken}`,
-            "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-          },
-          body: JSON.stringify({ priceId, mode: "payment", successUrl: "/payment-success" }),
-        }
-      );
-      const result = await response.json();
-      if (!response.ok) {
-        toast({ title: "Checkout failed", description: result?.error || "Unknown error", variant: "destructive" });
-      } else if (result?.url) {
-        window.location.href = result.url;
+      const { data, error } = await supabase.functions.invoke("create-checkout", {
+        body: { priceId, mode: "payment", successUrl: "/credit-success" },
+      });
+      if (error || !data?.url) {
+        toast({ title: "Checkout failed", variant: "destructive" });
       } else {
-        toast({ title: "Checkout failed", description: "No checkout URL returned", variant: "destructive" });
+        window.location.href = data.url;
       }
     } catch {
       toast({ title: "Something went wrong", variant: "destructive" });
-    } finally {
-      setPurchasing(null);
     }
+    setPurchasing(null);
   };
 
   return (

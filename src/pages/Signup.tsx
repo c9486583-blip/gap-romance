@@ -1,21 +1,17 @@
-import { useState, useEffect, useRef } from "react";
-import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useGeolocation } from "@/hooks/useGeolocation";
-import { useAuth } from "@/contexts/AuthContext";
-import { Mail, Loader2, MapPinOff, CheckCircle, Check, X } from "lucide-react";
+import { Mail, ArrowLeft, Loader2, MapPinOff } from "lucide-react";
 import PasswordStrengthIndicator, { isPasswordStrong, getPasswordRequirements } from "@/components/PasswordStrengthIndicator";
-import { getOnboardingRoute } from "@/lib/onboarding-steps";
 
 const Signup = () => {
+  const [step, setStep] = useState<"form" | "verify">("form");
   const [firstName, setFirstName] = useState("");
   const [lastInitial, setLastInitial] = useState("");
-  const [username, setUsername] = useState("");
-  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
-  const [usernameChecking, setUsernameChecking] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [gender, setGender] = useState("");
@@ -24,105 +20,27 @@ const Signup = () => {
   const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
   const [agreedToSafety, setAgreedToSafety] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
-  const [resendCooldown, setResendCooldown] = useState(0);
 
-  const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const usernameDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // OTP state
+  const [otpCode, setOtpCode] = useState(["", "", "", "", "", ""]);
+  const [otpSending, setOtpSending] = useState(false);
+  const [otpVerifying, setOtpVerifying] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
 
   const navigate = useNavigate();
   const { toast } = useToast();
   const { location, requestLocation } = useGeolocation();
-  const { user, profile } = useAuth();
 
   useEffect(() => {
     requestLocation();
   }, []);
 
+  // Resend cooldown timer
   useEffect(() => {
-    if (user && profile) {
-      const step = profile.onboarding_step ?? 0;
-      if (step >= 1) {
-        navigate(getOnboardingRoute(step), { replace: true });
-      }
-    }
-  }, [user, profile, navigate]);
-
-  useEffect(() => {
-    return () => {
-      if (cooldownRef.current) clearInterval(cooldownRef.current);
-      if (usernameDebounceRef.current) clearTimeout(usernameDebounceRef.current);
-    };
-  }, []);
-
-  // FIX #3: Improved username availability checker with better timeout handling
-  useEffect(() => {
-    if (usernameDebounceRef.current) clearTimeout(usernameDebounceRef.current);
-
-    if (!username || username.length < 4) {
-      setUsernameAvailable(null);
-      setUsernameChecking(false);
-      return;
-    }
-
-    setUsernameChecking(true);
-    setUsernameAvailable(null);
-
-    usernameDebounceRef.current = setTimeout(async () => {
-      // 5 second timeout — increased from 3 seconds for better reliability
-      const timeoutPromise = new Promise<null>((resolve) => {
-        setTimeout(() => {
-          console.warn(`Username check timed out for: ${username}`);
-          resolve(null);
-        }, 5000);
-      });
-
-      const queryPromise = (async () => {
-        try {
-          const { data, error } = await supabase
-            .from("profiles")
-            .select("user_id")
-            .eq("username", username.toLowerCase())
-            .maybeSingle();
-
-          if (error) {
-            console.error("Username check error:", error);
-            return null; // On error, assume available
-          }
-          return data;
-        } catch (err) {
-          console.error("Username check exception:", err);
-          return null; // On exception, assume available
-        }
-      })();
-
-      try {
-        const result = await Promise.race([queryPromise, timeoutPromise]);
-        // null means no match found (available) or timed out (assume available)
-        setUsernameAvailable(result === undefined ? true : !result);
-      } catch (err) {
-        console.error("Username check failed:", err);
-        // On any error, assume available so user isn't blocked
-        setUsernameAvailable(true);
-      } finally {
-        setUsernameChecking(false);
-      }
-    }, 600);
-  }, [username]);
-
-  const startCooldown = () => {
-    setResendCooldown(60);
-    if (cooldownRef.current) clearInterval(cooldownRef.current);
-    cooldownRef.current = setInterval(() => {
-      setResendCooldown((prev) => {
-        if (prev <= 1) {
-          if (cooldownRef.current) clearInterval(cooldownRef.current);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  };
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => setResendCooldown((c) => c - 1), 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
 
   const isOutsideUS = location && location.countryCode && location.countryCode !== "US";
 
@@ -131,23 +49,22 @@ const Signup = () => {
       toast({ title: "GapRomance is currently only available in the United States.", variant: "destructive" });
       return false;
     }
+    if (!agreedToTerms || !agreedToPrivacy || !agreedToSafety) {
+      toast({ title: "You must agree to all required policies", variant: "destructive" });
+      return false;
+    }
+    if (!gender) {
+      toast({ title: "Please select your gender", variant: "destructive" });
+      return false;
+    }
+    if (!dob) {
+      toast({ title: "Please enter your date of birth", variant: "destructive" });
+      return false;
+    }
     if (!firstName.trim()) {
       toast({ title: "Please enter your first name", variant: "destructive" });
       return false;
     }
-    if (!username.trim() || username.length < 4) {
-      toast({ title: "Username must be at least 4 characters", variant: "destructive" });
-      return false;
-    }
-    if (username.length > 15) {
-      toast({ title: "Username must be 15 characters or fewer", variant: "destructive" });
-      return false;
-    }
-    if (usernameAvailable === false) {
-      toast({ title: "That username is already taken", variant: "destructive" });
-      return false;
-    }
-    // Don't block on null — if check timed out, let them proceed
     if (!email.trim() || !password) {
       toast({ title: "Please fill in email and password", variant: "destructive" });
       return false;
@@ -163,39 +80,30 @@ const Signup = () => {
       toast({ title: "Password too weak", description: `Missing: ${missing.join(", ")}`, variant: "destructive" });
       return false;
     }
-    if (!gender) {
-      toast({ title: "Please select your gender", variant: "destructive" });
-      return false;
-    }
-    if (!dob) {
-      toast({ title: "Please enter your date of birth", variant: "destructive" });
-      return false;
-    }
+
     const birthDate = new Date(dob);
     const today = new Date();
     let age = today.getFullYear() - birthDate.getFullYear();
     const m = today.getMonth() - birthDate.getMonth();
     if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
+
     const minAge = gender === "Man" ? 25 : 18;
     if (age < minAge) {
       toast({ title: `You must be at least ${minAge} years old`, variant: "destructive" });
       return false;
     }
-    if (!agreedToTerms || !agreedToPrivacy || !agreedToSafety) {
-      toast({ title: "You must agree to all required policies", variant: "destructive" });
-      return false;
-    }
     return true;
   };
 
-  const handleSignup = async () => {
+  const handleSendVerification = async () => {
     if (!validateForm()) return;
-    setLoading(true);
+    setOtpSending(true);
     try {
+      // Create the account — Supabase will send a confirmation email with a 6-digit code
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: { emailRedirectTo: `${window.location.origin}/onboarding` },
+        options: { emailRedirectTo: window.location.origin },
       });
 
       if (error) {
@@ -203,58 +111,161 @@ const Signup = () => {
         return;
       }
 
+      // If user already exists and is confirmed, they should login instead
       if (data.user && data.user.identities && data.user.identities.length === 0) {
         toast({ title: "Account already exists", description: "Please log in instead.", variant: "destructive" });
         return;
       }
 
+      // Update profile with the form data immediately
       if (data.user) {
-        await new Promise((res) => setTimeout(res, 800));
-
-        const upsertData: any = {
-          user_id: data.user.id,
-          first_name: firstName.trim(),
-          last_initial: lastInitial.trim(),
-          username: username.toLowerCase().trim(),
+        const updateData: any = {
+          first_name: firstName,
+          last_initial: lastInitial,
           gender,
           date_of_birth: dob,
-          onboarding_step: 0,
         };
-
         if (location) {
-          upsertData.latitude = location.lat;
-          upsertData.longitude = location.lng;
-          upsertData.city = location.city;
+          updateData.latitude = location.lat;
+          updateData.longitude = location.lng;
+          updateData.city = location.city;
         }
-
-        await supabase
-          .from("profiles")
-          .upsert(upsertData, { onConflict: "user_id" });
+        await supabase.from("profiles").update(updateData).eq("user_id", data.user.id);
       }
 
-      setEmailSent(true);
-      startCooldown();
-      toast({ title: "Verification email sent!", description: `Check your inbox at ${email}` });
+      setResendCooldown(60);
+      toast({ title: "Verification code sent!", description: `Check your inbox at ${email}` });
+      setStep("verify");
     } catch (err: any) {
+      console.error("Signup error:", err);
       toast({ title: "Something went wrong", description: err?.message || "Please try again", variant: "destructive" });
     } finally {
-      setLoading(false);
+      setOtpSending(false);
+    }
+  };
+
+  const handleOtpChange = (index: number, value: string) => {
+    if (value.length > 1) value = value.slice(-1);
+    if (value && !/^\d$/.test(value)) return;
+    const newCode = [...otpCode];
+    newCode[index] = value;
+    setOtpCode(newCode);
+    if (value && index < 5) {
+      const next = document.getElementById(`otp-${index + 1}`);
+      next?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
+    if (e.key === "Backspace" && !otpCode[index] && index > 0) {
+      const prev = document.getElementById(`otp-${index - 1}`);
+      prev?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    if (pasted.length === 6) {
+      setOtpCode(pasted.split(""));
+    }
+  };
+
+  const handleVerifyAndSignup = async () => {
+    const code = otpCode.join("");
+    if (code.length !== 6) {
+      toast({ title: "Please enter the full 6-digit code", variant: "destructive" });
+      return;
+    }
+
+    setOtpVerifying(true);
+    try {
+      // Verify the OTP code via Supabase Auth
+      const { data, error } = await supabase.auth.verifyOtp({
+        email,
+        token: code,
+        type: "signup",
+      });
+
+      if (error) {
+        toast({
+          title: "Verification failed",
+          description: error.message || "Invalid or expired code. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (data.session) {
+        toast({ title: "Email verified!", description: "Welcome to GapRomance!" });
+        navigate("/onboarding");
+      } else {
+        toast({ title: "Verification failed", description: "Please try again.", variant: "destructive" });
+      }
+    } catch (err: any) {
+      console.error("Verify error:", err);
+      toast({ title: "Something went wrong", description: err?.message || "Please try again", variant: "destructive" });
+    } finally {
+      setOtpVerifying(false);
     }
   };
 
   const handleResend = async () => {
     if (resendCooldown > 0) return;
-    setLoading(true);
+    setOtpCode(["", "", "", "", "", ""]);
+    setOtpSending(true);
     try {
-      const { error } = await supabase.auth.resend({ type: "signup", email });
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email,
+      });
       if (error) {
-        toast({ title: "Failed to resend", description: error.message, variant: "destructive" });
-      } else {
-        toast({ title: "Email resent!", description: `Check your inbox at ${email}` });
-        startCooldown();
+        toast({ title: "Failed to resend code", description: error.message, variant: "destructive" });
+        return;
       }
+      setResendCooldown(60);
+      toast({ title: "Code resent!", description: `Check your inbox at ${email}` });
     } catch (err: any) {
       toast({ title: "Failed to resend", description: err?.message || "Please try again", variant: "destructive" });
+    } finally {
+      setOtpSending(false);
+    }
+  };
+
+  const handleDevSkip = async () => {
+    if (!window.location.hostname.includes("preview")) return;
+    if (!email.trim() || !password) {
+      toast({ title: "Please fill in email and password", variant: "destructive" });
+      return;
+    }
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo: window.location.origin },
+      });
+      if (error) {
+        toast({ title: "Signup failed", description: error.message, variant: "destructive" });
+        return;
+      }
+      if (data.user) {
+        const updateData: any = {
+          first_name: firstName || "TestUser",
+          last_initial: lastInitial || "T",
+          gender: gender || "Man",
+          date_of_birth: dob || "1990-01-01",
+          is_verified: true,
+          verification_status: "verified",
+        };
+        if (location) {
+          updateData.latitude = location.lat;
+          updateData.longitude = location.lng;
+          updateData.city = location.city;
+        }
+        await supabase.from("profiles").update(updateData).eq("user_id", data.user.id);
+      }
+      navigate("/onboarding");
     } finally {
       setLoading(false);
     }
@@ -262,21 +273,13 @@ const Signup = () => {
 
   const inputClass = "w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary";
 
-  const getUsernameStatusIcon = () => {
-    if (!username || username.length < 4) return null;
-    if (usernameChecking) return <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />;
-    if (usernameAvailable === true) return <Check className="w-4 h-4 text-green-500" />;
-    if (usernameAvailable === false) return <X className="w-4 h-4 text-destructive" />;
-    return null;
-  };
-
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link to="/" className="text-3xl font-heading font-bold text-gradient">GapRomance</Link>
           <p className="text-muted-foreground mt-2">
-            {emailSent ? "Verify your email to continue" : "Create your account"}
+            {step === "form" ? "Create your account" : "Verify your email address"}
           </p>
         </div>
 
@@ -288,135 +291,164 @@ const Signup = () => {
               <p className="text-xs text-muted-foreground mt-1">We hope to expand to more countries soon.</p>
             </div>
           )}
+          <AnimatePresence mode="wait">
+            {step === "form" ? (
+              <motion.div key="form" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="First Name" className={inputClass} />
+                    <input value={lastInitial} onChange={(e) => setLastInitial(e.target.value)} placeholder="Last Initial" className={inputClass} />
+                  </div>
+                  <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" type="email" className={inputClass} />
+                  <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" type="password" className={inputClass} />
+                  <PasswordStrengthIndicator password={password} />
+                  <div>
+                    <label className="text-sm text-muted-foreground block mb-2">I am a</label>
+                    <div className="grid grid-cols-2 gap-3">
+                      {["Man", "Woman"].map((g) => (
+                        <button key={g} onClick={() => setGender(g)} className={`py-3 rounded-xl border text-sm font-bold transition-all ${gender === g ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/50"}`}>
+                          {g}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm text-muted-foreground block mb-2">Date of Birth</label>
+                    <input type="date" value={dob} onChange={(e) => setDob(e.target.value)} className={inputClass} />
+                    {gender === "Woman" && <p className="text-xs text-muted-foreground mt-1">Must be 18 or older</p>}
+                    {gender === "Man" && <p className="text-xs text-muted-foreground mt-1">Must be 25 or older</p>}
+                  </div>
 
-          {emailSent ? (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 text-center">
-              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-                <Mail className="w-7 h-7 text-primary" />
-              </div>
-              <div>
-                <h3 className="font-heading text-xl font-bold mb-2">Check your email</h3>
-                <p className="text-sm text-muted-foreground">
-                  We sent a verification link to <span className="text-foreground font-medium">{email}</span>
-                </p>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Click the <strong>Verify</strong> button in the email to activate your account and continue.
-                </p>
-                <p className="text-xs text-muted-foreground mt-3">Check your spam folder if you don't see it.</p>
-              </div>
+                  <div className="flex items-start gap-3 mt-2">
+                    <input type="checkbox" checked={agreedToTerms} onChange={(e) => setAgreedToTerms(e.target.checked)} className="mt-1 accent-primary" id="terms-checkbox" />
+                    <label htmlFor="terms-checkbox" className="text-sm text-muted-foreground">
+                      I have read and agree to the <Link to="/terms" className="text-primary hover:underline" target="_blank">Terms of Service</Link>.
+                    </label>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <input type="checkbox" checked={agreedToPrivacy} onChange={(e) => setAgreedToPrivacy(e.target.checked)} className="mt-1 accent-primary" id="privacy-checkbox" />
+                    <label htmlFor="privacy-checkbox" className="text-sm text-muted-foreground">
+                      I have read and agree to the <Link to="/privacy" className="text-primary hover:underline" target="_blank">Privacy Policy</Link>.
+                    </label>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <input type="checkbox" checked={agreedToSafety} onChange={(e) => setAgreedToSafety(e.target.checked)} className="mt-1 accent-primary" id="safety-checkbox" />
+                    <label htmlFor="safety-checkbox" className="text-sm text-muted-foreground">
+                      I have read and agree to the <Link to="/safety" className="text-primary hover:underline" target="_blank">Safety Guidelines</Link>.
+                    </label>
+                  </div>
 
-              <div className="flex items-center gap-2 justify-center p-3 rounded-xl bg-primary/5 border border-primary/20">
-                <CheckCircle className="w-4 h-4 text-primary flex-shrink-0" />
-                <p className="text-xs text-muted-foreground">You'll be redirected automatically once verified</p>
-              </div>
+                  <Button
+                    variant="hero"
+                    className="w-full"
+                    size="lg"
+                    onClick={handleSendVerification}
+                    disabled={otpSending || !agreedToTerms || !agreedToPrivacy || !agreedToSafety || !!isOutsideUS}
+                  >
+                    {otpSending ? (
+                      <><Loader2 className="mr-2 w-4 h-4 animate-spin" /> Creating Account...</>
+                    ) : (
+                      "Verify Email & Create Account"
+                    )}
+                  </Button>
 
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Didn't receive it?</p>
-                <button
-                  onClick={handleResend}
-                  disabled={loading || resendCooldown > 0}
-                  className={`text-sm font-medium transition-colors ${loading || resendCooldown > 0 ? "text-muted-foreground cursor-not-allowed" : "text-primary hover:underline"}`}
-                >
-                  {loading ? "Sending..." : resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend Email"}
-                </button>
-              </div>
-            </motion.div>
-          ) : (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="First Name" className={inputClass} />
-                <input value={lastInitial} onChange={(e) => setLastInitial(e.target.value.slice(0, 1))} placeholder="Last Initial" maxLength={1} className={inputClass} />
-              </div>
-
-              <div className="relative">
-                <div className="flex items-center">
-                  <span className="absolute left-4 text-muted-foreground text-sm select-none">@</span>
-                  <input
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s/g, "").slice(0, 15))}
-                    placeholder="username"
-                    maxLength={15}
-                    className={`${inputClass} pl-8 pr-10 ${
-                      usernameAvailable === true ? "border-green-500" :
-                      usernameAvailable === false ? "border-destructive" : ""
-                    }`}
-                  />
-                  <span className="absolute right-4">{getUsernameStatusIcon()}</span>
+                  {window.location.hostname.includes("preview") && (
+                    <Button
+                      variant="outline"
+                      className="w-full mt-2 border-dashed border-yellow-500 text-yellow-500 hover:bg-yellow-500/10"
+                      size="lg"
+                      onClick={handleDevSkip}
+                      disabled={loading}
+                    >
+                      {loading ? (
+                        <><Loader2 className="mr-2 w-4 h-4 animate-spin" /> Creating Test Account...</>
+                      ) : (
+                        "⚡ Skip Verification (Dev Only)"
+                      )}
+                    </Button>
+                  )}
                 </div>
-                <p className={`text-xs mt-1 ${
-                  usernameAvailable === false ? "text-destructive" :
-                  usernameAvailable === true ? "text-green-500" :
-                  "text-muted-foreground"
-                }`}>
-                  {!username || username.length < 4
-                    ? "4–15 characters"
-                    : usernameChecking
-                    ? "Checking availability..."
-                    : usernameAvailable === true
-                    ? "@" + username + " is available!"
-                    : usernameAvailable === false
-                    ? "That username is already taken"
-                    : ""}
-                </p>
-              </div>
+              </motion.div>
+            ) : (
+              <motion.div key="verify" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
+                <div className="space-y-6">
+                  <button onClick={() => { setStep("form"); setOtpCode(["", "", "", "", "", ""]); }} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                    <ArrowLeft className="w-4 h-4" /> Back to form
+                  </button>
 
-              <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" type="email" className={inputClass} />
-              <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" type="password" className={inputClass} />
-              <PasswordStrengthIndicator password={password} />
+                  <div className="text-center">
+                    <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                      <Mail className="w-7 h-7 text-primary" />
+                    </div>
+                    <h3 className="font-heading text-xl font-bold mb-1">Enter verification code</h3>
+                    <p className="text-sm text-muted-foreground">
+                      We sent a 6-digit code to <span className="text-foreground font-medium">{email}</span>
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">Check your spam folder if you don't see it.</p>
+                  </div>
 
-              <div>
-                <label className="text-sm text-muted-foreground block mb-2">I am a</label>
-                <div className="grid grid-cols-2 gap-3">
-                  {["Man", "Woman"].map((g) => (
-                    <button key={g} onClick={() => setGender(g)}
-                      className={`py-3 rounded-xl border text-sm font-bold transition-all ${gender === g ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/50"}`}>
-                      {g}
+                  <div className="flex justify-center gap-2" onPaste={handleOtpPaste}>
+                    {otpCode.map((digit, i) => (
+                      <input
+                        key={i}
+                        id={`otp-${i}`}
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={1}
+                        value={digit}
+                        onChange={(e) => handleOtpChange(i, e.target.value)}
+                        onKeyDown={(e) => handleOtpKeyDown(i, e)}
+                        className="w-12 h-14 text-center text-xl font-bold bg-secondary border border-border rounded-xl text-foreground focus:outline-none focus:border-primary transition-colors"
+                      />
+                    ))}
+                  </div>
+
+                  <Button
+                    variant="hero"
+                    className="w-full"
+                    size="lg"
+                    onClick={handleVerifyAndSignup}
+                    disabled={otpVerifying || otpCode.join("").length !== 6}
+                  >
+                    {otpVerifying ? (
+                      <><Loader2 className="mr-2 w-4 h-4 animate-spin" /> Verifying...</>
+                    ) : (
+                      "Verify & Create Account"
+                    )}
+                  </Button>
+
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground mb-1">Didn't receive the code?</p>
+                    <button
+                      onClick={handleResend}
+                      disabled={resendCooldown > 0 || otpSending}
+                      className={`text-sm font-medium transition-colors ${
+                        resendCooldown > 0 || otpSending ? "text-muted-foreground cursor-not-allowed" : "text-primary hover:underline"
+                      }`}
+                    >
+                      {otpSending ? "Sending..." : resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend Code"}
                     </button>
-                  ))}
+                  </div>
+
+                  {window.location.hostname.includes("preview") && (
+                    <Button
+                      variant="outline"
+                      className="w-full border-dashed border-yellow-500 text-yellow-500 hover:bg-yellow-500/10"
+                      size="lg"
+                      onClick={handleDevSkip}
+                      disabled={loading}
+                    >
+                      {loading ? (
+                        <><Loader2 className="mr-2 w-4 h-4 animate-spin" /> Creating Test Account...</>
+                      ) : (
+                        "⚡ Skip Verification (Dev Only)"
+                      )}
+                    </Button>
+                  )}
                 </div>
-              </div>
-
-              <div>
-                <label className="text-sm text-muted-foreground block mb-2">Date of Birth</label>
-                <input type="date" value={dob} onChange={(e) => setDob(e.target.value)} className={inputClass} />
-                {gender === "Woman" && <p className="text-xs text-muted-foreground mt-1">Must be 18 or older</p>}
-                {gender === "Man" && <p className="text-xs text-muted-foreground mt-1">Must be 25 or older</p>}
-              </div>
-
-              <div className="flex items-start gap-3 mt-2">
-                <input type="checkbox" checked={agreedToTerms} onChange={(e) => setAgreedToTerms(e.target.checked)} className="mt-1 accent-primary" id="terms-checkbox" />
-                <label htmlFor="terms-checkbox" className="text-sm text-muted-foreground">
-                  I have read and agree to the <Link to="/terms" className="text-primary hover:underline" target="_blank">Terms of Service</Link>.
-                </label>
-              </div>
-              <div className="flex items-start gap-3">
-                <input type="checkbox" checked={agreedToPrivacy} onChange={(e) => setAgreedToPrivacy(e.target.checked)} className="mt-1 accent-primary" id="privacy-checkbox" />
-                <label htmlFor="privacy-checkbox" className="text-sm text-muted-foreground">
-                  I have read and agree to the <Link to="/privacy" className="text-primary hover:underline" target="_blank">Privacy Policy</Link>.
-                </label>
-              </div>
-              <div className="flex items-start gap-3">
-                <input type="checkbox" checked={agreedToSafety} onChange={(e) => setAgreedToSafety(e.target.checked)} className="mt-1 accent-primary" id="safety-checkbox" />
-                <label htmlFor="safety-checkbox" className="text-sm text-muted-foreground">
-                  I have read and agree to the <Link to="/safety" className="text-primary hover:underline" target="_blank">Safety Guidelines</Link>.
-                </label>
-              </div>
-
-              <Button
-                variant="hero"
-                className="w-full"
-                size="lg"
-                onClick={handleSignup}
-                disabled={loading || !agreedToTerms || !agreedToPrivacy || !agreedToSafety || !!isOutsideUS}
-              >
-                {loading ? (
-                  <><Loader2 className="mr-2 w-4 h-4 animate-spin" /> Creating Account...</>
-                ) : (
-                  "Create Account"
-                )}
-              </Button>
-            </div>
-          )}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <div className="mt-6 text-center">
             <p className="text-sm text-muted-foreground">

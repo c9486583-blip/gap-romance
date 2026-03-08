@@ -336,7 +336,7 @@ serve(async (req) => {
           payload,
           vapidPublicKey,
           vapidPrivateKey,
-          "mailto:GapRomanceSupport@proton.me"
+          "mailto:support@gapromance.com"
         );
 
         if (result.expired) {

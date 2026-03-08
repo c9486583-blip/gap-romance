@@ -104,17 +104,17 @@ const Privacy = () => {
 
               <section>
                 <h2 className="text-xl font-heading font-bold text-primary mb-3">9. Children's Privacy</h2>
-                <p className="text-muted-foreground">GapRomance is strictly for adults. Women must be 18+ and men must be 25+. We do not knowingly collect information from anyone under the applicable minimum age. Contact GapRomanceSupport@proton.me if you believe a minor has created an account.</p>
+                <p className="text-muted-foreground">GapRomance is strictly for adults. Women must be 18+ and men must be 25+. We do not knowingly collect information from anyone under the applicable minimum age. Contact support@gapromance.com if you believe a minor has created an account.</p>
               </section>
 
               <section>
                 <h2 className="text-xl font-heading font-bold text-primary mb-3">10. Your Privacy Rights</h2>
-                <p className="text-muted-foreground">Depending on your location, you may have rights to access, rectify, erase, port, or object to processing of your data. Contact GapRomanceSupport@proton.me to exercise these rights. We respond within 30 days.</p>
+                <p className="text-muted-foreground">Depending on your location, you may have rights to access, rectify, erase, port, or object to processing of your data. Contact support@gapromance.com to exercise these rights. We respond within 30 days.</p>
               </section>
 
               <section>
                 <h2 className="text-xl font-heading font-bold text-primary mb-3">11. California Privacy Rights (CCPA)</h2>
-                <p className="text-muted-foreground">California residents have additional rights under CCPA. GapRomance does not sell personal information. Submit CCPA requests to GapRomanceSupport@proton.me with subject line "CCPA Request."</p>
+                <p className="text-muted-foreground">California residents have additional rights under CCPA. GapRomance does not sell personal information. Submit CCPA requests to support@gapromance.com with subject line "CCPA Request."</p>
               </section>
 
               <section>
@@ -134,7 +134,7 @@ const Privacy = () => {
 
               <section>
                 <h2 className="text-xl font-heading font-bold text-primary mb-3">15. Contact Us</h2>
-                <p className="text-muted-foreground">Email: <a href="mailto:GapRomanceSupport@proton.me" className="text-primary hover:underline">GapRomanceSupport@proton.me</a></p>
+                <p className="text-muted-foreground">Email: <a href="mailto:support@gapromance.com" className="text-primary hover:underline">support@gapromance.com</a></p>
                 <p className="text-muted-foreground">We aim to respond within 2 business days.</p>
               </section>
 

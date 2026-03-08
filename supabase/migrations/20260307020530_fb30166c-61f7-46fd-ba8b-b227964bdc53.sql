@@ -1,1 +1,0 @@
-SELECT auth.uid(); -- no-op to verify connection
