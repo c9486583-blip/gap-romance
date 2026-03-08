@@ -345,6 +345,7 @@ export type Database = {
           message_credits: number
           music_taste: string | null
           notification_prompt_dismissed_at: string | null
+          onboarding_step: number
           personality_badges: string[] | null
           phone: string | null
           photos: string[] | null
@@ -393,6 +394,7 @@ export type Database = {
           message_credits?: number
           music_taste?: string | null
           notification_prompt_dismissed_at?: string | null
+          onboarding_step?: number
           personality_badges?: string[] | null
           phone?: string | null
           photos?: string[] | null
@@ -441,6 +443,7 @@ export type Database = {
           message_credits?: number
           music_taste?: string | null
           notification_prompt_dismissed_at?: string | null
+          onboarding_step?: number
           personality_badges?: string[] | null
           phone?: string | null
           photos?: string[] | null
