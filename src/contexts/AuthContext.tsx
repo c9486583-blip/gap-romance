@@ -16,6 +16,7 @@ interface AuthState {
   updateLocation: (lat: number, lng: number, city: string) => Promise<void>;
 }
 
+// Auth context for the application
 const AuthContext = createContext<AuthState | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
