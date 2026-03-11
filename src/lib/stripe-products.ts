@@ -1,4 +1,4 @@
-export const STRIPE_PUBLISHABLE_KEY = "pk_test_51T7UMW30RgnjoIxNuHXfSxtfbtwjQ3drlizGP4n6Ox9KnhdqHdbxwIi4t338M276ctQtR0qN0DGDOCZidw2PbmAk006kh0AnTd";
+export const STRIPE_PUBLISHABLE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || "";
 
 export const STRIPE_PRODUCTS = {
   premium: {
